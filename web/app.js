@@ -1,4 +1,4 @@
-/* Birdie mobile app: Splash, Browse and Place.
+/* Birdie mobile app: Explore, Saved, About, and a Place screen with the live floor plan.
  *
  * Reads the read-only API in CLAUDE.md section 7.2 and polls it every 2 seconds:
  *   GET api/venues               list of venues with seat counts
@@ -10,11 +10,12 @@
   'use strict';
 
   const POLL_MS = 2000;
+  const SAVED_KEY = 'birdie:saved';
   const TYPES = { library: 'Library', cafe: 'Café', cowork: 'Coworking', study_room: 'Study room' };
   const CATS = [['all', 'All'], ['library', 'Libraries'], ['cafe', 'Cafés'], ['cowork', 'Coworking'], ['study_room', 'Study rooms']];
   const SORTS = [['near', 'Nearest'], ['free', 'Most seats free'], ['late', 'Open late']];
   const SEGS = [['all', 'All seats'], ['outlet', 'Outlet'], ['window', 'Window']];
-  const LOGO = 'assets/logo-512.jpg';
+  const TABS = [['home', '#/', 'Explore'], ['saved', '#/saved', 'Saved'], ['about', '#/about', 'About']];
 
   const params = new URLSearchParams(location.search);
   const app = document.getElementById('app');
@@ -24,15 +25,16 @@
     online: true,     // false while the API can't be reached
     venues: null,     // GET api/venues
     venue: null,      // GET api/venues/{id} for the open place
-    screen: 'browse', // 'browse' or 'place'
+    screen: 'home',   // 'home', 'saved', 'about' or 'place'
     venueId: null,
     cat: 'all',
     sort: 'near',
     query: '',
     seg: 'all',
     sel: null,        // seat_id of the chair whose sheet is open
-    browseScroll: 0,
-    fromBrowse: false,
+    homeScroll: 0,
+    fromList: false,
+    saved: loadSaved(),
   };
 
   // ---------- Small helpers ----------
@@ -52,6 +54,11 @@
     return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
   }
 
+  function greeting() {
+    const h = new Date().getHours();
+    return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  }
+
   // Replace an element's HTML only when it changed, keeping its sideways scroll position.
   function setHTML(el, html) {
     if (!el || el._html === html) return;
@@ -61,37 +68,41 @@
     el.scrollLeft = x;
   }
 
+  // Saved places live in this browser only.
+  function loadSaved() {
+    try { return new Set(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]')); } catch { return new Set(); }
+  }
+  function storeSaved() {
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify([...state.saved])); } catch { /* private mode: keep in memory */ }
+  }
+
   // ---------- Icons ----------
 
   const svg = (w, h, vb, body, extra = '') =>
     `<svg width="${w}" height="${h}" viewBox="${vb}" fill="none" aria-hidden="true" focusable="false" ${extra}>${body}</svg>`;
   const line = (width = 2) => `stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"`;
 
+  const TYPE_ICON = {
+    all: '<rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="15" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="15" width="8" height="8" rx="2.5"/><rect x="15" y="15" width="8" height="8" rx="2.5"/>',
+    library: '<path d="M13 5.5C10.2 3.2 6.5 2.7 2.8 3.2V20c3.7-.5 7.4 0 10.2 2.3 2.8-2.3 6.5-2.8 10.2-2.3V3.2C19.5 2.7 15.8 3.2 13 5.5Z"/><path d="M13 5.5v16.8"/>',
+    cafe: '<path d="M3.5 9h14v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6V9Z"/><path d="M17.5 11h1.8a2.8 2.8 0 0 1 0 5.6h-2.2"/><path d="M8 2.5v3M12.5 2.5v3"/>',
+    cowork: '<rect x="4.5" y="4" width="17" height="11.5" rx="2"/><path d="M1.5 19.5h23"/>',
+    study_room: '<path d="M7 3v9h12"/><path d="M7 12v10M19 12v10"/><path d="M7 16.5h12"/>',
+  };
+  const typeIcon = (type, size = 26) => svg(size, size, '0 0 26 26', TYPE_ICON[type] || TYPE_ICON.all, line(2.1));
+
   const ICON = {
-    all: () => svg(18, 18, '0 0 26 26',
-      '<rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="15" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="15" width="8" height="8" rx="2.5"/><rect x="15" y="15" width="8" height="8" rx="2.5"/>', line(2.4)),
-    library: () => svg(18, 18, '0 0 28 26',
-      '<path d="M14 6C11 3.5 7 3 3 3.5V21c4-.5 8 0 11 2.5C17 21 21 20.5 25 21V3.5C21 3 17 3.5 14 6Z"/><path d="M14 6v17"/>', line(2.4)),
-    cafe: () => svg(18, 18, '0 0 28 26',
-      '<path d="M4 9h15v6a6 6 0 0 1-6 6h-3a6 6 0 0 1-6-6V9Z"/><path d="M19 11h2a3 3 0 0 1 0 6h-2.5"/><path d="M9 2.5v3M13.5 2.5v3"/>', line(2.4)),
-    cowork: () => svg(18, 18, '0 0 28 26',
-      '<rect x="5" y="4" width="18" height="12" rx="2"/><path d="M2 20h24"/>', line(2.4)),
-    study_room: () => svg(18, 18, '0 0 28 26',
-      '<path d="M8 3.5v9h12"/><path d="M8 12.5v10M20 12.5v10"/><path d="M8 17h12"/>', line(2.4)),
-    search: () => svg(18, 18, '0 0 20 20',
-      '<circle cx="9" cy="9" r="6.5"/><path d="M14 14l4 4"/>', line(2)),
-    pin: () => svg(15, 15, '0 0 24 24',
-      '<path d="M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z"/><circle cx="12" cy="10.5" r="2.3"/>', line(2)),
-    car: () => svg(16, 16, '0 0 24 24',
-      '<path d="M5 12l1.6-4.4A2 2 0 0 1 8.5 6.3h7a2 2 0 0 1 1.9 1.3L19 12"/><path d="M4 12h16a1 1 0 0 1 1 1v4H3v-4a1 1 0 0 1 1-1Z"/><path d="M6 17v1.5M18 17v1.5"/><path d="M7 14.5h1M16 14.5h1"/>', line(1.9)),
-    clock: () => svg(15, 15, '0 0 24 24',
-      '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', line(2)),
-    back: () => svg(11, 18, '0 0 12 20',
-      '<path d="M10 2L2 10l8 8"/>', line(2.6)),
-    close: () => svg(11, 11, '0 0 12 12',
-      '<path d="M1 1l10 10M11 1L1 11"/>', line(2.2)),
-    entrance: () => svg(10, 10, '0 0 10 10',
-      '<path d="M5 9V1M1.5 4.5L5 1l3.5 3.5"/>', line(1.6)),
+    search: () => svg(22, 22, '0 0 20 20', '<circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l4.5 4.5"/>', line(2)),
+    chevron: () => svg(14, 9, '0 0 14 9', '<path d="M1.5 1.5L7 7l5.5-5.5"/>', line(2.4)),
+    pin: () => svg(15, 15, '0 0 24 24', '<path d="M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z"/><circle cx="12" cy="10.5" r="2.3"/>', line(2)),
+    car: () => svg(16, 16, '0 0 24 24', '<path d="M5 12l1.6-4.4A2 2 0 0 1 8.5 6.3h7a2 2 0 0 1 1.9 1.3L19 12"/><path d="M4 12h16a1 1 0 0 1 1 1v4H3v-4a1 1 0 0 1 1-1Z"/><path d="M6 17v1.5M18 17v1.5"/><path d="M7 14.5h1M16 14.5h1"/>', line(1.9)),
+    clock: () => svg(15, 15, '0 0 24 24', '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', line(2)),
+    back: () => svg(11, 18, '0 0 12 20', '<path d="M10 2L2 10l8 8"/>', line(2.6)),
+    close: () => svg(11, 11, '0 0 12 12', '<path d="M1 1l10 10M11 1L1 11"/>', line(2.2)),
+    entrance: () => svg(10, 10, '0 0 10 10', '<path d="M5 9V1M1.5 4.5L5 1l3.5 3.5"/>', line(1.6)),
+    heart: () => svg(20, 20, '0 0 24 24', '<path d="M12 20.5s-7.5-4.6-9.2-9.6C1.6 7.3 3.9 4 7.4 4c2 0 3.6 1.1 4.6 2.7C13 5.1 14.6 4 16.6 4c3.5 0 5.8 3.3 4.6 6.9-1.7 5-9.2 9.6-9.2 9.6Z"/>', line(2)),
+    explore: () => svg(24, 24, '0 0 24 24', '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z"/>', line(2)),
+    info: () => svg(24, 24, '0 0 24 24', '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.1"/>', line(2.2)),
   };
 
   // ---------- API ----------
@@ -134,9 +145,9 @@
         state.venue = v;
         if (rebuild) renderPlace(); else updatePlace();
       } else {
-        const list = await get('api/venues');
-        state.venues = list;
-        if (state.screen === 'browse') updateBrowse();
+        state.venues = await get('api/venues');
+        if (state.screen === 'home') updateHome();
+        if (state.screen === 'saved') updateSaved();
       }
       setOnline(true);
     } catch (err) {
@@ -161,7 +172,7 @@
 
   document.addEventListener('visibilitychange', () => { if (!document.hidden) kick(); });
 
-  // ---------- Seat dots (one per seat: free, then held, then taken) ----------
+  // ---------- Shared pieces ----------
 
   function dotsHTML(counts, { max, cols }) {
     const total = counts.total || 0;
@@ -183,128 +194,231 @@
       '</span>';
   }
 
-  const thumbDots = c => {
+  const thumb = c => {
     const n = Math.min(c.total || 0, 64);
-    return dotsHTML(c, { max: 64, cols: Math.max(1, Math.ceil(Math.sqrt(n))) });
+    return `<span class="thumb">${dotsHTML(c, { max: 64, cols: Math.max(1, Math.ceil(Math.sqrt(n))) })}</span>`;
   };
 
-  const distance = v => (v.drive_minutes === 0
+  const distance = (v, long = false) => (v.drive_minutes === 0
     ? `<span class="fact">${ICON.pin()}You're here</span>`
-    : `<span class="fact">${ICON.car()}${v.drive_minutes} min</span>`);
+    : `<span class="fact">${ICON.car()}${v.drive_minutes} min${long ? ' drive' : ''}</span>`);
 
-  const simTag = v => (v.source === 'live' ? '' : `<span class="tag-sim">${esc(sourceLabel(v.source))}</span>`);
-
-  // ---------- Browse ----------
-
-  function showBrowse() {
-    state.screen = 'browse';
-    state.venueId = null;
-    state.sel = null;
-    state.fromBrowse = false;
-    removeSheet(false);
-    renderBrowse();
-    window.scrollTo(0, state.browseScroll);
-    kick();
-  }
-
-  function renderBrowse() {
-    app.innerHTML = `
-      <main class="browse">
-        <header class="band">
-          <div class="topbar">
-            <div class="brand"><img src="${LOGO}" alt="" width="36" height="36"><span class="wordmark">Birdie</span></div>
-            <span class="place-tag">${ICON.pin()}Msheireb</span>
-          </div>
-          <label class="search">
-            ${ICON.search()}
-            <input id="q" type="search" placeholder="Search libraries, cafés, coworks" aria-label="Search places"
-              autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
-          </label>
-          <nav class="rail cats" id="cats" aria-label="Kinds of place"></nav>
-          <section class="free-now" id="freeNow" hidden>
-            <div class="free-now-head"><h2>Free right now</h2>${liveBadge()}</div>
-            <div class="rail cards" id="cards"></div>
-          </section>
-        </header>
-        <section class="list">
-          <div class="list-head">
-            <h2 id="listTitle">All places</h2>
-            <div class="sorts" id="sorts" role="group" aria-label="Sort places"></div>
-          </div>
-          <div class="rows" id="rows"></div>
-        </section>
-        <p class="note" id="note"></p>
-      </main>`;
-    const q = $('#q');
-    q.value = state.query;
-    q.addEventListener('input', () => { state.query = q.value; updateBrowse(); });
-    q.addEventListener('keydown', e => { if (e.key === 'Enter') q.blur(); });
-    updateBrowse();
-    setOnline(state.online);
-  }
-
-  function updateBrowse() {
-    if (state.screen !== 'browse' || !$('#rows')) return;
-    const venues = state.venues || [];
-
-    const present = new Set(venues.map(v => v.type));
-    const cats = CATS.filter(([k]) => k === 'all' || present.has(k));
-    if (!cats.some(([k]) => k === state.cat)) state.cat = 'all';
-    setHTML($('#cats'), cats.map(([k, label]) => {
-      const on = k === state.cat;
-      return `<button class="cat press${on ? ' is-on' : ''}" data-act="cat" data-v="${k}" aria-pressed="${on}">${ICON[k]()}${label}</button>`;
-    }).join(''));
-
-    const q = fold(state.query.trim());
-    const inCat = v => state.cat === 'all' || v.type === state.cat;
-
-    const featured = venues.filter(v => inCat(v) && v.counts.free > 0)
-      .sort((a, b) => b.counts.free - a.counts.free)
-      .slice(0, 5);
-    $('#freeNow').hidden = featured.length === 0 || q !== '';
-    setHTML($('#cards'), featured.map(v => `
-      <button class="card press" data-act="open" data-v="${esc(v.venue_id)}" aria-label="${esc(v.name)}, ${v.counts.free} free">
-        ${dotsHTML(v.counts, { max: 36 })}
-        <span class="card-count">${v.counts.free}<span>free</span></span>
-        <span class="card-name">${esc(v.name)}</span>
-        <span class="card-foot">${distance(v)}${simTag(v)}</span>
-      </button>`).join(''));
-
-    let list = venues.filter(v => inCat(v) && (!q || fold(`${v.name} ${v.area} ${typeLabel(v.type)} ${v.type}`).includes(q)));
-    if (state.sort === 'late') list = list.filter(v => v.open_late);
-    list.sort(state.sort === 'free'
-      ? (a, b) => b.counts.free - a.counts.free || a.drive_minutes - b.drive_minutes
-      : (a, b) => a.drive_minutes - b.drive_minutes);
-
-    $('#listTitle').textContent = state.cat === 'all' ? 'All places' : CATS.find(c => c[0] === state.cat)[1];
-    setHTML($('#sorts'), SORTS.map(([k, label]) => {
-      const on = k === state.sort;
-      return `<button class="sort press${on ? ' is-on' : ''}" data-act="sort" data-v="${k}" aria-pressed="${on}">${label}</button>`;
-    }).join(''));
-
-    let rows;
-    if (!state.venues) rows = `<p class="empty">${state.online ? 'Loading places…' : 'Can’t reach Birdie. Trying again…'}</p>`;
-    else if (!list.length) rows = `<p class="empty">${q ? 'No places match that search.' : 'No places open late in this category.'}</p>`;
-    else rows = list.map(row).join('');
-    setHTML($('#rows'), rows);
-    $('#note').textContent = state.mock ? 'Demo data: no backend connected' : '';
-  }
+  const sourceTag = v => (v.source === 'live'
+    ? '<span class="tag tag-live">Live</span>'
+    : `<span class="tag tag-sim">${esc(sourceLabel(v.source))}</span>`);
 
   function row(v) {
     const { free, total } = v.counts;
     const full = free === 0;
     return `
       <button class="row press${full ? ' is-full' : ''}" data-act="open" data-v="${esc(v.venue_id)}">
-        <span class="thumb">${thumbDots(v.counts)}</span>
+        ${thumb(v.counts)}
         <span class="row-body">
           <span class="row-name">${esc(v.name)}</span>
           <span class="row-kind">${esc(kindLabel(v))}</span>
           <span class="row-facts">
             <span class="row-free">${full ? 'Full right now' : `${free} of ${total} free`}</span>
-            ${distance(v)}${simTag(v)}
+            ${distance(v)}${sourceTag(v)}
           </span>
         </span>
       </button>`;
+  }
+
+  const tabbar = active => `
+    <nav class="tabbar" aria-label="Main">
+      ${TABS.map(([k, href, label]) => `
+        <a class="tab${k === active ? ' is-on' : ''}" href="${href}"${k === active ? ' aria-current="page"' : ''}>
+          ${k === 'home' ? ICON.explore() : k === 'saved' ? ICON.heart() : ICON.info()}<span>${label}</span>
+        </a>`).join('')}
+    </nav>`;
+
+  // ---------- Explore ----------
+
+  function showTab(tab) {
+    const wasHome = state.screen === 'home';
+    state.screen = tab;
+    state.venueId = null;
+    state.sel = null;
+    state.fromList = false;
+    removeSheet(false);
+    if (tab === 'home') { renderHome(); window.scrollTo(0, wasHome ? window.scrollY : state.homeScroll); }
+    else { (tab === 'saved' ? renderSaved : renderAbout)(); window.scrollTo(0, 0); }
+    kick();
+  }
+
+  function renderHome() {
+    app.innerHTML = `
+      <main class="screen home">
+        <header class="band">
+          <p class="loc">Seats near <b>Msheireb</b> ${ICON.chevron()}</p>
+          <label class="search">
+            ${ICON.search()}
+            <input id="q" type="search" placeholder="Search libraries, cafés, coworks" aria-label="Search places"
+              autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+          </label>
+        </header>
+        <nav class="rail tiles" id="tiles" aria-label="Kinds of place"></nav>
+        <section class="intro" id="intro">
+          <h1 class="hello"><span>${greeting()},</span> where are you studying?</h1>
+          <div id="best"></div>
+        </section>
+        <section class="free-now" id="freeNow" hidden>
+          <div class="sec-head"><h2>Free right now</h2>${liveBadge()}</div>
+          <div class="rail cards" id="cards"></div>
+        </section>
+        <section class="list">
+          <div class="sec-head"><h2 id="listTitle">All places</h2></div>
+          <div class="sorts" id="sorts" role="group" aria-label="Sort places"></div>
+          <div class="rows" id="rows"></div>
+        </section>
+        <p class="note" id="note"></p>
+      </main>
+      ${tabbar('home')}`;
+    const q = $('#q');
+    q.value = state.query;
+    q.addEventListener('input', () => { state.query = q.value; updateHome(); });
+    q.addEventListener('keydown', e => { if (e.key === 'Enter') q.blur(); });
+    updateHome();
+    setOnline(state.online);
+  }
+
+  // The suggestion: most free seats for the drive.
+  function bestBet(venues) {
+    const open = venues.filter(v => v.counts.free > 0);
+    if (!open.length) return null;
+    return open.reduce((a, b) => (b.counts.free / (b.drive_minutes + 10) > a.counts.free / (a.drive_minutes + 10) ? b : a));
+  }
+
+  function updateHome() {
+    if (state.screen !== 'home' || !$('#rows')) return;
+    const venues = state.venues || [];
+    const loaded = !!state.venues;
+
+    const present = new Set(venues.map(v => v.type));
+    const cats = CATS.filter(([k]) => k === 'all' || present.has(k));
+    if (!cats.some(([k]) => k === state.cat)) state.cat = 'all';
+    const inCat = (v, cat = state.cat) => cat === 'all' || v.type === cat;
+    setHTML($('#tiles'), cats.map(([k, label]) => {
+      const on = k === state.cat;
+      const free = venues.filter(v => inCat(v, k)).reduce((n, v) => n + v.counts.free, 0);
+      const badge = loaded ? `<span class="tile-badge">${free ? `${free} free` : 'Full'}</span>` : '';
+      return `<button class="tile press${on ? ' is-on' : ''}" data-act="cat" data-v="${k}" aria-pressed="${on}">
+        ${badge}${typeIcon(k, 34)}<span class="tile-label">${label}</span></button>`;
+    }).join(''));
+
+    const q = fold(state.query.trim());
+    const pool = venues.filter(v => inCat(v));
+
+    const best = bestBet(pool);
+    $('#intro').hidden = !best || q !== '';
+    setHTML($('#best'), best ? `
+      <article class="best">
+        <div class="best-head">
+          <span class="best-icon">${typeIcon(best.type, 22)}</span>
+          <span class="best-name">${esc(best.name)}<small>${esc(kindLabel(best))}</small></span>
+          ${sourceTag(best)}
+        </div>
+        <div class="best-body">
+          ${thumb(best.counts)}
+          <div class="best-text">
+            <strong>${plural(best.counts.free, 'seat free', 'seats free')}</strong>
+            ${distance(best, true)}
+          </div>
+          <button class="btn press" data-act="open" data-v="${esc(best.venue_id)}">See seats</button>
+        </div>
+      </article>` : '');
+
+    const featured = pool.filter(v => v.counts.free > 0).sort((a, b) => b.counts.free - a.counts.free).slice(0, 5);
+    $('#freeNow').hidden = featured.length === 0 || q !== '';
+    setHTML($('#cards'), featured.map(v => `
+      <button class="card press" data-act="open" data-v="${esc(v.venue_id)}" aria-label="${esc(v.name)}, ${v.counts.free} free">
+        ${dotsHTML(v.counts, { max: 36 })}
+        <span class="card-count">${v.counts.free}<span>free</span></span>
+        <span class="card-name">${esc(v.name)}</span>
+        <span class="card-foot">${distance(v)}${sourceTag(v)}</span>
+      </button>`).join(''));
+
+    let list = pool.filter(v => !q || fold(`${v.name} ${v.area} ${typeLabel(v.type)} ${v.type}`).includes(q));
+    if (state.sort === 'late') list = list.filter(v => v.open_late);
+    list.sort(state.sort === 'free'
+      ? (a, b) => b.counts.free - a.counts.free || a.drive_minutes - b.drive_minutes
+      : (a, b) => a.drive_minutes - b.drive_minutes);
+
+    $('#listTitle').textContent = q ? 'Results' : state.cat === 'all' ? 'All places' : CATS.find(c => c[0] === state.cat)[1];
+    setHTML($('#sorts'), SORTS.map(([k, label]) => {
+      const on = k === state.sort;
+      return `<button class="sort press${on ? ' is-on' : ''}" data-act="sort" data-v="${k}" aria-pressed="${on}">${label}</button>`;
+    }).join(''));
+
+    let rows;
+    if (!loaded) rows = `<p class="empty">${state.online ? 'Loading places…' : 'Can’t reach Birdie. Trying again…'}</p>`;
+    else if (!list.length) rows = `<p class="empty">${q ? 'No places match that search.' : 'Nothing open late in this category.'}</p>`;
+    else rows = list.map(row).join('');
+    setHTML($('#rows'), rows);
+    $('#note').textContent = state.mock ? 'Demo data: no backend connected' : '';
+  }
+
+  // ---------- Saved ----------
+
+  function renderSaved() {
+    app.innerHTML = `
+      <main class="screen">
+        <header class="band band-title">
+          <h1>Saved places</h1>
+          <p>Your usual spots, with live seats.</p>
+        </header>
+        <section class="list"><div class="rows" id="rows"></div></section>
+      </main>
+      ${tabbar('saved')}`;
+    updateSaved();
+  }
+
+  function updateSaved() {
+    if (state.screen !== 'saved' || !$('#rows')) return;
+    const list = (state.venues || []).filter(v => state.saved.has(v.venue_id)).sort((a, b) => a.drive_minutes - b.drive_minutes);
+    setHTML($('#rows'), !state.venues
+      ? '<p class="empty">Loading places…</p>'
+      : list.length ? list.map(row).join('')
+        : '<p class="empty"><strong>No saved places yet</strong>Tap the heart on a place to keep it here.</p>');
+  }
+
+  // ---------- About ----------
+
+  function renderAbout() {
+    app.innerHTML = `
+      <main class="screen">
+        <header class="band band-title">
+          <h1>How Birdie works</h1>
+          <p>Know there's a seat before you drive.</p>
+        </header>
+        <div class="about">
+          <section>
+            <h2>From camera to your phone</h2>
+            <ol class="steps">
+              <li><b>1</b><span>A camera in the venue looks at each seat about once a second.</span></li>
+              <li><b>2</b><span>A small AI model sees whether someone, or only their things, are in the seat.</span></li>
+              <li><b>3</b><span>You see every seat live here, before you leave home.</span></li>
+            </ol>
+          </section>
+          <section>
+            <h2>What the colours mean</h2>
+            <div class="states">
+              <div class="state"><i class="sw-free"></i><div><strong>Free</strong><span>Nobody there and nothing on it.</span></div></div>
+              <div class="state"><i class="sw-taken"></i><div><strong>Taken</strong><span>Someone is sitting there, or just stepped away.</span></div></div>
+              <div class="state"><i class="sw-held"></i><div><strong>Held by a bag</strong><span>Things left on the seat with nobody there for a long time.</span></div></div>
+            </div>
+          </section>
+          <section class="panel">
+            <h2>Your privacy</h2>
+            <p>No faces and no photos. Each camera frame is checked on the spot and thrown away, and only the seat states are kept. Birdie has no accounts and knows nothing about you.</p>
+          </section>
+          <section>
+            <h2>Which places are live?</h2>
+            <p>Nestwork Msheireb is live from a camera in the room. The other places are simulated, to show how Birdie works across Doha.</p>
+          </section>
+        </div>
+      </main>
+      ${tabbar('about')}`;
   }
 
   // ---------- Place ----------
@@ -317,17 +431,18 @@
   const layoutKey = v => JSON.stringify([v.floor_plan, v.seats.map(s => [s.seat_id, s.plan_x, s.plan_y, s.plan_rot])]);
 
   function placeBand(v) {
-    const facts = [
-      v.drive_minutes === 0 ? `<span class="fact">${ICON.pin()}You're here</span>` : `<span class="fact">${ICON.car()}${v.drive_minutes} min drive</span>`,
-      v.open_until ? `<span class="fact">${ICON.clock()}${esc(v.open_until)}</span>` : '',
-    ].join('');
+    const saved = state.saved.has(v.venue_id);
+    const facts = distance(v, true) + (v.open_until ? `<span class="fact">${ICON.clock()}${esc(v.open_until)}</span>` : '');
     const chips = (v.source === 'live' ? '' : `<span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`) +
       (v.amenities || []).map(a => `<span class="chip">${esc(a)}</span>`).join('');
     return `
       <header class="band">
         <div class="place-top">
-          <button class="back press" data-act="back" aria-label="Back to places">${ICON.back()}</button>
-          ${v.source === 'live' ? liveBadge() : ''}
+          <button class="round-btn press" data-act="back" aria-label="Back">${ICON.back()}</button>
+          <div class="place-top-right">
+            ${v.source === 'live' ? liveBadge() : ''}
+            <button class="round-btn press" data-act="save" data-v="${esc(v.venue_id)}" aria-pressed="${saved}" aria-label="Save place">${ICON.heart()}</button>
+          </div>
         </div>
         <div class="place-head">
           <h1>${esc(v.name)}</h1>
@@ -340,6 +455,7 @@
 
   function openPlace(id) {
     const cached = state.venue && state.venue.venue_id === id;
+    if (state.screen === 'home') state.homeScroll = window.scrollY;
     state.screen = 'place';
     state.venueId = id;
     state.seg = 'all';
@@ -385,9 +501,9 @@
             </div>
           </div>
           <div class="legend">
-            <span><i class="l-free"></i>Free</span>
-            <span><i class="l-taken"></i>Taken</span>
-            <span><i class="l-held"></i>Held by a bag</span>
+            <span><i class="sw-free"></i>Free</span>
+            <span><i class="sw-taken"></i>Taken</span>
+            <span><i class="sw-held"></i>Held by a bag</span>
           </div>
         </div>
       </main>`;
@@ -490,6 +606,12 @@
     updatePlace();
   }
 
+  function toggleSave(id, btn) {
+    if (state.saved.has(id)) state.saved.delete(id); else state.saved.add(id);
+    storeSaved();
+    if (btn) btn.setAttribute('aria-pressed', String(state.saved.has(id)));
+  }
+
   // ---------- Seat sheet ----------
 
   function removeSheet(animate) {
@@ -544,12 +666,12 @@
     const el = document.createElement('div');
     el.className = 'splash';
     el.setAttribute('role', 'presentation');
-    el.innerHTML = `<img src="${LOGO}" alt=""><span class="splash-word">Birdie</span><span class="splash-line">Live study seats in Doha</span>`;
+    el.innerHTML = '<span class="splash-word">Birdie</span><span class="splash-line">Live study seats in Doha</span>';
     document.body.appendChild(el);
     const timers = [
       setTimeout(() => el.classList.add('is-in'), 40),
-      setTimeout(() => el.classList.add('is-out'), 1700),
-      setTimeout(done, 2000),
+      setTimeout(() => el.classList.add('is-out'), 1400),
+      setTimeout(done, 1700),
     ];
     function done() {
       timers.forEach(clearTimeout);
@@ -561,9 +683,12 @@
   // ---------- Routing and events ----------
 
   function route() {
-    const m = location.hash.match(/^#\/place\/(.+)$/);
+    const h = location.hash;
+    const m = h.match(/^#\/place\/(.+)$/);
     if (m) openPlace(decodeURIComponent(m[1]));
-    else showBrowse();
+    else if (h === '#/saved') showTab('saved');
+    else if (h === '#/about') showTab('about');
+    else showTab('home');
   }
   window.addEventListener('hashchange', route);
 
@@ -572,17 +697,17 @@
     if (!t) return;
     const v = t.dataset.v;
     switch (t.dataset.act) {
-      case 'cat': state.cat = v; updateBrowse(); break;
-      case 'sort': state.sort = v; updateBrowse(); break;
+      case 'cat': state.cat = v === state.cat ? 'all' : v; updateHome(); break;
+      case 'sort': state.sort = v; updateHome(); break;
       case 'open':
-        state.browseScroll = window.scrollY;
         location.hash = `#/place/${encodeURIComponent(v)}`;
-        state.fromBrowse = true;
+        state.fromList = true;
         break;
       case 'back':
-        if (state.fromBrowse) history.back();
+        if (state.fromList) history.back();
         else location.hash = '';
         break;
+      case 'save': toggleSave(v, t); break;
       case 'seg': state.seg = v; state.sel = null; updatePlace(); break;
       case 'chair': onChair(v); break;
       case 'close': state.sel = null; updatePlace(); break;

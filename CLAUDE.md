@@ -20,7 +20,7 @@ You are helping a 4-person team at the **Qai x Hugging Face Hackathon 01**, held
 - **Privacy matters:** no face recognition, no storing images, no identifying individuals.
 - **Simple, working code over clever code.** Working end to end beats feature-rich and broken.
 - **Never commit** tokens, `.env` files, videos, frames or model weights.
-- **The mobile app's screens and behaviour come from the design handoff** in `design/mobile/` (`README.md` and `prototype.html`), screens 1 to 3 only. **Its look comes from the Birdie logo** (`design/brand/`), as built in `web/` (section 8.2). Where this file and the handoff disagree (check-in, QR codes, sample data, walk times, colours, type), this file wins.
+- **The mobile app's screens and behaviour come from the design handoff** in `design/mobile/` (`README.md` and `prototype.html`), screens 1 to 3 only. **Its look follows the delivery apps people in Doha already use (Talabat-style)**, as built in `web/` (section 8.2). Where this file and the handoff disagree (check-in, QR codes, sample data, walk times, colours, type), this file wins.
 - **No booking, no check-in, no QR codes, no LLM assistant.** All were dropped on purpose. Don't build them or suggest them.
 - **Section 5 (Key decisions) is final.** If anything else in this file seems to conflict with it, section 5 wins.
 
@@ -149,10 +149,9 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
   - `HELD` is amber `#D08A1C` with diagonal stripes ("Held by a bag"). The stripes keep it distinct for colour-blind users.
   - The floor plan legend reads **Free / Taken / Held by a bag**.
   - There is no "Yours" colour.
-- **Brand:** the logo is a maroon bird wearing a ghutra and agal (`design/brand/logo-source.jpg`; app sizes in `web/assets/`).
-  - Colours: Qatar maroon `#8A1538`, deep maroon `#5A0F24`, white, sand `#F2EADF` and charcoal `#262B33`.
-  - Type: Reem Kufi for headings, Readex Pro for everything else. Both are Google Fonts with Arabic support.
-  - Screens open with a maroon band whose bottom edge has nine serrated points, after the Qatar flag.
+- **Look:** no logo. The layout borrows familiar delivery-app patterns (coloured header with a wavy edge, pill search, category tiles with badges, outlined cards, floating tab bar).
+  - Colours: Qatar maroon `#8A1538` as the brand colour (one CSS variable, `--brand`), white, cream `#F5EFE7` and charcoal `#1F2328`. The app does not use Talabat's orange, so it doesn't look like a copy.
+  - Type: Rubik throughout (a Google Font with Arabic support).
 - **Timers:** all timers and thresholds live in `birdie/config.py` behind `DEMO_MODE` (on by default):
 
   | Setting | Demo | Production |
@@ -208,7 +207,6 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 app.py                  builds the FastAPI app: API, web/ at /, Gradio console at /operator; runs uvicorn
 web/                    mobile web app: index.html, app.css, app.js (no build step)
 design/mobile/          design handoff: README.md (screens and behaviour) and prototype.html
-design/brand/           the Birdie logo (source image)
 birdie/
   config.py             DEMO_MODE, timers, thresholds
   models.py             pydantic data models (section 7)
@@ -290,15 +288,21 @@ Optional: add 2 to 4 more simulated venues with invented names (for example a ca
 
 ### 8.2 Mobile app screens
 
-The app has **screens 1 to 3** of `design/mobile/README.md`, redrawn in the Birdie brand (section 5). Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. `web/` is the reference; in short:
+The app keeps the browse and place screens of `design/mobile/README.md`, laid out like the delivery apps people in Doha already use (section 5). Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. `web/` is the reference; in short:
 
-- **1. Splash:** the logo, "Birdie" and "Live study seats in Doha" on maroon. Tap to skip.
-- **2. Browse:**
-  - The maroon band holds the logo, a "Msheireb" location tag, search, category pills (All, Libraries, Cafés, Coworking, Study rooms; empty categories are hidden) and the "Free right now" cards.
-  - **Seat dots:** each card and list row shows one dot per seat (green free first, then amber held, then charcoal taken), so a place's state is visible at a glance. There are no place photos.
-  - Rows show the name, "Type, Area", "N of M free", the drive time with a car icon ("You're here" for Nestwork), and a "Simulated" tag where it applies.
-- **3. Place:**
-  - The maroon band shows the name, "Type, Area", drive time, opening hours, a "Simulated" chip where it applies, and amenity chips (including zones such as Women's section, Family section and Quiet zone). Only the live venue shows the "Live" dot.
+- **Splash:** "Birdie" and "Live study seats in Doha" on maroon. Tap to skip. There is no logo.
+- **Tab bar:** a floating pill at the bottom with Explore, Saved and About. It is hidden on the place screen.
+- **Explore (home):**
+  - The maroon header with a wavy bottom edge reads "Seats near **Msheireb** ⌄", with a pill search below.
+  - Category tiles (All, Libraries, Cafés, Coworking, Study rooms; empty categories hidden), each with a black badge showing its live free count ("24 free" or "Full"). Tap a tile to filter; tap it again for All.
+  - A greeting ("Good evening, where are you studying?") and an outlined suggestion card: the place with the most free seats for the drive, with a "See seats" button.
+  - The "Free right now" cards, then "All places" with the Nearest / Most seats free / Open late sort.
+  - **Seat dots:** each card and list row shows one dot per seat (green free first, then amber held, then charcoal taken). There are no place photos.
+  - Rows show the name, "Type, Area", "N of M free", the drive time with a car icon ("You're here" for Nestwork), and a "Live" or "Simulated" tag.
+- **Saved:** places saved with the heart on the place screen. They are kept in this browser only; there are no accounts.
+- **About:** how Birdie works, what the colours mean, privacy, and which places are live or simulated.
+- **Place:**
+  - The maroon header shows back and save (heart) buttons, the name, "Type, Area", drive time, opening hours, a "Simulated" chip where it applies, and amenity chips (including zones such as Women's section, Family section and Quiet zone). Only the live venue shows the "Live" dot.
   - Below it: "N seats free", a line such as "16 taken and 3 held by bags, out of 36.", the All seats / Outlet / Window filter, the floor plan and the legend.
   - A chair that changes state rings once, so a change in the room is easy to spot.
   - **Seat sheet:** tapping a free or held chair opens the bottom sheet. A free seat shows "Seat A3 is free", its table, and chips for window and outlet. A held seat shows "Seat A3 is held" and "Held by a bag for N min" (from `since`). Taken chairs can't be tapped.
@@ -337,7 +341,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 ### Team
 
 1. **Yacine and Daffa (backend):** the core package, vision, the API, the operator console, Doha venue data and floor plans, deploy. They split the section 16 checklist between them.
-2. **Omair (frontend):** the mobile web app in `web/`: screens 1 to 3 of the design handoff in the Birdie brand, against the API in section 7.2. Starts on mock data shaped exactly like the API responses, so wiring up later is a URL change.
+2. **Omair (frontend):** the mobile web app in `web/`: Explore, Saved, About and the place screen (section 8.2), against the API in section 7.2. Starts on mock data shaped exactly like the API responses, so wiring up later is a URL change.
 3. **Khalid (pitch):**
    - The pitch deck and the demo script.
    - The room survey (section 13).
