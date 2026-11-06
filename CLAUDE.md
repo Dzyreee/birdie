@@ -20,7 +20,7 @@ You are helping a 4-person team at the **Qai x Hugging Face Hackathon 01**, held
 - **Privacy matters:** no face recognition, no storing images, no identifying individuals.
 - **Simple, working code over clever code.** Working end to end beats feature-rich and broken.
 - **Never commit** tokens, `.env` files, videos, frames or model weights.
-- **The mobile app follows the design handoff** in `design/mobile/` (`README.md` and `prototype.html`), screens 1 to 3 only (section 8.2). It is high fidelity: recreate its colours, type, spacing and interactions exactly. Where this file and the handoff disagree (check-in, QR codes, sample data, walk times, seat colours), this file wins.
+- **The mobile app's screens and behaviour come from the design handoff** in `design/mobile/` (`README.md` and `prototype.html`), screens 1 to 3 only. **Its look comes from the Birdie logo** (`design/brand/`), as built in `web/` (section 8.2). Where this file and the handoff disagree (check-in, QR codes, sample data, walk times, colours, type), this file wins.
 - **No booking, no check-in, no QR codes, no LLM assistant.** All were dropped on purpose. Don't build them or suggest them.
 - **Section 5 (Key decisions) is final.** If anything else in this file seems to conflict with it, section 5 wins.
 
@@ -143,12 +143,16 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 - **Vision: one detector only:** `PekingU/rtdetr_r18vd` (COCO classes). COCO already covers people and belongings, so one model in one pass gives both `OCCUPIED` and `HELD`. `person` means occupied. Belongings: backpack, handbag, suitcase, laptop, cup, bottle, book, cell phone. **No OWLv2 or Grounding DINO** (slow, and not needed).
 - **Frame rate:** about 1 frame per second, long side resized to at most 640 px.
 - **Privacy:** frames are processed in memory and discarded, never written to disk or logged. People are **blurred** in any frame shown on screen, including the operator console. Only seat states are stored.
-- **Seat colours:** three, and only three.
-  - `FREE` is green `#2FB86A` ("Free").
-  - `OCCUPIED` is red `#EF4E4E` ("Taken").
-  - `HELD` is amber `#F2A93B` ("Held").
-  - The floor plan legend reads **Free / Taken / Held**.
-  - The handoff's indigo "Yours" colour is not used.
+- **Seat colours:** three, and only three. They were checked for colour-blind separation, and none of them is red, so they never clash with the maroon brand.
+  - `FREE` is green `#17804F` ("Free").
+  - `OCCUPIED` is charcoal `#353A42` ("Taken").
+  - `HELD` is amber `#D08A1C` with diagonal stripes ("Held by a bag"). The stripes keep it distinct for colour-blind users.
+  - The floor plan legend reads **Free / Taken / Held by a bag**.
+  - There is no "Yours" colour.
+- **Brand:** the logo is a maroon bird wearing a ghutra and agal (`design/brand/logo-source.jpg`; app sizes in `web/assets/`).
+  - Colours: Qatar maroon `#8A1538`, deep maroon `#5A0F24`, white, sand `#F2EADF` and charcoal `#262B33`.
+  - Type: Reem Kufi for headings, Readex Pro for everything else. Both are Google Fonts with Arabic support.
+  - Screens open with a maroon band whose bottom edge has nine serrated points, after the Qatar flag.
 - **Timers:** all timers and thresholds live in `birdie/config.py` behind `DEMO_MODE` (on by default):
 
   | Setting | Demo | Production |
@@ -201,7 +205,8 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 ```
 app.py                  builds the FastAPI app: API, web/ at /, Gradio console at /operator; runs uvicorn
 web/                    mobile web app: index.html, app.css, app.js (no build step)
-design/mobile/          design handoff: README.md (spec) and prototype.html (open it in a browser)
+design/mobile/          design handoff: README.md (screens and behaviour) and prototype.html
+design/brand/           the Birdie logo (source image)
 birdie/
   config.py             DEMO_MODE, timers, thresholds
   models.py             pydantic data models (section 7)
@@ -283,21 +288,19 @@ Optional: add 2 to 4 more simulated venues with invented names (for example a ca
 
 ### 8.2 Mobile app screens
 
-Build **screens 1 to 3** of `design/mobile/README.md`. Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. Changes from the handoff:
+The app has **screens 1 to 3** of `design/mobile/README.md`, redrawn in the Birdie brand (section 5). Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. `web/` is the reference; in short:
 
-- **1. Splash:** as designed.
+- **1. Splash:** the logo, "Birdie" and "Live study seats in Doha" on maroon. Tap to skip.
 - **2. Browse:**
-  - The header reads "Seats near Msheireb".
-  - Rows show "N of M free · N min drive" and a "Simulated" chip where it applies.
-  - The share bar is split green / amber / red (free / held / taken).
-  - Categories: All, Libraries, Cafés, Coworking, Study rooms (hide a category with no venues).
+  - The maroon band holds the logo, a "Msheireb" location tag, search, category pills (All, Libraries, Cafés, Coworking, Study rooms; empty categories are hidden) and the "Free right now" cards.
+  - **Seat dots:** each card and list row shows one dot per seat (green free first, then amber held, then charcoal taken), so a place's state is visible at a glance. There are no place photos.
+  - Rows show the name, "Type, Area", "N of M free", the drive time with a car icon ("You're here" for Nestwork), and a "Simulated" tag where it applies.
 - **3. Place:**
-  - The meta line reads "Type · Area · N min drive · Open till HH:MM", with a "Simulated" chip where it applies.
-  - The amenity chips include zones such as Women's section, Family section and Quiet zone.
-  - Chairs are coloured from the API status (green, red, amber), and the legend reads Free / Taken / Held.
-  - **Seat sheet:** tapping a free or held chair opens the bottom sheet, **without the "Scan to check in" button**. A free chair shows "Seat A3 is free" plus its chips (table, Window, Outlet). A held chair shows "Seat A3 is held by a bag" and "Nobody here · held for N min" (from `since`). Taken chairs can't be tapped.
-  - Place photos: none are supplied. Use the mist placeholder with the venue type's icon.
-- **Live updates:** poll the API every 2 seconds instead of the prototype's random flips.
+  - The maroon band shows the name, "Type, Area", drive time, opening hours, a "Simulated" chip where it applies, and amenity chips (including zones such as Women's section, Family section and Quiet zone). Only the live venue shows the "Live" dot.
+  - Below it: "N seats free", a line such as "16 taken and 3 held by bags, out of 36.", the All seats / Outlet / Window filter, the floor plan and the legend.
+  - A chair that changes state rings once, so a change in the room is easy to spot.
+  - **Seat sheet:** tapping a free or held chair opens the bottom sheet. A free seat shows "Seat A3 is free", its table, and chips for window and outlet. A held seat shows "Seat A3 is held" and "Held by a bag for N min" (from `since`). Taken chairs can't be tapped.
+- **Live updates:** the app polls the API every 2 seconds.
 
 ### 8.3 Built but not used by the mobile app
 
@@ -333,7 +336,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 ### Team
 
 1. **Yacine and Daffa (backend):** the core package, vision, the API, the operator console, Doha venue data and floor plans, deploy. They split the section 16 checklist between them.
-2. **Omair (frontend):** the mobile web app in `web/`, built from screens 1 to 3 of the design handoff against the API in section 7.2. Starts on mock data shaped exactly like the API responses, so wiring up later is a URL change.
+2. **Omair (frontend):** the mobile web app in `web/`: screens 1 to 3 of the design handoff in the Birdie brand, against the API in section 7.2. Starts on mock data shaped exactly like the API responses, so wiring up later is a URL change.
 3. **Khalid (pitch):**
    - The pitch deck and the demo script.
    - The room survey (section 13).

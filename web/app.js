@@ -1,4 +1,4 @@
-/* Birdie mobile app: Splash, Browse and Place (screens 1 to 3 of design/mobile).
+/* Birdie mobile app: Splash, Browse and Place.
  *
  * Reads the read-only API in CLAUDE.md section 7.2 and polls it every 2 seconds:
  *   GET api/venues               list of venues with seat counts
@@ -10,11 +10,11 @@
   'use strict';
 
   const POLL_MS = 2000;
-  const COLORS = { free: '#2FB86A', taken: '#EF4E4E', held: '#F2A93B' };
   const TYPES = { library: 'Library', cafe: 'Café', cowork: 'Coworking', study_room: 'Study room' };
   const CATS = [['all', 'All'], ['library', 'Libraries'], ['cafe', 'Cafés'], ['cowork', 'Coworking'], ['study_room', 'Study rooms']];
   const SORTS = [['near', 'Nearest'], ['free', 'Most seats free'], ['late', 'Open late']];
   const SEGS = [['all', 'All seats'], ['outlet', 'Outlet'], ['window', 'Window']];
+  const LOGO = 'assets/logo-512.jpg';
 
   const params = new URLSearchParams(location.search);
   const app = document.getElementById('app');
@@ -41,8 +41,8 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fold = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const typeLabel = t => TYPES[t] || t;
-  const driveLabel = m => (m === 0 ? "You're here" : `${m} min drive`);
-  const sourceLabel = s => (s === 'live' ? 'Live' : s.charAt(0).toUpperCase() + s.slice(1));
+  const kindLabel = v => `${typeLabel(v.type)}, ${v.area}`;
+  const sourceLabel = s => s.charAt(0).toUpperCase() + s.slice(1);
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   function heldFor(since) {
@@ -61,44 +61,38 @@
     el.scrollLeft = x;
   }
 
-  function themeColor(c) {
-    const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute('content', c);
-  }
-
-  // ---------- Icons (from the design handoff) ----------
+  // ---------- Icons ----------
 
   const svg = (w, h, vb, body, extra = '') =>
     `<svg width="${w}" height="${h}" viewBox="${vb}" fill="none" aria-hidden="true" focusable="false" ${extra}>${body}</svg>`;
-  const line = 'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
+  const line = (width = 2) => `stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"`;
 
   const ICON = {
-    all: (k = 1) => svg(26 * k, 26 * k, '0 0 26 26',
-      '<rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="15" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="15" width="8" height="8" rx="2.5"/><rect x="15" y="15" width="8" height="8" rx="2.5"/>', line),
-    library: (k = 1) => svg(28 * k, 26 * k, '0 0 28 26',
-      '<path d="M14 6C11 3.5 7 3 3 3.5V21c4-.5 8 0 11 2.5C17 21 21 20.5 25 21V3.5C21 3 17 3.5 14 6Z"/><path d="M14 6v17"/>', line),
-    cafe: (k = 1) => svg(28 * k, 26 * k, '0 0 28 26',
-      '<path d="M4 9h15v6a6 6 0 0 1-6 6h-3a6 6 0 0 1-6-6V9Z"/><path d="M19 11h2a3 3 0 0 1 0 6h-2.5"/><path d="M9 2.5v3M13.5 2.5v3"/>', line),
-    cowork: (k = 1) => svg(28 * k, 26 * k, '0 0 28 26',
-      '<rect x="5" y="4" width="18" height="12" rx="2"/><path d="M2 20h24"/>', line),
-    study_room: (k = 1) => svg(28 * k, 26 * k, '0 0 28 26',
-      '<path d="M8 3.5v9h12"/><path d="M8 12.5v10M20 12.5v10"/><path d="M8 17h12"/>', line),
-    chevron: () => svg(12, 8, '0 0 12 8',
-      '<path d="M1.5 1.5L6 6l4.5-4.5" stroke="#4B3BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'),
+    all: () => svg(18, 18, '0 0 26 26',
+      '<rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="15" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="15" width="8" height="8" rx="2.5"/><rect x="15" y="15" width="8" height="8" rx="2.5"/>', line(2.4)),
+    library: () => svg(18, 18, '0 0 28 26',
+      '<path d="M14 6C11 3.5 7 3 3 3.5V21c4-.5 8 0 11 2.5C17 21 21 20.5 25 21V3.5C21 3 17 3.5 14 6Z"/><path d="M14 6v17"/>', line(2.4)),
+    cafe: () => svg(18, 18, '0 0 28 26',
+      '<path d="M4 9h15v6a6 6 0 0 1-6 6h-3a6 6 0 0 1-6-6V9Z"/><path d="M19 11h2a3 3 0 0 1 0 6h-2.5"/><path d="M9 2.5v3M13.5 2.5v3"/>', line(2.4)),
+    cowork: () => svg(18, 18, '0 0 28 26',
+      '<rect x="5" y="4" width="18" height="12" rx="2"/><path d="M2 20h24"/>', line(2.4)),
+    study_room: () => svg(18, 18, '0 0 28 26',
+      '<path d="M8 3.5v9h12"/><path d="M8 12.5v10M20 12.5v10"/><path d="M8 17h12"/>', line(2.4)),
     search: () => svg(18, 18, '0 0 20 20',
-      '<circle cx="9" cy="9" r="6.5" stroke="#4A4D63" stroke-width="2"/><path d="M14 14l4 4" stroke="#4A4D63" stroke-width="2" stroke-linecap="round"/>'),
-    back: () => svg(10, 16, '0 0 12 20',
-      '<path d="M10 2L2 10l8 8" stroke="#16172E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'),
+      '<circle cx="9" cy="9" r="6.5"/><path d="M14 14l4 4"/>', line(2)),
+    pin: () => svg(15, 15, '0 0 24 24',
+      '<path d="M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z"/><circle cx="12" cy="10.5" r="2.3"/>', line(2)),
+    car: () => svg(16, 16, '0 0 24 24',
+      '<path d="M5 12l1.6-4.4A2 2 0 0 1 8.5 6.3h7a2 2 0 0 1 1.9 1.3L19 12"/><path d="M4 12h16a1 1 0 0 1 1 1v4H3v-4a1 1 0 0 1 1-1Z"/><path d="M6 17v1.5M18 17v1.5"/><path d="M7 14.5h1M16 14.5h1"/>', line(1.9)),
+    clock: () => svg(15, 15, '0 0 24 24',
+      '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', line(2)),
+    back: () => svg(11, 18, '0 0 12 20',
+      '<path d="M10 2L2 10l8 8"/>', line(2.6)),
     close: () => svg(11, 11, '0 0 12 12',
-      '<path d="M1 1l10 10M11 1L1 11" stroke="#4A4D63" stroke-width="2.2" stroke-linecap="round"/>'),
+      '<path d="M1 1l10 10M11 1L1 11"/>', line(2.2)),
     entrance: () => svg(10, 10, '0 0 10 10',
-      '<path d="M5 9V1M1.5 4.5L5 1l3.5 3.5" stroke="#4A4D63" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'),
-    logo: () => svg(80, 80, '0 0 100 100',
-      '<path d="M22 84 C20 52 34 24 60 22 C75 21 86 29 89 43 C90.5 50 88 57 82 61 C82.5 55 80 51 75.5 50.5 L69 51 C66 62 61 74 58 84 Z" fill="#FFFFFF"/>' +
-      '<path d="M58.5 40 C55 50 52.5 60 51.5 72" stroke="#4B3BFF" stroke-width="5.5" stroke-linecap="round"/>' +
-      '<circle cx="64" cy="36" r="6.5" fill="#2FB86A"/>'),
+      '<path d="M5 9V1M1.5 4.5L5 1l3.5 3.5"/>', line(1.6)),
   };
-  const typeIcon = (type, k) => (ICON[type] ? ICON[type](k) : '');
 
   // ---------- API ----------
 
@@ -119,12 +113,11 @@
     state.online = on;
     document.querySelectorAll('[data-live]').forEach(el => {
       el.classList.toggle('is-offline', !on);
-      el.querySelector('[data-live-text]').textContent = on ? el.dataset.label : 'Reconnecting…';
+      el.querySelector('[data-live-text]').textContent = on ? 'Live' : 'Reconnecting…';
     });
   }
 
-  const liveBadge = label =>
-    `<span class="live" data-live data-label="${esc(label)}"><i class="dot"></i><span data-live-text>${esc(label)}</span></span>`;
+  const liveBadge = () => '<span class="live" data-live><i class="dot"></i><span data-live-text>Live</span></span>';
 
   // ---------- Polling ----------
 
@@ -137,7 +130,7 @@
         const id = state.venueId;
         const v = await get(`api/venues/${encodeURIComponent(id)}`);
         if (state.screen !== 'place' || state.venueId !== id) return;
-        const rebuild = !state.venue || !$('#plan') || layoutKey(state.venue) !== layoutKey(v);
+        const rebuild = !state.venue || state.venue.venue_id !== id || !$('#plan') || layoutKey(state.venue) !== layoutKey(v);
         state.venue = v;
         if (rebuild) renderPlace(); else updatePlace();
       } else {
@@ -168,6 +161,39 @@
 
   document.addEventListener('visibilitychange', () => { if (!document.hidden) kick(); });
 
+  // ---------- Seat dots (one per seat: free, then held, then taken) ----------
+
+  function dotsHTML(counts, { max, cols }) {
+    const total = counts.total || 0;
+    let n = total;
+    let free = counts.free;
+    let held = counts.held;
+    if (total > max) {
+      const k = max / total;
+      n = max;
+      free = Math.round(counts.free * k);
+      held = Math.round(counts.held * k);
+      if (counts.free > 0 && free === 0) free = 1;
+      if (free + held > n) held = n - free;
+    }
+    const taken = Math.max(0, n - free - held);
+    const style = cols ? ` style="grid-template-columns:repeat(${cols},1fr)"` : '';
+    return `<span class="dots"${style} aria-hidden="true">` +
+      '<i class="d-free"></i>'.repeat(free) + '<i class="d-held"></i>'.repeat(held) + '<i></i>'.repeat(taken) +
+      '</span>';
+  }
+
+  const thumbDots = c => {
+    const n = Math.min(c.total || 0, 64);
+    return dotsHTML(c, { max: 64, cols: Math.max(1, Math.ceil(Math.sqrt(n))) });
+  };
+
+  const distance = v => (v.drive_minutes === 0
+    ? `<span class="fact">${ICON.pin()}You're here</span>`
+    : `<span class="fact">${ICON.car()}${v.drive_minutes} min</span>`);
+
+  const simTag = v => (v.source === 'live' ? '' : `<span class="tag-sim">${esc(sourceLabel(v.source))}</span>`);
+
   // ---------- Browse ----------
 
   function showBrowse() {
@@ -175,7 +201,7 @@
     state.venueId = null;
     state.sel = null;
     state.fromBrowse = false;
-    removeSheet();
+    removeSheet(false);
     renderBrowse();
     window.scrollTo(0, state.browseScroll);
     kick();
@@ -184,28 +210,27 @@
   function renderBrowse() {
     app.innerHTML = `
       <main class="browse">
-        <div class="browse-top">
-          <div class="loc">
-            <span class="loc-k">Seats near</span>
-            <span class="loc-v">Msheireb ${ICON.chevron()}</span>
+        <header class="band">
+          <div class="topbar">
+            <div class="brand"><img src="${LOGO}" alt="" width="36" height="36"><span class="wordmark">Birdie</span></div>
+            <span class="place-tag">${ICON.pin()}Msheireb</span>
           </div>
           <label class="search">
             ${ICON.search()}
             <input id="q" type="search" placeholder="Search libraries, cafés, coworks" aria-label="Search places"
               autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
           </label>
-        </div>
-        <nav class="rail cats" id="cats" aria-label="Categories"></nav>
-        <section class="featured" id="featured" hidden>
-          <div class="featured-head">
-            <h2 class="sec-title">Free right now</h2>
-            ${liveBadge('Live')}
-          </div>
-          <div class="rail cards" id="cards"></div>
-        </section>
+          <nav class="rail cats" id="cats" aria-label="Kinds of place"></nav>
+          <section class="free-now" id="freeNow" hidden>
+            <div class="free-now-head"><h2>Free right now</h2>${liveBadge()}</div>
+            <div class="rail cards" id="cards"></div>
+          </section>
+        </header>
         <section class="list">
-          <h2 class="sec-title" id="listTitle">All places</h2>
-          <div class="sorts" id="sorts" role="group" aria-label="Sort places"></div>
+          <div class="list-head">
+            <h2 id="listTitle">All places</h2>
+            <div class="sorts" id="sorts" role="group" aria-label="Sort places"></div>
+          </div>
           <div class="rows" id="rows"></div>
         </section>
         <p class="note" id="note"></p>
@@ -227,8 +252,7 @@
     if (!cats.some(([k]) => k === state.cat)) state.cat = 'all';
     setHTML($('#cats'), cats.map(([k, label]) => {
       const on = k === state.cat;
-      return `<button class="cat${on ? ' is-on' : ''}" data-act="cat" data-v="${k}" aria-pressed="${on}">
-        <span class="cat-tile">${ICON[k](1)}</span><span class="cat-label">${label}</span></button>`;
+      return `<button class="cat press${on ? ' is-on' : ''}" data-act="cat" data-v="${k}" aria-pressed="${on}">${ICON[k]()}${label}</button>`;
     }).join(''));
 
     const q = fold(state.query.trim());
@@ -237,17 +261,13 @@
     const featured = venues.filter(v => inCat(v) && v.counts.free > 0)
       .sort((a, b) => b.counts.free - a.counts.free)
       .slice(0, 5);
-    $('#featured').hidden = featured.length === 0 || q !== '';
+    $('#freeNow').hidden = featured.length === 0 || q !== '';
     setHTML($('#cards'), featured.map(v => `
-      <button class="card" data-act="open" data-v="${esc(v.venue_id)}">
-        <span class="card-num">
-          <span class="card-free">${v.counts.free}</span>
-          <span class="card-k">${v.counts.free === 1 ? 'seat free' : 'seats free'}</span>
-        </span>
-        <span class="card-place">
-          <span class="card-name">${esc(v.name)}</span>
-          <span class="card-drive">${esc(driveLabel(v.drive_minutes))}${v.source === 'live' ? '' : ' · ' + esc(sourceLabel(v.source))}</span>
-        </span>
+      <button class="card press" data-act="open" data-v="${esc(v.venue_id)}" aria-label="${esc(v.name)}, ${v.counts.free} free">
+        ${dotsHTML(v.counts, { max: 36 })}
+        <span class="card-count">${v.counts.free}<span>free</span></span>
+        <span class="card-name">${esc(v.name)}</span>
+        <span class="card-foot">${distance(v)}${simTag(v)}</span>
       </button>`).join(''));
 
     let list = venues.filter(v => inCat(v) && (!q || fold(`${v.name} ${v.area} ${typeLabel(v.type)} ${v.type}`).includes(q)));
@@ -259,30 +279,30 @@
     $('#listTitle').textContent = state.cat === 'all' ? 'All places' : CATS.find(c => c[0] === state.cat)[1];
     setHTML($('#sorts'), SORTS.map(([k, label]) => {
       const on = k === state.sort;
-      return `<button class="sort${on ? ' is-on' : ''}" data-act="sort" data-v="${k}" aria-pressed="${on}">${label}</button>`;
+      return `<button class="sort press${on ? ' is-on' : ''}" data-act="sort" data-v="${k}" aria-pressed="${on}">${label}</button>`;
     }).join(''));
-    setHTML($('#rows'), !state.venues
-      ? `<p class="empty">${state.online ? 'Loading places…' : 'Can’t reach Birdie. Retrying…'}</p>`
-      : list.length ? list.map(row).join('') : '<p class="empty">No places match that search.</p>');
+
+    let rows;
+    if (!state.venues) rows = `<p class="empty">${state.online ? 'Loading places…' : 'Can’t reach Birdie. Trying again…'}</p>`;
+    else if (!list.length) rows = `<p class="empty">${q ? 'No places match that search.' : 'No places open late in this category.'}</p>`;
+    else rows = list.map(row).join('');
+    setHTML($('#rows'), rows);
     $('#note').textContent = state.mock ? 'Demo data: no backend connected' : '';
   }
 
   function row(v) {
-    const { free, held, total } = v.counts;
-    const taken = Math.max(0, total - free - held);
+    const { free, total } = v.counts;
     const full = free === 0;
-    const seg = (cls, n) => (n > 0 ? `<i class="${cls}" style="flex:${n} 1 0"></i>` : '');
     return `
-      <button class="row${full ? ' is-full' : ''}" data-act="open" data-v="${esc(v.venue_id)}">
-        <span class="thumb">${typeIcon(v.type, 1.15)}</span>
+      <button class="row press${full ? ' is-full' : ''}" data-act="open" data-v="${esc(v.venue_id)}">
+        <span class="thumb">${thumbDots(v.counts)}</span>
         <span class="row-body">
           <span class="row-name">${esc(v.name)}</span>
-          <span class="row-meta">${esc(typeLabel(v.type))} · ${esc(v.area)}${v.source === 'live' ? '' : ` <span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`}</span>
-          <span class="row-free">
-            <i class="dot" style="background:${full ? COLORS.taken : COLORS.free}"></i>${full ? 'Full right now' : `${free} of ${total} free`}
-            <span class="row-drive">· ${esc(driveLabel(v.drive_minutes))}</span>
+          <span class="row-kind">${esc(kindLabel(v))}</span>
+          <span class="row-facts">
+            <span class="row-free">${full ? 'Full right now' : `${free} of ${total} free`}</span>
+            ${distance(v)}${simTag(v)}
           </span>
-          <span class="bar">${seg('b-free', free)}${seg('b-held', held)}${seg('b-taken', taken)}</span>
         </span>
       </button>`;
   }
@@ -291,9 +311,32 @@
 
   let chairEls = new Map();
   let tableNames = new Map();
+  let lastStatus = new Map();
 
   // Changes when the floor plan or the set of seats changes, so the plan is rebuilt.
   const layoutKey = v => JSON.stringify([v.floor_plan, v.seats.map(s => [s.seat_id, s.plan_x, s.plan_y, s.plan_rot])]);
+
+  function placeBand(v) {
+    const facts = [
+      v.drive_minutes === 0 ? `<span class="fact">${ICON.pin()}You're here</span>` : `<span class="fact">${ICON.car()}${v.drive_minutes} min drive</span>`,
+      v.open_until ? `<span class="fact">${ICON.clock()}${esc(v.open_until)}</span>` : '',
+    ].join('');
+    const chips = (v.source === 'live' ? '' : `<span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`) +
+      (v.amenities || []).map(a => `<span class="chip">${esc(a)}</span>`).join('');
+    return `
+      <header class="band">
+        <div class="place-top">
+          <button class="back press" data-act="back" aria-label="Back to places">${ICON.back()}</button>
+          ${v.source === 'live' ? liveBadge() : ''}
+        </div>
+        <div class="place-head">
+          <h1>${esc(v.name)}</h1>
+          <span class="place-kind">${esc(kindLabel(v))}</span>
+          <div class="place-facts">${facts}</div>
+          ${chips ? `<div class="chips">${chips}</div>` : ''}
+        </div>
+      </header>`;
+  }
 
   function openPlace(id) {
     const cached = state.venue && state.venue.venue_id === id;
@@ -301,11 +344,15 @@
     state.venueId = id;
     state.seg = 'all';
     state.sel = null;
-    removeSheet();
+    removeSheet(false);
     if (cached) renderPlace();
     else {
       state.venue = null;
-      app.innerHTML = '<p class="loading">Loading…</p>';
+      const summary = (state.venues || []).find(v => v.venue_id === id);
+      app.innerHTML = summary
+        ? `<main class="place">${placeBand(summary)}<p class="empty">Loading seats…</p></main>`
+        : '<p class="loading">Loading…</p>';
+      setOnline(state.online);
     }
     window.scrollTo(0, 0);
     kick();
@@ -315,28 +362,15 @@
     const v = state.venue;
     const plan = v.floor_plan;
     tableNames = new Map(plan.tables.map(t => [t.table_id, t.name]));
-    const meta = [typeLabel(v.type), v.area, driveLabel(v.drive_minutes), v.open_until].filter(Boolean).map(esc).join(' · ');
-    const live = v.source === 'live';
+    lastStatus = new Map();
 
     app.innerHTML = `
       <main class="place" id="place">
-        <div class="hero">
-          ${typeIcon(v.type, 2)}
-          <button class="back" data-act="back" aria-label="Back">${ICON.back()}</button>
-        </div>
+        ${placeBand(v)}
         <div class="place-body">
-          <div class="place-head">
-            <h1>${esc(v.name)}</h1>
-            <span class="place-meta">${meta}</span>
-            <div class="amenities">
-              ${live ? '' : `<span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`}
-              ${(v.amenities || []).map(a => `<span class="chip">${esc(a)}</span>`).join('')}
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div class="headline-row">
-            <span class="headline" id="headline"></span>
-            ${live ? liveBadge('Live') : ''}
+          <div class="count">
+            <h2 id="headline"></h2>
+            <p id="breakdown"></p>
           </div>
           <div class="seg" id="seg" role="group" aria-label="Filter seats">
             ${SEGS.map(([k, label]) => `<button data-act="seg" data-v="${k}">${label}</button>`).join('')}
@@ -351,9 +385,9 @@
             </div>
           </div>
           <div class="legend">
-            <span><i style="background:${COLORS.free}"></i>Free</span>
-            <span><i style="background:${COLORS.taken}"></i>Taken</span>
-            <span><i style="background:${COLORS.held}"></i>Held</span>
+            <span><i class="l-free"></i>Free</span>
+            <span><i class="l-taken"></i>Taken</span>
+            <span><i class="l-held"></i>Held by a bag</span>
           </div>
         </div>
       </main>`;
@@ -379,16 +413,16 @@
 
   const chairHTML = s =>
     `<button class="chair" data-act="chair" data-v="${esc(s.seat_id)}" style="left:${px(s.plan_x - 17)};top:${px(s.plan_y - 17)};transform:rotate(${s.plan_rot}deg)">` +
-    '<span class="chair-back"></span><span class="chair-seat"></span></button>';
+    '<span class="chair-in"><span class="chair-back"></span><span class="chair-seat"></span></span></button>';
 
-  // Scale the 362-point plan down on narrow phones.
+  // Fit the plan to the screen width (it is drawn on a 362-point grid).
   function fitPlan() {
     const wrap = $('#planWrap');
     const plan = $('#plan');
     if (!wrap || !plan || !state.venue) return;
     const { width, height } = state.venue.floor_plan;
-    const k = Math.min(1, wrap.clientWidth / width);
-    plan.style.transform = k < 1 ? `scale(${k})` : '';
+    const k = Math.min(1.2, wrap.clientWidth / width);
+    plan.style.transform = k !== 1 ? `scale(${k})` : '';
     wrap.style.height = `${height * k}px`;
   }
   window.addEventListener('resize', fitPlan);
@@ -398,7 +432,7 @@
   function updatePlace() {
     if (state.screen !== 'place' || !state.venue || !$('#plan')) return;
     const v = state.venue;
-    let free = 0;
+    const counts = { free: 0, held: 0, taken: 0 };
     let freeMatching = 0;
 
     // Drop the selection when that seat was taken meanwhile or is hidden by the filter.
@@ -409,19 +443,28 @@
       const el = chairEls.get(s.seat_id);
       if (!el) return;
       const ok = matchesSeg(s);
-      if (s.status === 'free') { free += 1; if (ok) freeMatching += 1; }
+      counts[s.status] = (counts[s.status] || 0) + 1;
+      if (s.status === 'free' && ok) freeMatching += 1;
       const tappable = ok && (s.status === 'free' || s.status === 'held');
+      const changed = lastStatus.has(s.seat_id) && lastStatus.get(s.seat_id) !== s.status;
+      lastStatus.set(s.seat_id, s.status);
+
       el.className = 'chair' +
         (s.status === 'free' ? ' is-free' : s.status === 'held' ? ' is-held' : '') +
         (ok ? '' : ' is-dim') +
         (state.sel === s.seat_id ? ' is-sel' : '');
-      el.setAttribute('aria-label', `${s.seat_id}, ${s.status === 'held' ? 'held by a bag' : s.status}`);
+      if (changed && ok) {
+        void el.offsetWidth; // restart the ring animation
+        el.classList.add('is-changed');
+      }
+      el.setAttribute('aria-label', `Seat ${s.seat_id}, ${s.status === 'held' ? 'held by a bag' : s.status}`);
       el.setAttribute('aria-disabled', String(!tappable));
     });
 
     $('#headline').textContent = freeMatching > 0
       ? plural(freeMatching, 'seat free', 'seats free')
-      : free === 0 ? 'Full right now' : 'None free here';
+      : counts.free === 0 ? 'Full right now' : 'None free here';
+    $('#breakdown').textContent = breakdown(counts, v.seats.length);
 
     document.querySelectorAll('#seg button').forEach(b => {
       const on = b.dataset.v === state.seg;
@@ -430,6 +473,14 @@
     });
 
     updateSheet();
+  }
+
+  function breakdown(c, total) {
+    if (c.free === total) return `All ${total} seats are free.`;
+    const parts = [];
+    if (c.taken) parts.push(`${c.taken} taken`);
+    if (c.held) parts.push(`${c.held} held by ${c.held === 1 ? 'a bag' : 'bags'}`);
+    return `${parts.join(' and ')}, out of ${total}.`;
   }
 
   function onChair(id) {
@@ -441,19 +492,21 @@
 
   // ---------- Seat sheet ----------
 
-  function removeSheet() {
+  function removeSheet(animate) {
     const el = $('#sheet');
-    if (el) el.remove();
     const place = $('#place');
     if (place) place.classList.remove('has-sheet');
+    if (!el) return;
+    el.id = '';
+    if (!animate) { el.remove(); return; }
+    el.classList.add('is-closing');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), 320);
   }
 
   function updateSheet() {
     const s = state.sel && state.venue.seats.find(x => x.seat_id === state.sel);
-    if (!s) {
-      removeSheet();
-      return;
-    }
+    if (!s) { removeSheet(true); return; }
 
     let el = $('#sheet');
     if (!el) {
@@ -465,21 +518,23 @@
       $('#place').classList.add('has-sheet');
     }
     const held = s.status === 'held';
-    el.setAttribute('aria-label', `Seat ${s.seat_id}`);
-    const chips = [tableNames.get(s.table_id) || `Table ${s.table_id}`];
-    if (s.has_window) chips.push('Window');
+    const table = tableNames.get(s.table_id) || `Table ${s.table_id}`;
+    const chips = [];
+    if (held) chips.push(table);
+    if (s.has_window) chips.push('By the window');
     if (s.has_outlet) chips.push('Outlet');
+    el.setAttribute('aria-label', `Seat ${s.seat_id}`);
 
     setHTML(el, `
       <div class="sheet-handle"></div>
       <div class="sheet-row">
-        <div class="sheet-tile" style="background:${held ? COLORS.held : COLORS.free}">${esc(s.seat_id)}</div>
+        <div class="sheet-tile ${held ? 'is-held' : 'is-free'}">${esc(s.seat_id)}</div>
         <div class="sheet-text">
-          <span class="sheet-title">${held ? `Seat ${esc(s.seat_id)} is held by a bag` : `Seat ${esc(s.seat_id)} is free`}</span>
-          ${held ? `<span class="sheet-sub">Nobody here · held for ${esc(heldFor(s.since))}</span>` : ''}
-          <div class="sheet-chips">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>
+          <span class="sheet-title">Seat ${esc(s.seat_id)} is ${held ? 'held' : 'free'}</span>
+          <span class="sheet-sub">${held ? `Held by a bag for ${esc(heldFor(s.since))}` : esc(table)}</span>
+          ${chips.length ? `<div class="sheet-chips">${chips.map(c => `<span>${esc(c)}</span>`).join('')}</div>` : ''}
         </div>
-        <button class="sheet-close" data-act="close" aria-label="Close">${ICON.close()}</button>
+        <button class="sheet-close" data-act="close" aria-label="Close"><span>${ICON.close()}</span></button>
       </div>`);
   }
 
@@ -489,18 +544,16 @@
     const el = document.createElement('div');
     el.className = 'splash';
     el.setAttribute('role', 'presentation');
-    el.innerHTML = `<div class="splash-mark">${ICON.logo()}<span class="splash-word">Birdie</span></div>`;
+    el.innerHTML = `<img src="${LOGO}" alt=""><span class="splash-word">Birdie</span><span class="splash-line">Live study seats in Doha</span>`;
     document.body.appendChild(el);
-    themeColor('#4B3BFF');
     const timers = [
-      setTimeout(() => el.classList.add('is-in'), 60),
+      setTimeout(() => el.classList.add('is-in'), 40),
       setTimeout(() => el.classList.add('is-out'), 1700),
-      setTimeout(done, 2200),
+      setTimeout(done, 2000),
     ];
     function done() {
       timers.forEach(clearTimeout);
       el.remove();
-      themeColor('#F6F1E7');
     }
     el.addEventListener('click', done);
   }
