@@ -31,5 +31,22 @@ fi
 hf upload "$SPACE_ID" "$STAGE" . --type space \
   --commit-message "Deploy $(git -C "$ROOT" rev-parse --short HEAD)"
 
+# Remove files left on the Space by earlier deploys that are no longer in the repo (keeps .gitattributes).
+STALE="$(hf spaces list "$SPACE_ID" --recursive --format json | python3 -c '
+import json, os, sys
+stage = sys.argv[1]
+for entry in json.load(sys.stdin):
+    path = entry.get("path", "")
+    if "tree_id" in entry or path == ".gitattributes":
+        continue  # folders, and the Space'"'"'s own attributes file
+    if not os.path.exists(os.path.join(stage, path)):
+        print(path)
+' "$STAGE")"
+if [ -n "$STALE" ]; then
+  echo "removing stale files from the Space:"; echo "$STALE" | sed 's/^/  /'
+  # shellcheck disable=SC2086
+  hf repos delete-files "$SPACE_ID" $STALE --type space --commit-message "Remove files no longer in the repo"
+fi
+
 echo "Deployed: https://huggingface.co/spaces/$SPACE_ID"
 echo "Build logs: hf spaces logs $SPACE_ID --build --follow"
