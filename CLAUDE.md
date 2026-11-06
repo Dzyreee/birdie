@@ -6,10 +6,6 @@
 
 > **Updated Fri 6 Nov, evening.** The team dropped booking, check-in, QR codes and the Fanar assistant, and adopted the mobile app design in `design/mobile/`. Birdie is now a live view: it shows seats, it doesn't reserve them. Section 16 lists what changes in the existing code.
 
-### Current integration status (6 Nov 2026)
-
-`web/` contains the mobile customer UI, but the read-only `/api/venues` endpoints are not implemented and `app.py` does not serve `web/` yet. The current Camera tab is an uploaded-clip object-detection preview: it shows detector boxes on the original video, with no seat-layout overlay or blur. It does not feed detections into availability. The mobile floor plan is a separate user-facing venue map and remains part of the product.
-
 ---
 
 ## 0. Rules for AI assistants working on this project
@@ -21,10 +17,10 @@ You are helping a 4-person team at the **Qai x Hugging Face Hackathon 01**, held
 - **It must genuinely run on Hugging Face infrastructure** (Spaces, Hub models, HF Jobs). Frontier models (GPT, Claude, etc.) only "around the edges", never as the core.
 - **Compute budget:** $100 for the whole team, one shared pool, no top-ups. HF Jobs stop after 30 minutes by default, so save outputs to the Hub from inside the job.
 - **Prefer small, efficient open models.** Efficiency is a judging criterion.
-- **Privacy matters:** no face recognition or identity matching. Uploaded clips are deleted after processing; hosted logging and retention are unverified.
+- **Privacy matters:** no face recognition, no storing images, no identifying individuals.
 - **Simple, working code over clever code.** Working end to end beats feature-rich and broken.
 - **Never commit** tokens, `.env` files, videos, frames or model weights.
-- **The mobile app follows the design handoff** in `design/mobile/` (`README.md` and `prototype.html`), screens 1 to 3 only (section 8.2). It is high fidelity: recreate its colours, type, spacing and interactions exactly. Where this file and the handoff disagree (check-in, QR codes, sample data, walk times, seat colours), this file wins.
+- **The mobile app's screens and behaviour come from the design handoff** in `design/mobile/` (`README.md` and `prototype.html`), screens 1 to 3 only. **Its look comes from the Birdie logo** (`design/brand/`), as built in `web/` (section 8.2). Where this file and the handoff disagree (check-in, QR codes, sample data, walk times, colours, type), this file wins.
 - **No booking, no check-in, no QR codes, no LLM assistant.** All were dropped on purpose. Don't build them or suggest them.
 - **Section 5 (Key decisions) is final.** If anything else in this file seems to conflict with it, section 5 wins.
 
@@ -129,13 +125,12 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 
 - **Name:** Birdie.
 - **View-only app.** No booking, no check-in or check-out, no QR codes, no seat codes, no "your seat". The camera alone decides each seat's state.
-- **Camera preview:** uploaded clips show object-detection boxes on the original video, with no seat-layout overlay or blur. The preview is detection-only and does not update availability counts.
 - **No LLM assistant.** Fanar and the Arabic/English assistant are dropped. Nothing in the app needs a GPU.
 - **Languages:** Python 3.11+ for the backend. The mobile app is plain HTML, CSS and JavaScript with no build step and no framework.
 - **One Space, one process.** A single Hugging Face Space (Gradio SDK, runs `python app.py`) serves everything from one Python process on port 7860, so all live state lives in one place:
   - `/`: the **mobile web app**, static files from `web/`. This is the product users see.
   - `/api/...`: a small read-only **JSON API** (FastAPI) that the mobile app calls (section 7.2).
-  - `/operator`: the **Gradio operator console** with two tabs, **Camera** (uploaded-clip detector preview without a seat-layout overlay) and **Venue dashboard**. It is mounted into the FastAPI app with `gr.mount_gradio_app`, and `app.py` runs the combined app with uvicorn.
+  - `/operator`: the **Gradio operator console** with two tabs, **Camera** (webcam feed plus the seat setup tool) and **Venue dashboard**. It is mounted into the FastAPI app with `gr.mount_gradio_app`, and `app.py` runs the combined app with uvicorn.
 - **Mobile app:**
   - It is a mobile web app, not a native app. The handoff README's SwiftUI / React Native suggestion does not apply. It opens from a link with no install.
   - It is designed for phone width (the design frame is 402 × 874). On a laptop it shows as a centred phone-width column.
@@ -147,13 +142,17 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
   - The mobile app lives only in `web/`.
 - **Vision: one detector only:** `PekingU/rtdetr_r18vd` (COCO classes). COCO already covers people and belongings, so one model in one pass gives both `OCCUPIED` and `HELD`. `person` means occupied. Belongings: backpack, handbag, suitcase, laptop, cup, bottle, book, cell phone. **No OWLv2 or Grounding DINO** (slow, and not needed).
 - **Frame rate:** about 1 frame per second, long side resized to at most 640 px.
-- **Privacy:** frames are processed in memory and discarded, never written to disk or logged. The Camera preview shows the original uploaded clip without blurring. It draws detector boxes only, not seat regions. The clip preview does not update seat availability; Space logging and retention are unverified.
-- **Seat colours:** three, and only three.
-  - `FREE` is green `#2FB86A` ("Free").
-  - `OCCUPIED` is red `#EF4E4E` ("Taken").
-  - `HELD` is amber `#F2A93B` ("Held").
-  - The floor plan legend reads **Free / Taken / Held**.
-  - The handoff's indigo "Yours" colour is not used.
+- **Privacy:** frames are processed in memory and discarded, never written to disk or logged. People are **blurred** in any frame shown on screen, including the operator console. Only seat states are stored.
+- **Seat colours:** three, and only three. They were checked for colour-blind separation, and none of them is red, so they never clash with the maroon brand.
+  - `FREE` is green `#17804F` ("Free").
+  - `OCCUPIED` is charcoal `#353A42` ("Taken").
+  - `HELD` is amber `#D08A1C` with diagonal stripes ("Held by a bag"). The stripes keep it distinct for colour-blind users.
+  - The floor plan legend reads **Free / Taken / Held by a bag**.
+  - There is no "Yours" colour.
+- **Brand:** the logo is a maroon bird wearing a ghutra and agal (`design/brand/logo-source.jpg`; app sizes in `web/assets/`).
+  - Colours: Qatar maroon `#8A1538`, deep maroon `#5A0F24`, white, sand `#F2EADF` and charcoal `#262B33`.
+  - Type: Reem Kufi for headings, Readex Pro for everything else. Both are Google Fonts with Arabic support.
+  - Screens open with a maroon band whose bottom edge has nine serrated points, after the Qatar flag.
 - **Timers:** all timers and thresholds live in `birdie/config.py` behind `DEMO_MODE` (on by default):
 
   | Setting | Demo | Production |
@@ -180,13 +179,13 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 ## 6. Architecture
 
 ```
-[Uploaded recorded clip for object-detection preview]
+[Venue camera = laptop webcam in the operator console, or a recorded clip]
         │  frames at ~1 fps (browser to Space)
         ▼
 [HF Space: one Python process, port 7860]
   ├─ /             mobile web app (web/: HTML, CSS, JS)   ◄── phones poll /api every 2 s
   ├─ /api          read-only JSON API (birdie/api.py, FastAPI)
-  ├─ /operator     Gradio console: Camera clip preview, Venue dashboard
+  ├─ /operator     Gradio console: Camera + seat setup, Venue dashboard
   └─ birdie/ core
        ├─ vision      RT-DETR r18 (Hub) → seat assignment → seat state machines
        ├─ alerts      staff alerts for seats held too long
@@ -206,7 +205,8 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 ```
 app.py                  builds the FastAPI app: API, web/ at /, Gradio console at /operator; runs uvicorn
 web/                    mobile web app: index.html, app.css, app.js (no build step)
-design/mobile/          design handoff: README.md (spec) and prototype.html (open it in a browser)
+design/mobile/          design handoff: README.md (screens and behaviour) and prototype.html
+design/brand/           the Birdie logo (source image)
 birdie/
   config.py             DEMO_MODE, timers, thresholds
   models.py             pydantic data models (section 7)
@@ -219,7 +219,7 @@ birdie/
   simulator.py
   analytics.py
   forecast/, decision.py  built, not used by the mobile app
-  ui/                   Gradio operator console (camera clip preview, dashboard)
+  ui/                   Gradio operator console (camera, seat setup, dashboard)
 venues/<venue_id>.json  venue info, floor plan, seats (floor-plan position and camera polygon)
 jobs/                   backtest.py, evaluate.py (run locally or as HF Jobs)
 docs/CONTRACT.md        data models, API and public functions
@@ -228,7 +228,7 @@ tests/
 
 ### Privacy story
 
-The detector processes sampled frames in memory. The uploaded clip is temporarily held by the Space during processing and deleted after playback; hosted logging and retention are unverified. The preview is unblurred and draws detector boxes only. The app stores seat states and aggregate counts, not source frames in its database. No face recognition or identity matching is used.
+Frames are processed in memory and discarded immediately. No images are stored and only seat states are kept. Even the operator view blurs people. The app has no accounts and knows nothing about who is sitting where: the camera only sees that *someone* or *something* is in a seat. In production, the same model runs on a small device at the venue, so **no images ever leave the venue**. Qatar's personal data protection law (Law No. 13 of 2016, the first general data protection law in the GCC) is why this design matters.
 
 ---
 
@@ -262,7 +262,7 @@ Status mapping: FREE is `free`, OCCUPIED is `taken`, HELD is `held`. Times are I
 
 | venue_id | Name | Type | Area | Source | Drive time (approx.) |
 |---|---|---|---|---|---|
-| `nestwork-msheireb` | Nestwork Msheireb | Coworking | Msheireb Downtown | Configured live; feed not connected yet | You're here |
+| `nestwork-msheireb` | Nestwork Msheireb | Coworking | Msheireb Downtown | Live (camera in the room) | You're here |
 | `qnl` | Qatar National Library | Library | Education City | Simulated | ~15 min |
 | `qu-library` | Qatar University Library | Library | Qatar University | Simulated | ~25 min |
 | `qahwa-corner` | Qahwa Corner (invented) | Cafe | Lusail | Simulated | ~25 min |
@@ -275,7 +275,7 @@ Optional: add 2 to 4 more simulated venues with invented names (for example a ca
 
 ### 8.1 Seat state
 
-- Calibrated seat regions are stored in venue configuration for seat association; they are not drawn over the camera preview. The current uploaded-clip preview does not feed detections into seat availability.
+- Each live venue's seats are polygons on the camera frame, drawn once with the seat setup tool in the operator console.
 - Each frame:
   1. Detect people and belongings.
   2. Assign each detection to the seat whose polygon contains the box centre; if none does, to the seat with the largest overlap above 20%.
@@ -288,21 +288,19 @@ Optional: add 2 to 4 more simulated venues with invented names (for example a ca
 
 ### 8.2 Mobile app screens
 
-Build **screens 1 to 3** of `design/mobile/README.md`. Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. Changes from the handoff:
+The app has **screens 1 to 3** of `design/mobile/README.md`, redrawn in the Birdie brand (section 5). Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. `web/` is the reference; in short:
 
-- **1. Splash:** as designed.
+- **1. Splash:** the logo, "Birdie" and "Live study seats in Doha" on maroon. Tap to skip.
 - **2. Browse:**
-  - The header reads "Seats near Msheireb".
-  - Rows show "N of M free · N min drive" and a "Simulated" chip where it applies.
-  - The share bar is split green / amber / red (free / held / taken).
-  - Categories: All, Libraries, Cafés, Coworking, Study rooms (hide a category with no venues).
+  - The maroon band holds the logo, a "Msheireb" location tag, search, category pills (All, Libraries, Cafés, Coworking, Study rooms; empty categories are hidden) and the "Free right now" cards.
+  - **Seat dots:** each card and list row shows one dot per seat (green free first, then amber held, then charcoal taken), so a place's state is visible at a glance. There are no place photos.
+  - Rows show the name, "Type, Area", "N of M free", the drive time with a car icon ("You're here" for Nestwork), and a "Simulated" tag where it applies.
 - **3. Place:**
-  - The meta line reads "Type · Area · N min drive · Open till HH:MM", with a "Simulated" chip where it applies.
-  - The amenity chips include zones such as Women's section, Family section and Quiet zone.
-  - Chairs are coloured from the API status (green, red, amber), and the legend reads Free / Taken / Held.
-  - **Seat sheet:** tapping a free or held chair opens the bottom sheet, **without the "Scan to check in" button**. A free chair shows "Seat A3 is free" plus its chips (table, Window, Outlet). A held chair shows "Seat A3 is held by a bag" and "Nobody here · held for N min" (from `since`). Taken chairs can't be tapped.
-  - Place photos: none are supplied. Use the mist placeholder with the venue type's icon.
-- **Live updates:** poll the API every 2 seconds instead of the prototype's random flips.
+  - The maroon band shows the name, "Type, Area", drive time, opening hours, a "Simulated" chip where it applies, and amenity chips (including zones such as Women's section, Family section and Quiet zone). Only the live venue shows the "Live" dot.
+  - Below it: "N seats free", a line such as "16 taken and 3 held by bags, out of 36.", the All seats / Outlet / Window filter, the floor plan and the legend.
+  - A chair that changes state rings once, so a change in the room is easy to spot.
+  - **Seat sheet:** tapping a free or held chair opens the bottom sheet. A free seat shows "Seat A3 is free", its table, and chips for window and outlet. A held seat shows "Seat A3 is held" and "Held by a bag for N min" (from `since`). Taken chairs can't be tapped.
+- **Live updates:** the app polls the API every 2 seconds.
 
 ### 8.3 Built but not used by the mobile app
 
@@ -338,7 +336,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 ### Team
 
 1. **Yacine and Daffa (backend):** the core package, vision, the API, the operator console, Doha venue data and floor plans, deploy. They split the section 16 checklist between them.
-2. **Omair (frontend):** the mobile web app in `web/`, built from screens 1 to 3 of the design handoff against the API in section 7.2. Starts on mock data shaped exactly like the API responses, so wiring up later is a URL change.
+2. **Omair (frontend):** the mobile web app in `web/`: screens 1 to 3 of the design handoff in the Birdie brand, against the API in section 7.2. Starts on mock data shaped exactly like the API responses, so wiring up later is a URL change.
 3. **Khalid (pitch):**
    - The pitch deck and the demo script.
    - The room survey (section 13).
@@ -393,7 +391,7 @@ Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 - **"Why no booking? UTSeat and coworking apps do booking."** On purpose. Booking-based availability is what makes those apps wrong: walk-ins aren't counted and no-shows block seats. We show what the camera sees.
 - **"Can't someone grab the seat before I get there?"** Yes, and that's honest: we show what's free right now, with a free count per venue. In a big venue like QNL, a place with 30 free seats will still have seats when you arrive.
 - **"Why would a cafe or library give you camera access?"** Many venues already have cameras. Only seat states leave the device. The venue gets live occupancy, alerts for seats hogged by bags, and peak-time analytics. Libraries (QNL, QU) are natural anchor customers.
-- **"Privacy?"** No face recognition or identity matching. The uploaded clip is shown unblurred and deleted after playback; hosted logging and retention have not been verified.
+- **"Privacy?"** No face recognition, no stored images, no identifying individuals, people blurred on screen. The app has no accounts and collects nothing about its users. Designed with Qatar's data protection law in mind.
 - **"Why is this Qatar-specific?"** Car-dependent sprawl and heat make every wasted check a drive, which is why we show drive times. Doha venues, family and women's sections, the Friday and Saturday weekend, Ramadan nights and exam season around QNL.
 - **"Where is Hugging Face in this?"** The detector from the Hub, the whole app on a Space, evaluation and backtests on HF Jobs, the labelled dataset published to the Hub.
 - **"Why only one vision model?"** COCO already includes people, bags, laptops and cups, so one small detector does both jobs in one pass. That halves the compute and lets vision run on CPU.
@@ -423,7 +421,7 @@ Put the real numbers on a slide: for example, "X of 20 builders here said yes, l
 | Detection flicker from occlusion or lighting | Smoothing over k frames; good camera angle; test in the actual demo room early |
 | Frontend and backend don't fit together | The API shapes in section 7.2 are fixed; the frontend builds on mock data in exactly that shape |
 | Space latency or Wi-Fi failure in the demo | About 1 fps, 2 s polling; local fallback; backup video |
-| Privacy concerns from the audience | No face recognition; show clips unblurred as requested; disclose temporary upload and unverified hosted retention |
+| Privacy concerns from the audience | No faces, no storage, blurred view, no accounts, on-device in production |
 | Burning the $100 credits | Free CPU Space for the whole app; money only for short HF Jobs; track spend |
 
 ---
@@ -453,7 +451,7 @@ The code was built for the earlier plan. To match this file:
 1. **Remove booking and check-in:** `birdie/booking.py`, `birdie/ui/checkin.py`, the `Booking` model, no-show release, `bookable` seats, `bookable_fraction`, prepaid drinks, QR code generation (and the `qrcode` dependency), and the check-in timers in `config.py`. Keep the scheduler for staff alerts and occupancy buckets.
 2. **Remove the assistant:** delete `birdie/assistant/` and the `Query` model if nothing else needs it.
 3. **New entry point:** `app.py` builds a FastAPI app that serves `web/` at `/` and the read-only API at `/api` (`birdie/api.py`), mounts the Gradio console at `/operator`, and runs uvicorn on port 7860. If the Gradio SDK Space won't run this, switch the Space to the Docker SDK.
-4. **The Gradio UI becomes the operator console:** keep the Camera clip detector preview (no seat-layout overlay) and Venue dashboard. The mobile app replaces Find a seat.
+4. **The Gradio UI becomes the operator console:** keep Camera (with seat setup) and Venue dashboard. Drop the Find a seat tab; the mobile app replaces it.
 5. **Venue JSON:** add the floor plan, seat labels (`A3`), `plan_x` / `plan_y` / `plan_rot`, `has_window`, `drive_minutes`, `open_until`, `open_late`, `amenities` and the `study_room` type. Make the Nestwork plan match the real room.
 6. **Dashboard:** drop the no-show rate and anything else that came from bookings.
 7. **Keep without changes:** vision, the simulator, forecast, `decision.py`, the backtest and evaluation jobs.
