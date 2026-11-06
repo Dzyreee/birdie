@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+body{margin:0;background:#F6F1E7;}
+a{color:#4B3BFF;}a:hover{color:#16172E;}
+button{font-family:inherit;-webkit-tap-highlight-color:transparent;}
+input::placeholder{color:#4A4D63;opacity:1;}
+::-webkit-scrollbar{display:none;}
+@keyframes birdieScan{from{top:14px;}to{top:calc(100% - 17px);}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 16px;box-sizing:border-box;background:#F6F1E7;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#16172E;">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ darkBar }}" hint-size="402px,874px">
+<div style="height:100%;position:relative;display:flex;flex-direction:column;background:#F6F1E7;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#16172E;overflow:hidden;">
+
+<sc-if value="{{ toast }}">
+  <div style="position:absolute;top:60px;left:16px;right:16px;z-index:70;background:#16172E;color:#F6F1E7;border-radius:18px;padding:14px 16px;font-size:14px;font-weight:600;line-height:1.35;box-shadow:0 12px 30px rgba(22,23,46,0.25);">{{ toast }}</div>
+</sc-if>
+
+<sc-if value="{{ isBrowse }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;overflow-y:auto;scrollbar-width:none;padding:58px 0 {{ bottomPad }};display:flex;flex-direction:column;gap:22px;">
+    <div style="display:flex;flex-direction:column;gap:14px;padding:8px 20px 0;">
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-size:13px;font-weight:600;color:#4A4D63;">Seats near</span>
+        <span style="display:flex;align-items:center;gap:6px;font-size:22px;font-weight:800;letter-spacing:-0.035em;">Old Town
+          <svg width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1.5 1.5L6 6l4.5-4.5" stroke="#4B3BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;background:#DCE9F2;border-radius:16px;padding:0 16px;height:50px;">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6.5" stroke="#4A4D63" stroke-width="2"></circle><path d="M14 14l4 4" stroke="#4A4D63" stroke-width="2" stroke-linecap="round"></path></svg>
+        <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search libraries, cafés, coworks" style="flex:1;border:none;background:transparent;outline:none;font-family:inherit;font-size:15px;font-weight:500;color:#16172E;min-width:0;">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;padding:0 20px;">
+      <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+        <button onClick="{{ c.onTap }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;border:none;background:transparent;padding:0;cursor:pointer;flex-shrink:0;width:64px;">
+          <span style="width:64px;height:64px;border-radius:20px;background:{{ c.bg }};display:flex;align-items:center;justify-content:center;">
+            <sc-if value="{{ c.isAll }}"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="{{ c.fg }}" stroke-width="2.2"><rect x="3" y="3" width="8" height="8" rx="2.5"></rect><rect x="15" y="3" width="8" height="8" rx="2.5"></rect><rect x="3" y="15" width="8" height="8" rx="2.5"></rect><rect x="15" y="15" width="8" height="8" rx="2.5"></rect></svg></sc-if>
+            <sc-if value="{{ c.isLib }}"><svg width="28" height="26" viewBox="0 0 28 26" fill="none" stroke="{{ c.fg }}" stroke-width="2.2" stroke-linejoin="round"><path d="M14 6C11 3.5 7 3 3 3.5V21c4-.5 8 0 11 2.5C17 21 21 20.5 25 21V3.5C21 3 17 3.5 14 6Z"></path><path d="M14 6v17"></path></svg></sc-if>
+            <sc-if value="{{ c.isCafe }}"><svg width="28" height="26" viewBox="0 0 28 26" fill="none" stroke="{{ c.fg }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h15v6a6 6 0 0 1-6 6h-3a6 6 0 0 1-6-6V9Z"></path><path d="M19 11h2a3 3 0 0 1 0 6h-2.5"></path><path d="M9 2.5v3M13.5 2.5v3"></path></svg></sc-if>
+            <sc-if value="{{ c.isCowork }}"><svg width="28" height="26" viewBox="0 0 28 26" fill="none" stroke="{{ c.fg }}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><rect x="5" y="4" width="18" height="12" rx="2"></rect><path d="M2 20h24"></path></svg></sc-if>
+            <sc-if value="{{ c.isStudy }}"><svg width="28" height="26" viewBox="0 0 28 26" fill="none" stroke="{{ c.fg }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5v9h12"></path><path d="M8 12.5v10M20 12.5v10"></path><path d="M8 17h12"></path></svg></sc-if>
+          </span>
+          <span style="font-size:12px;font-weight:700;color:#16172E;white-space:nowrap;">{{ c.label }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ hasFeatured }}">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 20px;">
+          <span style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">Free right now</span>
+          <span style="font-size:13px;font-weight:600;color:#4A4D63;display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:999px;background:#2FB86A;"></span>Live</span>
+        </div>
+        <div style="display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:0 20px;">
+          <sc-for list="{{ featured }}" as="f" hint-placeholder-count="3">
+            <button onClick="{{ f.onOpen }}" style="flex-shrink:0;width:148px;display:flex;flex-direction:column;gap:12px;background:#4B3BFF;color:#FFFFFF;border:none;border-radius:22px;padding:16px;text-align:left;cursor:pointer;">
+              <div style="display:flex;flex-direction:column;">
+                <span style="font-size:38px;font-weight:800;letter-spacing:-0.045em;line-height:1;">{{ f.free }}</span>
+                <span style="font-size:13px;font-weight:600;">seats free</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-size:15px;font-weight:700;line-height:1.2;">{{ f.name }}</span>
+                <span style="font-size:12px;font-weight:500;color:#DCE9F2;">{{ f.walk }}</span>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;flex-direction:column;gap:14px;padding:0 20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">{{ listTitle }}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <sc-for list="{{ sorts }}" as="s" hint-placeholder-count="3">
+          <button onClick="{{ s.onTap }}" style="height:34px;padding:0 14px;border-radius:999px;border:1.5px solid #16172E;background:{{ s.bg }};color:{{ s.color }};font-size:13px;font-weight:700;cursor:pointer;">{{ s.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px;">
+        <sc-for list="{{ places }}" as="p" hint-placeholder-count="4">
+          <button onClick="{{ p.onOpen }}" style="display:flex;gap:14px;align-items:center;border:none;background:transparent;padding:0;text-align:left;cursor:pointer;color:#16172E;">
+            <div style="position:relative;width:92px;height:92px;flex-shrink:0;border-radius:20px;overflow:hidden;background:#DCE9F2;pointer-events:none;opacity:{{ p.imgOpacity }};">
+              <image-slot id="{{ p.slotId }}" shape="rounded" radius="20" placeholder="Photo" style="width:92px;height:92px;"></image-slot>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:5px;min-width:0;">
+              <span style="font-size:16px;font-weight:700;letter-spacing:-0.02em;">{{ p.name }}</span>
+              <span style="font-size:13px;font-weight:500;color:#4A4D63;">{{ p.meta }}</span>
+              <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;">
+                <span style="width:8px;height:8px;border-radius:999px;background:{{ p.dot }};"></span>{{ p.freeLabel }}<span style="font-weight:500;color:#4A4D63;">· {{ p.walk }}</span>
+              </div>
+              <div style="display:flex;height:5px;border-radius:999px;overflow:hidden;gap:2px;margin-top:2px;">
+                <div style="width:{{ p.wFree }};background:#2FB86A;"></div>
+                <div style="flex:1;background:#EF4E4E;"></div>
+              </div>
+            </div>
+          </button>
+        </sc-for>
+        <sc-if value="{{ noResults }}">
+          <div style="padding:24px 0;text-align:center;font-size:15px;font-weight:500;color:#4A4D63;">No places match that search.</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isPlace }}">
+  <div style="flex:1;overflow-y:auto;scrollbar-width:none;padding:0 0 {{ placeBottomPad }};display:flex;flex-direction:column;">
+    <div style="position:relative;width:100%;height:250px;flex-shrink:0;background:#DCE9F2;">
+      <image-slot id="{{ place.slotId }}" shape="rect" placeholder="Drop a photo of this place" style="width:100%;height:250px;"></image-slot>
+      <button onClick="{{ goBrowse }}" aria-label="Back" style="position:absolute;top:56px;left:16px;width:42px;height:42px;border-radius:999px;border:none;background:#F6F1E7;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(22,23,46,0.18);">
+        <svg width="10" height="16" viewBox="0 0 12 20" fill="none"><path d="M10 2L2 10l8 8" stroke="#16172E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </button>
+    </div>
+    <div style="position:relative;margin-top:-28px;background:#F6F1E7;border-radius:28px 28px 0 0;padding:22px 20px 0;display:flex;flex-direction:column;gap:18px;">
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-0.035em;line-height:1.1;">{{ place.name }}</h1>
+        <span style="font-size:14px;font-weight:500;color:#4A4D63;">{{ place.meta }}</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:4px;">
+          <sc-for list="{{ place.amenities }}" as="a">
+            <span style="font-size:12px;font-weight:700;background:#DCE9F2;border-radius:999px;padding:5px 11px;color:#16172E;">{{ a }}</span>
+          </sc-for>
+        </div>
+      </div>
+      <div style="height:1px;background:#DCE9F2;"></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
+        <span style="font-size:30px;font-weight:800;letter-spacing:-0.04em;line-height:1.05;">{{ headline }}</span>
+        <span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#4A4D63;padding-bottom:4px;"><span style="width:8px;height:8px;border-radius:999px;background:#2FB86A;box-shadow:0 0 0 4px rgba(47,184,106,0.18);"></span>Live</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;padding:3px;background:#DCE9F2;border-radius:12px;">
+        <sc-for list="{{ segs }}" as="s" hint-placeholder-count="3">
+          <button onClick="{{ s.onTap }}" style="height:34px;border:none;border-radius:9px;background:{{ s.bg }};box-shadow:{{ s.shadow }};font-size:14px;font-weight:700;color:#16172E;cursor:pointer;">{{ s.label }}</button>
+        </sc-for>
+      </div>
+      <div style="position:relative;width:362px;height:{{ floorH }};background:#DCE9F2;border-radius:28px;overflow:hidden;flex-shrink:0;">
+        <sc-if value="{{ place.windowTop }}">
+          <div style="position:absolute;top:0;left:28px;right:28px;height:5px;border-radius:0 0 4px 4px;background:#F6F1E7;"></div>
+        </sc-if>
+        <sc-for list="{{ fixtures }}" as="fx">
+          <div style="position:absolute;left:{{ fx.left }};top:{{ fx.top }};width:{{ fx.width }};height:{{ fx.height }};border:1.5px dashed #4A4D63;border-radius:10px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#4A4D63;opacity:0.7;">{{ fx.label }}</div>
+        </sc-for>
+        <sc-for list="{{ tables }}" as="tb" hint-placeholder-count="6">
+          <div style="position:absolute;left:{{ tb.left }};top:{{ tb.top }};width:{{ tb.width }};height:{{ tb.height }};border-radius:{{ tb.radius }};background:#F6F1E7;box-shadow:0 1px 2px rgba(22,23,46,0.08);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#4A4D63;">{{ tb.label }}</div>
+        </sc-for>
+        <sc-for list="{{ chairs }}" as="c">
+          <button onClick="{{ c.onTap }}" aria-label="{{ c.aria }}" style="position:absolute;left:{{ c.left }};top:{{ c.top }};width:34px;height:34px;padding:0;border:none;background:transparent;transform:{{ c.rot }};opacity:{{ c.opacity }};cursor:{{ c.cursor }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:opacity 200ms ease;">
+            <span style="width:18px;height:5px;border-radius:3px;background:{{ c.bg }};"></span>
+            <span style="width:22px;height:16px;border-radius:6px;background:{{ c.bg }};box-shadow:{{ c.ring }};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#16172E;"><span style="transform:{{ c.unrot }};">{{ c.glyph }}</span></span>
+          </button>
+        </sc-for>
+        <div style="position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#4A4D63;">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 9V1M1.5 4.5L5 1l3.5 3.5" stroke="#4A4D63" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>Entrance
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:13px;font-weight:600;color:#4A4D63;padding-bottom:8px;">
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:12px;height:10px;border-radius:3px;background:#2FB86A;"></span>Free</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:12px;height:10px;border-radius:3px;background:#EF4E4E;"></span>Taken</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:12px;height:10px;border-radius:3px;background:#4B3BFF;"></span>Yours</span>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ hasSel }}">
+    <div style="position:absolute;left:0;right:0;bottom:0;z-index:30;background:#F6F1E7;border-radius:32px 32px 0 0;padding:10px 20px 42px;box-shadow:0 -14px 40px rgba(22,23,46,0.16);display:flex;flex-direction:column;gap:16px;">
+      <div style="width:36px;height:5px;border-radius:999px;background:#DCE9F2;align-self:center;"></div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:56px;height:56px;border-radius:18px;background:#2FB86A;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;color:#16172E;flex-shrink:0;">{{ sel.label }}</div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0;">
+          <span style="font-size:20px;font-weight:800;letter-spacing:-0.03em;">{{ sel.title }}</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <sc-for list="{{ sel.chips }}" as="ch">
+              <span style="font-size:12px;font-weight:700;background:#DCE9F2;border-radius:999px;padding:4px 10px;color:#16172E;">{{ ch }}</span>
+            </sc-for>
+          </div>
+        </div>
+        <button onClick="{{ clearSel }}" aria-label="Close" style="width:32px;height:32px;border-radius:999px;border:none;background:#DCE9F2;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-start;">
+          <svg width="11" height="11" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="#4A4D63" stroke-width="2.2" stroke-linecap="round"></path></svg>
+        </button>
+      </div>
+      <button onClick="{{ startScanSel }}" style="height:56px;border-radius:18px;border:none;background:#4B3BFF;color:#FFFFFF;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"><path d="M2 6V3.5A1.5 1.5 0 0 1 3.5 2H6M14 2h2.5A1.5 1.5 0 0 1 18 3.5V6M18 14v2.5a1.5 1.5 0 0 1-1.5 1.5H14M6 18H3.5A1.5 1.5 0 0 1 2 16.5V14"></path><path d="M5 10h10"></path></svg>
+        Scan to check in
+      </button>
+    </div>
+  </sc-if>
+</sc-if>
+
+<sc-if value="{{ showActivity }}">
+  <button onClick="{{ openMine }}" style="position:absolute;left:12px;right:12px;bottom:30px;z-index:20;display:flex;align-items:center;gap:12px;background:#16172E;color:#F6F1E7;border:none;border-radius:24px;padding:12px 16px 12px 12px;text-align:left;cursor:pointer;box-shadow:0 14px 34px rgba(22,23,46,0.28);">
+    <div style="width:44px;height:44px;border-radius:14px;background:{{ mineColor }};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#16172E;flex-shrink:0;">{{ mineLabel }}</div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;">
+      <span style="font-size:15px;font-weight:700;">{{ mineTitle }}</span>
+      <span style="font-size:13px;font-weight:500;color:#DCE9F2;">{{ mineSub }}</span>
+    </div>
+    <span style="font-size:20px;font-weight:800;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;">{{ mineClock }}</span>
+  </button>
+</sc-if>
+
+<sc-if value="{{ isScan }}">
+  <div style="flex:1;background:#16172E;color:#F6F1E7;padding:58px 20px 48px;display:flex;flex-direction:column;gap:28px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;">
+      <button onClick="{{ cancelScan }}" aria-label="Close" style="width:42px;height:42px;border-radius:999px;border:none;background:#4A4D63;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="#F6F1E7" stroke-width="2.2" stroke-linecap="round"></path></svg>
+      </button>
+      <span style="font-size:16px;font-weight:700;">Check in</span>
+      <span style="width:42px;"></span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;text-align:center;">
+      <h1 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-0.035em;line-height:1.15;">{{ scanTitle }}</h1>
+      <span style="font-size:15px;font-weight:500;color:#DCE9F2;line-height:1.45;text-wrap:pretty;">{{ scanSub }}</span>
+    </div>
+    <button onClick="{{ scanFound }}" aria-label="Scan" style="align-self:center;position:relative;width:270px;height:270px;border:none;padding:0;border-radius:32px;background:#0E0F20;cursor:pointer;overflow:hidden;">
+      <span style="position:absolute;top:0;left:0;width:56px;height:56px;border-top:5px solid {{ bracket }};border-left:5px solid {{ bracket }};border-radius:32px 0 0 0;box-sizing:border-box;transition:border-color 250ms ease;"></span>
+      <span style="position:absolute;top:0;right:0;width:56px;height:56px;border-top:5px solid {{ bracket }};border-right:5px solid {{ bracket }};border-radius:0 32px 0 0;box-sizing:border-box;transition:border-color 250ms ease;"></span>
+      <span style="position:absolute;bottom:0;left:0;width:56px;height:56px;border-bottom:5px solid {{ bracket }};border-left:5px solid {{ bracket }};border-radius:0 0 0 32px;box-sizing:border-box;transition:border-color 250ms ease;"></span>
+      <span style="position:absolute;bottom:0;right:0;width:56px;height:56px;border-bottom:5px solid {{ bracket }};border-right:5px solid {{ bracket }};border-radius:0 0 32px 0;box-sizing:border-box;transition:border-color 250ms ease;"></span>
+      <span style="position:absolute;inset:78px;border-radius:14px;border:2px dashed #4A4D63;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#DCE9F2;">{{ scanLabel }}</span>
+      {{ scanLine }}
+      <sc-if value="{{ scanDone }}">
+        <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(14,15,32,0.6);">
+          <span style="width:84px;height:84px;border-radius:999px;background:#2FB86A;display:flex;align-items:center;justify-content:center;">
+            <svg width="38" height="28" viewBox="0 0 38 28" fill="none"><path d="M3 14.5L13.5 25 35 3" stroke="#16172E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </span>
+        </span>
+      </sc-if>
+    </button>
+    <div style="flex:1;"></div>
+    <button onClick="{{ openCode }}" style="height:54px;border-radius:18px;border:2px solid #F6F1E7;background:transparent;color:#F6F1E7;font-size:16px;font-weight:700;cursor:pointer;">Enter code instead</button>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isCode }}">
+  <div style="flex:1;padding:58px 20px 40px;display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;align-items:center;padding-top:8px;">
+      <button onClick="{{ startScan }}" style="height:38px;padding:0 14px 0 10px;border-radius:999px;border:none;background:#DCE9F2;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:700;color:#16172E;">
+        <svg width="9" height="14" viewBox="0 0 12 20" fill="none"><path d="M10 2L2 10l8 8" stroke="#16172E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>Scan instead
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-0.035em;line-height:1.1;">Enter seat code</h1>
+      <span style="font-size:15px;font-weight:500;color:#4A4D63;line-height:1.45;text-wrap:pretty;">{{ codeSub }}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,64px);gap:12px;justify-content:center;">
+      <sc-for list="{{ codeBoxes }}" as="b" hint-placeholder-count="4">
+        <div style="height:72px;border-radius:18px;background:#DCE9F2;box-shadow:{{ b.ring }};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;">{{ b.ch }}</div>
+      </sc-for>
+    </div>
+    <span style="min-height:20px;text-align:center;font-size:14px;font-weight:600;color:{{ codeMsgColor }};">{{ codeMsg }}</span>
+    <div style="flex:1;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;">
+      <sc-for list="{{ keys }}" as="k" hint-placeholder-count="12">
+        <button onClick="{{ k.onTap }}" aria-label="{{ k.aria }}" style="height:60px;border-radius:18px;border:none;background:{{ k.bg }};font-size:26px;font-weight:700;color:#16172E;cursor:pointer;display:flex;align-items:center;justify-content:center;visibility:{{ k.vis }};">
+          <sc-if value="{{ k.isDel }}">
+            <svg width="26" height="18" viewBox="0 0 26 18" fill="none" stroke="#16172E" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M8 1h15a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H8L1 9l7-8Z"></path><path d="M12 6l6 6M18 6l-6 6"></path></svg>
+          </sc-if>
+          {{ k.label }}
+        </button>
+      </sc-for>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isIn }}">
+  <div style="flex:1;overflow-y:auto;scrollbar-width:none;padding:58px 20px 48px;display:flex;flex-direction:column;gap:22px;">
+    <div style="display:flex;align-items:center;padding-top:8px;">
+      <button onClick="{{ goMinePlace }}" style="height:38px;padding:0 14px 0 10px;border-radius:999px;border:none;background:#DCE9F2;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:700;color:#16172E;">
+        <svg width="9" height="14" viewBox="0 0 12 20" fill="none"><path d="M10 2L2 10l8 8" stroke="#16172E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>Floor plan
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:18px;padding:16px 0 4px;text-align:center;">
+      <div style="width:128px;height:128px;border-radius:36px;background:#2FB86A;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;letter-spacing:-0.04em;color:#16172E;">{{ mineLabel }}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <span style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#4B3BFF;">Checked in</span>
+        <h1 style="margin:0;font-size:30px;font-weight:800;letter-spacing:-0.035em;line-height:1.1;">You're in.</h1>
+        <span style="font-size:15px;font-weight:500;color:#4A4D63;line-height:1.45;text-wrap:pretty;">Others now see {{ mineLabel }} as taken. Free it up when you leave so the next person can sit.</span>
+      </div>
+    </div>
+    <div style="background:#DCE9F2;border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:12px;">
+      <sc-for list="{{ mineRows }}" as="r" hint-placeholder-count="3">
+        <div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;">
+          <span style="font-weight:500;color:#4A4D63;">{{ r.k }}</span>
+          <span style="font-weight:700;text-align:right;font-variant-numeric:tabular-nums;">{{ r.v }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <button onClick="{{ release }}" style="height:56px;border-radius:18px;border:2px solid #16172E;background:transparent;color:#16172E;font-size:17px;font-weight:700;cursor:pointer;">Leaving? Free up {{ mineLabel }}</button>
+  </div>
+</sc-if>
+
+<sc-if value="{{ splashVisible }}">
+  <div onClick="{{ skipSplash }}" style="position:absolute;inset:0;z-index:100;background:#4B3BFF;display:flex;align-items:center;justify-content:center;opacity:{{ splashOpacity }};transition:opacity 450ms ease;">
+    <div style="display:flex;align-items:center;gap:16px;transform:{{ splashScale }};opacity:{{ splashLogoOpacity }};transition:transform 700ms cubic-bezier(0.2,0.8,0.2,1), opacity 500ms ease;">
+      <svg width="80" height="80" viewBox="0 0 100 100"><path d="M22 84 C20 52 34 24 60 22 C75 21 86 29 89 43 C90.5 50 88 57 82 61 C82.5 55 80 51 75.5 50.5 L69 51 C66 62 61 74 58 84 Z" fill="#FFFFFF"></path><path d="M58.5 40 C55 50 52.5 60 51.5 72" stroke="#4B3BFF" stroke-width="5.5" stroke-linecap="round" fill="none"></path><circle cx="64" cy="36" r="6.5" fill="#2FB86A"></circle></svg>
+      <span style="font-size:56px;font-weight:800;letter-spacing:-0.045em;color:#FFFFFF;line-height:1;">Birdie</span>
+    </div>
+  </div>
+</sc-if>
+
+</div>
+</x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showSplash&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;liveUpdates&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;statusGlyphs&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const LAYOUTS = {
+  library: { h: 490, windowTop: true,
+    tables: [
+      { k: 'W', name: 'Window bar', x: 24, y: 22, w: 314, h: 16, b: 8, window: true, outlet: true },
+      { k: 'A', name: 'Table A', x: 34, y: 118, w: 130, h: 46, t: 3, b: 3, outlet: true },
+      { k: 'B', name: 'Table B', x: 198, y: 118, w: 130, h: 46, t: 3, b: 3 },
+      { k: 'C', name: 'Round table C', cx: 96, cy: 272, r: 30, n: 4 },
+      { k: 'D', name: 'Round table D', cx: 266, cy: 272, r: 30, n: 4, outlet: true },
+      { k: 'E', name: 'Booth E', x: 60, y: 366, w: 56, h: 72, l: 2, r: 2, outlet: true },
+      { k: 'F', name: 'Booth F', x: 246, y: 366, w: 56, h: 72, l: 2, r: 2, outlet: true },
+    ], fixtures: [{ x: 152, y: 370, w: 58, h: 64, label: 'Books' }] },
+  cafe: { h: 430, windowTop: true,
+    tables: [
+      { k: 'W', name: 'Window bar', x: 24, y: 22, w: 314, h: 16, b: 6, window: true },
+      { k: 'R', name: 'Café table R', cx: 72, cy: 150, r: 22, n: 3, outlet: true },
+      { k: 'S', name: 'Café table S', cx: 181, cy: 150, r: 22, n: 3 },
+      { k: 'T', name: 'Café table T', cx: 290, cy: 150, r: 22, n: 3 },
+      { k: 'L', name: 'Long table', x: 60, y: 240, w: 242, h: 44, t: 5, b: 5, outlet: true },
+    ], fixtures: [{ x: 210, y: 340, w: 128, h: 40, label: 'Counter' }] },
+  cowork: { h: 430, windowTop: true,
+    tables: [
+      { k: 'D', name: 'Desk row D', x: 40, y: 44, w: 282, h: 40, t: 5, b: 5, outlet: true, window: true },
+      { k: 'E', name: 'Desk row E', x: 40, y: 172, w: 282, h: 40, t: 5, b: 5, outlet: true },
+      { k: 'P', name: 'Focus pod', x: 24, y: 290, w: 60, h: 34, b: 1, outlet: true, single: true },
+      { k: 'Q', name: 'Focus pod', x: 108, y: 290, w: 60, h: 34, b: 1, outlet: true, single: true },
+      { k: 'R', name: 'Focus pod', x: 194, y: 290, w: 60, h: 34, b: 1, outlet: true, single: true },
+      { k: 'S', name: 'Focus pod', x: 278, y: 290, w: 60, h: 34, b: 1, outlet: true, single: true },
+    ], fixtures: [] },
+  study: { h: 360, windowTop: false,
+    tables: [
+      { k: 'G', name: 'Table G', x: 40, y: 50, w: 120, h: 56, t: 3, b: 3, outlet: true },
+      { k: 'H', name: 'Table H', x: 202, y: 50, w: 120, h: 56, t: 3, b: 3 },
+      { k: 'I', name: 'Round table I', cx: 181, cy: 240, r: 34, n: 6 },
+    ], fixtures: [] },
+};
+const PLACES = [
+  { id: 'halden', name: 'Halden Library', type: 'Library', area: 'Old Town', walk: 4, until: 'Open till 23:00', late: true, layout: 'library', pFree: 0.42, seed: 7, amen: ['Quiet zone', 'Wi-Fi', 'Outlets'] },
+  { id: 'marlow', name: 'Marlow & Bean', type: 'Café', area: 'Old Town', walk: 6, until: 'Open till 19:00', late: false, layout: 'cafe', pFree: 0.3, seed: 21, amen: ['Wi-Fi', 'Food'] },
+  { id: 'grounds', name: 'Common Grounds', type: 'Café', area: 'Riverside', walk: 7, until: 'Open till 20:00', late: false, layout: 'cafe', pFree: 0.18, seed: 3, amen: ['Wi-Fi', 'Outlets', 'Food'] },
+  { id: 'atrium', name: 'Atrium Study Pods', type: 'Study room', area: 'Campus', walk: 11, until: 'Open till 00:00', late: true, layout: 'study', pFree: 0.35, seed: 14, amen: ['Quiet zone', 'Outlets'] },
+  { id: 'northside', name: 'Northside Cowork', type: 'Coworking', area: 'Level 3, Mill St', walk: 12, until: 'Open 24 hours', late: true, layout: 'cowork', pFree: 0.45, seed: 11, amen: ['Wi-Fi', 'Outlets', 'Day pass'] },
+  { id: 'ferris', name: 'Ferris Hall', type: 'Study room', area: 'Campus', walk: 15, until: 'Open till 22:00', late: false, layout: 'study', pFree: 0, seed: 5, amen: ['Quiet zone'] },
+  { id: 'central', name: 'City Central Library', type: 'Library', area: 'Civic Square', walk: 18, until: 'Open till 21:00', late: false, layout: 'library', pFree: 0.25, seed: 9, amen: ['Quiet zone', 'Wi-Fi', 'Printing'] },
+  { id: 'dock', name: 'The Dock', type: 'Coworking', area: 'Harbour', walk: 20, until: 'Open till 23:00', late: true, layout: 'cowork', pFree: 0.2, seed: 17, amen: ['Wi-Fi', 'Outlets', 'Coffee'] },
+];
+const CATS = [['all', 'All'], ['Library', 'Libraries'], ['Café', 'Cafés'], ['Coworking', 'Coworking'], ['Study room', 'Study rooms']];
+const C = { free: '#2FB86A', held: '#F2A93B', taken: '#EF4E4E', mine: '#4B3BFF' };
+const RING = 628.3, OFF = 17;
+
+function chairsFor(L) {
+  const out = [];
+  L.tables.forEach(t => {
+    const add = (cx, cy, rot) => { const i = out.filter(c => c.k === t.k).length; out.push({ k: t.k, label: t.single ? t.k : t.k + (i + 1), name: t.name, cx, cy, rot, window: !!t.window, outlet: !!t.outlet }); };
+    if (t.n) {
+      for (let i = 0; i < t.n; i++) { const a = -Math.PI / 2 + 2 * Math.PI * i / t.n; add(t.cx + (t.r + OFF) * Math.cos(a), t.cy + (t.r + OFF) * Math.sin(a), a * 180 / Math.PI + 90); }
+    } else {
+      for (let i = 0; i < (t.t || 0); i++) add(t.x + t.w * (i + 0.5) / t.t, t.y - OFF, 0);
+      for (let i = 0; i < (t.b || 0); i++) add(t.x + t.w * (i + 0.5) / t.b, t.y + t.h + OFF, 180);
+      for (let i = 0; i < (t.l || 0); i++) add(t.x - OFF, t.y + t.h * (i + 0.5) / t.l, -90);
+      for (let i = 0; i < (t.r || 0); i++) add(t.x + t.w + OFF, t.y + t.h * (i + 0.5) / t.r, 90);
+    }
+  });
+  return out;
+}
+PLACES.forEach(p => { Object.assign(p, LAYOUTS[p.layout]); p.chairs = chairsFor(p); });
+
+function rng(seed) { let a = seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function initSeats() {
+  const out = {};
+  PLACES.forEach(p => { const r = rng(p.seed); out[p.id] = p.chairs.map(() => { const x = r(); return x < p.pFree ? 'free' : 'taken'; }); });
+  return out;
+}
+const seatCode = label => { let h = 7; for (const ch of label) h = (h * 31 + ch.charCodeAt(0)) % 9000; return String(1000 + h); };
+const fmt = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const fmtClock = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+class Component extends DCLogic {
+  state = { splash: (this.props.showSplash ?? true) ? 'pre' : 'done', screen: 'browse', placeId: null, seats: initSeats(), sel: null, mine: null, now: Date.now(), seg: 'all', cat: 'all', sort: 'near', query: '', toast: null, pending: null, scanPhase: 'scanning', code: '', codeErr: false };
+
+  componentDidMount() {
+    if (this.state.splash === 'pre') {
+      this.t1 = setTimeout(() => this.setState({ splash: 'in' }), 60);
+      this.t2 = setTimeout(() => this.setState({ splash: 'out' }), 1700);
+      this.t3 = setTimeout(() => this.setState({ splash: 'done' }), 2200);
+    }
+    this.tick = setInterval(() => {
+      const now = Date.now();
+      this.setState({ now });
+    }, 1000);
+    this.live = setInterval(() => { if ((this.props.liveUpdates ?? true) && this.state.splash === 'done') this.flipRandom(); }, 2600);
+  }
+  componentWillUnmount() { [this.t1, this.t2, this.t3, this.toastT, this.scanT, this.scanT2].forEach(clearTimeout); clearInterval(this.tick); clearInterval(this.live); }
+
+  showToast(msg) { clearTimeout(this.toastT); this.setState({ toast: msg }); this.toastT = setTimeout(() => this.setState({ toast: null }), 3200); }
+  isMine(pid, i) { const m = this.state.mine; return m && m.placeId === pid && m.idx === i; }
+  flipRandom() {
+    const live = PLACES.filter(p => p.pFree > 0);
+    const cur = PLACES.find(x => x.id === this.state.placeId);
+    const p = cur && cur.pFree > 0 && Math.random() < 0.6 ? cur : live[Math.floor(Math.random() * live.length)];
+    const arr = this.state.seats[p.id]; const i = Math.floor(Math.random() * arr.length);
+    const pd = this.state.pending;
+    if (this.isMine(p.id, i) || (this.state.sel === i && this.state.placeId === p.id) || (pd && pd.placeId === p.id && pd.idx === i)) return;
+    const s = arr[i];
+    const next = s === 'free' ? 'taken' : (Math.random() < 0.4 ? 'free' : 'taken');
+    this.setSeat(p.id, i, next);
+  }
+  setSeat(pid, i, status) { this.setState(s => { const a = s.seats[pid].slice(); a[i] = status; return { seats: { ...s.seats, [pid]: a } }; }); }
+  counts(pid) { const c = { free: 0, held: 0, taken: 0 }; this.state.seats[pid].forEach(x => c[x]++); return c; }
+  clearScan() { clearTimeout(this.scanT); clearTimeout(this.scanT2); }
+  releaseMine(msg) {
+    const m = this.state.mine; if (!m) return;
+    this.clearScan();
+    this.setSeat(m.placeId, m.idx, 'free');
+    const s = this.state.screen;
+    this.setState({ mine: null, screen: s === 'browse' ? 'browse' : 'place', placeId: m.placeId, sel: null });
+    if (msg) this.showToast(msg);
+  }
+  doCheckIn() {
+    const pd = this.state.pending; if (!pd) return;
+    this.clearScan();
+    const m = this.state.mine; if (m) this.setSeat(m.placeId, m.idx, 'free');
+    this.setSeat(pd.placeId, pd.idx, 'taken');
+    this.setState({ mine: { ...pd, status: 'in', since: Date.now() }, pending: null, screen: 'in', code: '', codeErr: false });
+  }
+  startScan() {
+    this.clearScan();
+    this.setState({ screen: 'scan', scanPhase: 'scanning', code: '', codeErr: false });
+    this.scanT = setTimeout(() => this.scanFound(), 3200);
+  }
+  scanFound() {
+    if (this.state.scanPhase === 'found') return;
+    this.clearScan();
+    this.setState({ scanPhase: 'found' });
+    this.scanT2 = setTimeout(() => this.doCheckIn(), 1000);
+  }
+  pressKey(d) {
+    const { code, pending: mine } = this.state;
+    if (d === 'del') return this.setState({ code: code.slice(0, -1), codeErr: false });
+    if (code.length >= 4) return;
+    const next = code + d;
+    this.setState({ code: next, codeErr: false });
+    if (next.length === 4) {
+      if (next === seatCode(mine.label)) setTimeout(() => this.doCheckIn(), 350);
+      else setTimeout(() => this.setState({ codeErr: true, code: '' }), 300);
+    }
+  }
+
+  renderVals() {
+    const { splash, screen, placeId, seats, sel, mine, now, seg, cat, sort, query, toast, scanPhase, code, codeErr, pending } = this.state;
+    const glyphs = this.props.statusGlyphs ?? false;
+    const go = patch => this.setState(patch);
+    const px = n => Math.round(n) + 'px';
+    const open = id => go({ screen: 'place', placeId: id, sel: null, seg: 'all' });
+    const place = PLACES.find(p => p.id === placeId);
+    const minePlace = mine && PLACES.find(p => p.id === mine.placeId);
+
+    const q = query.trim().toLowerCase();
+    let list = PLACES.filter(p => (cat === 'all' || p.type === cat) && (!q || (p.name + ' ' + p.area + ' ' + p.type).toLowerCase().includes(q)));
+    if (sort === 'late') list = list.filter(p => p.late);
+    list = list.map(p => ({ p, c: this.counts(p.id) }));
+    list.sort((a, b) => sort === 'free' ? b.c.free - a.c.free : a.p.walk - b.p.walk);
+    const places = list.map(({ p, c }) => {
+      const total = p.chairs.length;
+      return {
+        slotId: 'place-' + p.id, name: p.name, meta: p.type + ' · ' + p.area, walk: p.walk + ' min walk',
+        freeLabel: c.free ? c.free + ' of ' + total + ' free' : 'Full right now', dot: c.free ? C.free : C.taken,
+        wFree: (c.free / total * 100) + '%', wHeld: (c.held / total * 100) + '%', imgOpacity: c.free ? '1' : '0.55',
+        onOpen: () => open(p.id),
+      };
+    });
+    const featured = PLACES.map(p => ({ p, c: this.counts(p.id) })).filter(x => x.c.free > 0 && (cat === 'all' || x.p.type === cat))
+      .sort((a, b) => b.c.free - a.c.free).slice(0, 5)
+      .map(({ p, c }) => ({ name: p.name, free: String(c.free), walk: p.walk + ' min walk', onOpen: () => open(p.id) }));
+
+    let chairs = [], tables = [], fixtures = [], selV = null, headline = '';
+    if (place) {
+      const match = ch => seg === 'all' || (seg === 'outlet' && ch.outlet) || (seg === 'window' && ch.window);
+      chairs = place.chairs.map((ch, i) => {
+        const st = seats[place.id][i]; const mineHere = this.isMine(place.id, i); const ok = match(ch);
+        return {
+          left: px(ch.cx - 17), top: px(ch.cy - 17), rot: 'rotate(' + ch.rot + 'deg)', unrot: 'rotate(' + (-ch.rot) + 'deg)',
+          bg: mineHere ? C.mine : C[st], ring: sel === i ? '0 0 0 2.5px #DCE9F2, 0 0 0 5px #4B3BFF' : 'none',
+          opacity: ok || mineHere ? '1' : '0.22', cursor: (st === 'free' && ok) || mineHere ? 'pointer' : 'default',
+          glyph: glyphs && !mineHere ? { free: '', held: 'H', taken: '×' }[st] : '', aria: ch.label + ', ' + (mineHere ? 'yours' : st),
+          onTap: () => { if (mineHere) go({ screen: mine.status }); else if (st === 'free' && ok) go({ sel: i }); },
+        };
+      });
+      tables = place.tables.map(t => t.n
+        ? { left: px(t.cx - t.r), top: px(t.cy - t.r), width: px(t.r * 2), height: px(t.r * 2), radius: '999px', label: t.k }
+        : { left: px(t.x), top: px(t.y), width: px(t.w), height: px(t.h), radius: t.h < 24 ? '6px' : '10px', label: t.h < 24 ? '' : t.k });
+      fixtures = place.fixtures.map(f => ({ left: px(f.x), top: px(f.y), width: px(f.w), height: px(f.h), label: f.label }));
+      if (sel != null && seats[place.id][sel] === 'free') {
+        const ch = place.chairs[sel]; const chips = [ch.name]; if (ch.window) chips.push('Window'); if (ch.outlet) chips.push('Outlet');
+        selV = { label: ch.label, title: 'Seat ' + ch.label + ' is free', chips };
+      }
+      const nMatch = place.chairs.filter((ch, i) => match(ch) && seats[place.id][i] === 'free').length;
+      headline = nMatch === 0 ? (this.counts(place.id).free === 0 ? 'Full right now' : 'None free here') : nMatch + (nMatch === 1 ? ' seat free' : ' seats free');
+    }
+
+    const remainingMs = mine && mine.status === 'held' ? mine.until - now : 0;
+    const mineRows = mine ? [
+      { k: 'Place', v: minePlace.name }, { k: 'Seat', v: mine.label + ' · ' + mine.name },
+      mine.status === 'held' ? { k: 'Distance', v: minePlace.walk + ' min walk' } : { k: 'Since', v: fmtClock(mine.since) + ' (' + fmt(now - mine.since) + ')' },
+    ] : [];
+    const found = scanPhase === 'found';
+    const keyRows = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
+
+    return {
+      darkBar: splash === 'pre' || splash === 'in' || (screen === 'scan' && splash === 'done'),
+      splashVisible: splash !== 'done', splashOpacity: splash === 'out' ? '0' : '1',
+      splashScale: splash === 'pre' ? 'scale(0.86)' : splash === 'out' ? 'scale(1.06)' : 'scale(1)',
+      splashLogoOpacity: splash === 'pre' ? '0' : '1', skipSplash: () => go({ splash: 'done' }),
+      toast,
+      isBrowse: screen === 'browse', isPlace: screen === 'place' && !!place,
+      isScan: screen === 'scan' && !!pending, isCode: screen === 'code' && !!pending, isIn: screen === 'in' && !!mine,
+      query, onQuery: e => go({ query: e.target.value }),
+      cats: CATS.map(([k, l]) => ({ label: l, bg: cat === k ? '#4B3BFF' : '#DCE9F2', fg: cat === k ? '#FFFFFF' : '#16172E',
+        isAll: k === 'all', isLib: k === 'Library', isCafe: k === 'Café', isCowork: k === 'Coworking', isStudy: k === 'Study room', onTap: () => go({ cat: k }) })),
+      featured, hasFeatured: featured.length > 0 && !q,
+      listTitle: cat === 'all' ? 'All places' : CATS.find(c => c[0] === cat)[1],
+      sorts: [['near', 'Nearest'], ['free', 'Most seats free'], ['late', 'Open late']].map(([k, l]) => ({ label: l, bg: sort === k ? '#16172E' : 'transparent', color: sort === k ? '#F6F1E7' : '#16172E', onTap: () => go({ sort: k }) })),
+      places, noResults: places.length === 0,
+      bottomPad: mine ? '130px' : '48px',
+      goBrowse: () => go({ screen: 'browse', sel: null }),
+      place: place ? { name: place.name, slotId: 'place-' + place.id, meta: place.type + ' · ' + place.area + ' · ' + place.walk + ' min walk · ' + place.until, amenities: place.amen, windowTop: place.windowTop } : {},
+      headline, floorH: place ? place.h + 'px' : '0px',
+      segs: [['all', 'All seats'], ['outlet', 'Outlet'], ['window', 'Window']].map(([k, l]) => ({ label: l, bg: seg === k ? '#F6F1E7' : 'transparent', shadow: seg === k ? '0 1px 3px rgba(22,23,46,0.14)' : 'none', onTap: () => go({ seg: k, sel: null }) })),
+      chairs, tables, fixtures,
+      hasSel: !!selV, sel: selV || {}, clearSel: () => go({ sel: null }),
+      placeBottomPad: selV ? '220px' : mine ? '130px' : '48px',
+      showActivity: !!mine && !selV && (screen === 'browse' || screen === 'place'),
+      startScanSel: () => { const ch = place.chairs[sel]; this.setState({ pending: { placeId: place.id, idx: sel, label: ch.label, name: ch.name }, sel: null }, () => this.startScan()); },
+      scanLabel: pending ? pending.label : '',
+      mineLabel: mine ? mine.label : '', mineColor: mine ? (mine.status === 'held' ? C.held : C.free) : C.free,
+      mineTitle: mine ? (mine.status === 'held' ? 'Holding ' + mine.label : 'Checked in at ' + mine.label) : '',
+      mineSub: mine ? minePlace.name : '',
+      mineClock: mine ? (mine.status === 'held' ? fmt(remainingMs) : fmt(now - mine.since)) : '',
+      openMine: () => go({ screen: mine.status }),
+      goMinePlace: () => go({ screen: 'place', placeId: mine.placeId, sel: null }),
+      remaining: fmt(remainingMs),
+      ringOffset: mine && mine.status === 'held' ? String(RING * (1 - Math.max(0, remainingMs) / mine.total)) : '0',
+      mineRows,
+      startScan: () => this.startScan(),
+      cancelScan: () => { this.clearScan(); go({ screen: 'place', pending: null }); },
+      scanFound: () => this.scanFound(),
+      scanDone: found,
+      scanTitle: found ? 'Seat ' + (pending ? pending.label : '') + ' confirmed' : 'Scan the code on ' + (pending ? pending.label : ''),
+      scanSub: found ? 'Checking you in…' : 'Find the Birdie sticker on the edge of the table and fit it in the frame.',
+      bracket: found ? '#2FB86A' : '#F6F1E7',
+      scanLine: !found && screen === 'scan' ? React.createElement('span', { key: 'scan', style: { position: 'absolute', left: 16, right: 16, height: 3, borderRadius: 2, background: '#2FB86A', boxShadow: '0 0 14px 2px rgba(47,184,106,0.7)', animation: 'birdieScan 1.6s ease-in-out infinite alternate' } }) : null,
+      openCode: () => { this.clearScan(); go({ screen: 'code', code: '', codeErr: false }); },
+      codeSub: pending ? 'Type the 4-digit code printed under the QR on seat ' + pending.label + '.' : '',
+      codeBoxes: [0, 1, 2, 3].map(i => ({ ch: code[i] || '', ring: codeErr ? '0 0 0 2px #EF4E4E' : i === code.length ? '0 0 0 2px #4B3BFF' : 'none' })),
+      codeMsg: !pending ? '' : codeErr ? 'That code doesn’t match ' + pending.label + '. Try again.' : 'Prototype hint: the code for ' + pending.label + ' is ' + seatCode(pending.label),
+      codeMsgColor: codeErr ? '#EF4E4E' : '#4A4D63',
+      keys: keyRows.map(k => ({ label: k === 'del' ? '' : k, isDel: k === 'del', aria: k === 'del' ? 'Delete' : k, vis: k === '' ? 'hidden' : 'visible', bg: k === 'del' ? 'transparent' : '#DCE9F2', onTap: () => k && this.pressKey(k) })),
+      release: () => { const l = mine.label; const wasIn = mine.status === 'in'; this.releaseMine(wasIn ? 'Thanks. ' + l + ' is free for the next person.' : 'Hold released. ' + l + ' is free again.'); },
+    };
+  }
+}
+</script>
+</body>
+</html>

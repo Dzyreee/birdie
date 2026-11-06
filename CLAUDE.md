@@ -2,7 +2,9 @@
 
 > **How to use this file:** It lives in the repo root as `CLAUDE.md`, so every Claude Code session starts with the full context. Teammates can also paste it into any AI assistant and say: *"This is our hackathon project brief. Help me with [your part]."*
 
-**Birdie** gives you a bird's-eye view of every study seat in Doha before you drive there: camera-verified live seat availability and booking for cafes, libraries and study spaces.
+**Birdie** gives you a bird's-eye view of every study seat in Doha before you drive there: camera-verified live seats for cafes, libraries and study spaces. See which seats are free, taken or held by a bag, before you leave home.
+
+> **Updated Fri 6 Nov, evening.** The team dropped booking, check-in, QR codes and the Fanar assistant, and adopted the mobile app design in `design/mobile/`. Birdie is now a live view: it shows seats, it doesn't reserve them. Section 16 lists what changes in the existing code.
 
 ---
 
@@ -18,6 +20,8 @@ You are helping a 4-person team at the **Qai x Hugging Face Hackathon 01**, held
 - **Privacy matters:** no face recognition, no storing images, no identifying individuals.
 - **Simple, working code over clever code.** Working end to end beats feature-rich and broken.
 - **Never commit** tokens, `.env` files, videos, frames or model weights.
+- **The mobile app follows the design handoff** in `design/mobile/` (`README.md` and `prototype.html`), screens 1 to 3 only (section 8.2). It is high fidelity: recreate its colours, type, spacing and interactions exactly. Where this file and the handoff disagree (check-in, QR codes, sample data, walk times, seat colours), this file wins.
+- **No booking, no check-in, no QR codes, no LLM assistant.** All were dropped on purpose. Don't build them or suggest them.
 - **Section 5 (Key decisions) is final.** If anything else in this file seems to conflict with it, section 5 wins.
 
 ---
@@ -54,7 +58,7 @@ You are helping a 4-person team at the **Qai x Hugging Face Hackathon 01**, held
 
 ### Problem statement
 
-> In Doha, checking whether a study spot has room means a drive, not a walk. Students and remote workers who can't focus at home drive to Qatar National Library or a cafe, find it full, and drive again. Booking systems don't help much, because their availability is a guess: walk-ins aren't counted, no-shows block seats, and bags left on chairs make seats look taken. People need to know **whether there will actually be a seat when they arrive**.
+> In Doha, checking whether a study spot has room means a drive, not a walk. Students and remote workers who can't focus at home drive to Qatar National Library or a cafe, find it full, and drive again. Booking systems and busyness estimates don't help much, because their availability is a guess: walk-ins aren't counted, no-shows block seats, and bags left on chairs make seats look taken. People need to know **whether there is actually a free seat right now**.
 
 ### Why this is a Qatar problem, not a generic one
 
@@ -62,7 +66,7 @@ You are helping a 4-person team at the **Qai x Hugging Face Hackathon 01**, held
 - **Strong demand for study space.** In November 2025, QNL extended its Quiet Study Area into the night because patrons asked for it. QNL is also the main gathering place for students from schools across Qatar during exam season.
 - **Large venues, no visibility.** The QU library alone has about 1,500 study spaces, and nobody can see which floor has free ones.
 - **Booking exists but runs on trust.** QNL spaces can be reserved online, and QU study rooms can be booked for up to 4 hours a day. Neither system can tell whether a booked seat is actually used.
-- **Local calendar patterns that generic tools ignore:** the Friday and Saturday weekend, quiet Friday mornings before midday prayer, Ramadan's late-night cafe rush between iftar and suhoor, exam seasons, and the winter-only outdoor terrace season.
+- **Local patterns that generic tools ignore:** the Friday and Saturday weekend, quiet Friday mornings before midday prayer, Ramadan's late-night cafe rush between iftar and suhoor, exam seasons, the winter-only outdoor terrace season, and family and women's sections in many venues.
 
 ### Founder story (open the pitch with this)
 
@@ -74,43 +78,42 @@ One of us has personally driven to a cafe or library to study, found no seat, an
 
 | Existing option | What it does | What it can't do |
 |---|---|---|
-| Google Maps "popular times" | Estimates how busy a place is from phone location data | No seats, no sections, no outlets or noise level, no booking, no "held by a bag" detection |
+| Google Maps "popular times" | Estimates how busy a place is from phone location data | No seats, no sections, no outlets, no "held by a bag" detection |
 | UTSeat (Qatar-based app, 2021) | Book a specific restaurant seat like a cinema seat; shows real-time status and a live view | Availability depends on bookings, not verified seat by seat by camera; no study focus |
 | Worka, Regus apps (coworking) | Real-time desk availability and instant booking | Only inside their own coworking spaces; booking-based, not verified |
 | QNL / QU booking systems | Reserve rooms or spaces online | No check-in verification, no-shows go undetected, walk-ins aren't tracked |
 
-**Our edge, in one line:** *every other app shows what was booked; Birdie shows what's actually happening.*
+**Our edge, in one line:** *every other app shows what was booked; Birdie shows what's actually happening.* We deliberately take no bookings: bookings are exactly what makes the other apps wrong.
 
 ---
 
 ## 4. The solution
 
+Birdie is a **mobile app** (a mobile web app, see section 5) where students and remote workers see live seats before they drive, plus an **operator console** for the venue. It is view-only: users look, then go. Nobody reserves or claims a seat in the app.
+
 ### Core features (must have)
 
 1. **Three seat states from computer vision:**
-   - `FREE`: no person, no belongings.
-   - `OCCUPIED`: a person is in the seat, or stepped away recently and left belongings.
-   - `HELD`: belongings (bag, laptop, cup) on the seat or table with **no person for longer than the hold time** (30 minutes in production, 30 seconds in demo mode).
-2. **Live venue view:** free seat counts per venue and per zone (quiet zone, family section, women's section, terrace, where the venue has them).
-3. **Verified booking:**
-   - The venue chooses which seats are bookable (for example 20%), so walk-ins aren't shut out.
-   - A user books a seat for an arrival time.
-   - **Check-in:** the user scans a QR code on the table. The camera only confirms the seat is now occupied. The camera never identifies who is sitting there.
-   - **Automatic no-show release:** if the seat is still empty after the no-show time (15 minutes in production, 60 seconds in demo mode), it goes back to walk-ins.
-   - A seat held by belongings for too long triggers a staff alert.
-4. **Runs on an HF Space**, with models from the HF Hub.
+   - `FREE`: no person, no belongings. Shown green, "Free".
+   - `OCCUPIED`: a person is in the seat, or stepped away recently and left belongings. Shown red, "Taken".
+   - `HELD`: belongings (bag, laptop, cup) on the seat or table with **no person for longer than the hold time** (30 minutes in production, 30 seconds in demo mode). Shown amber, "Held".
+2. **Browse Doha venues** (design screen 2): live free-seat counts per venue, categories, search, sort, a "Free right now" rail and drive times.
+3. **Live floor plan per venue** (design screen 3): every chair coloured by its live state, with an Outlet / Window filter. Tapping a free or held chair shows its details.
+4. **Staff alert** when a seat has been held by belongings for too long (in the operator console).
+5. **Runs on an HF Space**, with the detector from the HF Hub.
 
-### Differentiators (should have)
+### Should have
 
-5. **Availability at your arrival time:** "about 6 seats likely free when you arrive in 25 minutes." This matters because everyone drives. Built from live data, a forecast and Qatar calendar features.
-6. **Focus score (0 to 100):** combines free seats at arrival, noise level (a decibel number only, no audio recorded), free seats with outlets and the crowd trend. Answers the real need: "I can't focus at home, where can I focus *now*?"
-7. **Ask in Arabic or English:** for example, "quiet seat with outlets for two near Lusail, arriving in 20 minutes." Answered with Qatar's own Arabic LLM, Fanar (see section 8.6).
-8. **Venue dashboard:** occupancy by hour, no-show rate, minutes seats were held by belongings, peak times. This is why venues would install the system.
+6. **Venue dashboard** (operator console): occupancy by hour, minutes seats were held by belongings, peak times. This is why venues would install the system.
+7. **Seat-state accuracy number** for the judges (section 8.4).
 
-### Business rules per venue type
+### Built in the backend, not in the mobile design
 
-- **Cafes:** a booked seat includes a prepaid drink (minimum spend). The cafe earns from every booking instead of losing a table to someone sitting all day on one coffee. **Mocked in the demo** ("Prepaid drink ✓").
-- **Libraries:** free booking, with a limit on repeated no-shows.
+Availability at arrival time, the focus score, `recommend()` and the calendar-aware forecast already exist in the code (section 8.3). They are not part of the mobile app. Keep the code, but don't spend time on them until the must-haves work end to end.
+
+### What venues get
+
+Live occupancy without counting people by hand, alerts for seats hogged by bags, and analytics on peak times and how long seats sit held. Customers arrive knowing there's a seat instead of circling the room.
 
 ### Possible extension (mention in the pitch, don't build)
 
@@ -121,26 +124,50 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 ## 5. Key decisions (final)
 
 - **Name:** Birdie.
-- **Language:** Python 3.11+ for everything.
-- **App:** one Gradio app (`gr.Blocks`, launched with `demo.launch()`) deployed as a single Hugging Face Space, with three tabs: **Find a seat**, **Venue dashboard**, **Camera**. All live state lives in this one process.
-- **Code structure:** all core logic lives in the `birdie/` package and **never imports Gradio**. UI code lives only in `app.py` and `birdie/ui/`. This keeps the core reusable and makes merging with the second backend repo easy.
+- **View-only app.** No booking, no check-in or check-out, no QR codes, no seat codes, no "your seat". The camera alone decides each seat's state.
+- **No LLM assistant.** Fanar and the Arabic/English assistant are dropped. Nothing in the app needs a GPU.
+- **Languages:** Python 3.11+ for the backend. The mobile app is plain HTML, CSS and JavaScript with no build step and no framework.
+- **One Space, one process.** A single Hugging Face Space (Gradio SDK, runs `python app.py`) serves everything from one Python process on port 7860, so all live state lives in one place:
+  - `/`: the **mobile web app**, static files from `web/`. This is the product users see.
+  - `/api/...`: a small read-only **JSON API** (FastAPI) that the mobile app calls (section 7.2).
+  - `/operator`: the **Gradio operator console** with two tabs, **Camera** (webcam feed plus the seat setup tool) and **Venue dashboard**. It is mounted into the FastAPI app with `gr.mount_gradio_app`, and `app.py` runs the combined app with uvicorn.
+- **Mobile app:**
+  - It is a mobile web app, not a native app. The handoff README's SwiftUI / React Native suggestion does not apply. It opens from a link with no install.
+  - It is designed for phone width (the design frame is 402 × 874). On a laptop it shows as a centred phone-width column.
+  - It polls the API every 2 seconds for live seat states.
+  - It has no accounts and sends nothing about the user.
+- **Code structure:**
+  - All core logic lives in the `birdie/` package.
+  - Only `birdie/api.py` imports FastAPI. Only `app.py` and `birdie/ui/` import Gradio.
+  - The mobile app lives only in `web/`.
 - **Vision: one detector only:** `PekingU/rtdetr_r18vd` (COCO classes). COCO already covers people and belongings, so one model in one pass gives both `OCCUPIED` and `HELD`. `person` means occupied. Belongings: backpack, handbag, suitcase, laptop, cup, bottle, book, cell phone. **No OWLv2 or Grounding DINO** (slow, and not needed).
 - **Frame rate:** about 1 frame per second, long side resized to at most 640 px.
-- **Privacy:** frames are processed in memory and discarded, never written to disk or logged. People are **blurred** in any frame shown on screen, including the operator view. Only seat states are stored.
+- **Privacy:** frames are processed in memory and discarded, never written to disk or logged. People are **blurred** in any frame shown on screen, including the operator console. Only seat states are stored.
+- **Seat colours:** three, and only three.
+  - `FREE` is green `#2FB86A` ("Free").
+  - `OCCUPIED` is red `#EF4E4E` ("Taken").
+  - `HELD` is amber `#F2A93B` ("Held").
+  - The floor plan legend reads **Free / Taken / Held**.
+  - The handoff's indigo "Yours" colour is not used.
 - **Timers:** all timers and thresholds live in `birdie/config.py` behind `DEMO_MODE` (on by default):
 
   | Setting | Demo | Production |
   |---|---|---|
   | Hold timer (OCCUPIED to HELD) | 30 s | 30 min |
-  | No-show release | 60 s | 15 min |
-  | Check-in confirmation window | 60 s | 5 min |
   | Smoothing | 3 frames | 3 frames |
 
 - **Testability:** everything time-based takes an injectable clock, so tests never sleep.
-- **Assistant:** `QCRI/Fanar-1-9B-Instruct` **without tool calling** (Fanar 1 doesn't support it). The model turns the question into a `Query` object, Python computes the answer, and the model phrases the reply. Which GPU it runs on is decided later.
-- **ZeroGPU rule:** if we ever run on ZeroGPU, functions decorated with `@spaces.GPU` run in a separate worker process, so they must be pure (frame in, detections out). Seat state is never changed inside them.
-- **Venues:** one live venue (Nestwork Msheireb, camera in the room) plus simulated venues. Simulated venues and synthetic history are **always labelled** as simulated or synthetic, in the UI and in the pitch.
-- **Forecast:** a calendar-aware baseline by default; `amazon/chronos-bolt-small` as an optional second model, compared in a backtest.
+- **No GPU.** Vision, the simulator, analytics and the forecast all run on CPU, so the Space runs on the free CPU tier.
+- **Venues: Doha only.**
+  - One live venue (Nestwork Msheireb, camera in the room) plus simulated venues.
+  - Simulated venues are **always labelled "Simulated"** in the app (on list rows and the place screen) and in the pitch.
+  - Invented places get invented names.
+  - None of the handoff's placeholder data ("Old Town", "Halden Library" and so on) is used.
+- **Distance is drive time, never walk time:**
+  - Each venue has an approximate drive time in minutes from Nestwork Msheireb, the demo location. The app shows "N min drive".
+  - The location header reads "Seats near Msheireb".
+  - The "Nearest" sort uses drive time.
+- **Forecast:** a calendar-aware baseline, with `amazon/chronos-bolt-small` as an optional second model compared in a backtest. Both are built, and neither is used by the mobile app.
 - **Deploy:** upload to the Space with `hf upload`, not `git push`.
 
 ---
@@ -148,19 +175,20 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 ## 6. Architecture
 
 ```
-[Venue camera = laptop webcam, or a recorded clip]
+[Venue camera = laptop webcam in the operator console, or a recorded clip]
         │  frames at ~1 fps (browser to Space)
         ▼
-[HF Space: one Gradio app, one process]
-  ├─ birdie/vision     RT-DETR r18 (Hub) → seat assignment → seat state machines
-  ├─ birdie/booking    bookings, QR check-in, no-show release, staff alerts
-  ├─ birdie/forecast   Qatar calendar, synthetic history, baseline + Chronos-Bolt
-  ├─ birdie/decision   availability at arrival, focus score, recommend()
-  ├─ birdie/simulator  drives the simulated venues through the same code path
-  ├─ birdie/analytics  dashboard numbers from the event log
-  ├─ birdie/assistant  Fanar: question → Query → recommend() → reply (later)
-  ├─ storage           SQLite (bookings, seat events, occupancy buckets)
-  └─ UI tabs           Find a seat · Venue dashboard · Camera
+[HF Space: one Python process, port 7860]
+  ├─ /             mobile web app (web/: HTML, CSS, JS)   ◄── phones poll /api every 2 s
+  ├─ /api          read-only JSON API (birdie/api.py, FastAPI)
+  ├─ /operator     Gradio console: Camera + seat setup, Venue dashboard
+  └─ birdie/ core
+       ├─ vision      RT-DETR r18 (Hub) → seat assignment → seat state machines
+       ├─ alerts      staff alerts for seats held too long
+       ├─ simulator   drives the simulated venues through the same code path
+       ├─ analytics   dashboard numbers from the event log
+       ├─ forecast, decision   built, not used by the mobile app
+       └─ storage     SQLite (seat events, occupancy buckets)
         │
         ▼
 [HF Hub]
@@ -171,51 +199,70 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 ### Repo layout
 
 ```
-app.py                  Gradio entry point (UI only)
+app.py                  builds the FastAPI app: API, web/ at /, Gradio console at /operator; runs uvicorn
+web/                    mobile web app: index.html, app.css, app.js (no build step)
+design/mobile/          design handoff: README.md (spec) and prototype.html (open it in a browser)
 birdie/
   config.py             DEMO_MODE, timers, thresholds
   models.py             pydantic data models (section 7)
   storage.py            SQLite repository
   clock.py              real and fake clocks
-  vision/               detector.py, seats.py, state.py
-  booking.py
-  forecast/             calendar.py, synthetic.py, model.py
-  decision.py
+  vision/               detector.py, seats.py, state.py, render.py
+  api.py                read-only JSON API for the mobile app (the only module that imports FastAPI)
+  service.py            wires everything together; the one object the API and console talk to
+  scheduler.py          background ticks: staff alerts, occupancy buckets
   simulator.py
   analytics.py
-  assistant/            (later)
-  ui/                   Gradio tab builders
-venues/<venue_id>.json  venue info and seat polygons
-jobs/backtest.py        forecast backtest (runs locally and as an HF Job)
-docs/CONTRACT.md        data models and public functions, for merging repos
+  forecast/, decision.py  built, not used by the mobile app
+  ui/                   Gradio operator console (camera, seat setup, dashboard)
+venues/<venue_id>.json  venue info, floor plan, seats (floor-plan position and camera polygon)
+jobs/                   backtest.py, evaluate.py (run locally or as HF Jobs)
+docs/CONTRACT.md        data models, API and public functions
 tests/
 ```
 
 ### Privacy story
 
-Frames are processed in memory and discarded immediately. No images are stored and only seat states are kept. Even the operator view blurs people. In production, the same model runs on a small device at the venue, so **no images ever leave the venue**. Qatar's personal data protection law (Law No. 13 of 2016, the first general data protection law in the GCC) is why this design matters.
+Frames are processed in memory and discarded immediately. No images are stored and only seat states are kept. Even the operator view blurs people. The app has no accounts and knows nothing about who is sitting where: the camera only sees that *someone* or *something* is in a seat. In production, the same model runs on a small device at the venue, so **no images ever leave the venue**. Qatar's personal data protection law (Law No. 13 of 2016, the first general data protection law in the GCC) is why this design matters.
 
 ---
 
-## 7. Data contract
+## 7. Data contract and API
 
-Both backend repos use these models (in `birdie/models.py`, documented in `docs/CONTRACT.md`). Anything that produces or consumes seat data must match them.
+The models live in `birdie/models.py` and are documented in `docs/CONTRACT.md`. The frontend and backend both build against this section; anything that produces or consumes seat data must match it.
 
-- **Venue:** `venue_id`, `name`, `area`, `type` (cafe, library, cowork), `lat`, `lon`, `zones`, `bookable_fraction`, `source` (live, recorded, simulated), `noise_db`
-- **Seat:** `seat_id`, `venue_id`, `zone`, `has_outlet`, `bookable`, `polygon` (normalised 0 to 1 coordinates, so it works at any camera resolution)
-- **SeatSnapshot:** `venue_id`, `seat_id`, `zone`, `has_outlet`, `state` (FREE, OCCUPIED, HELD), `since`, `updated_at`
-- **SeatEvent:** `ts`, `venue_id`, `seat_id`, `old_state`, `new_state`
-- **Booking:** `booking_id`, `venue_id`, `seat_id`, `start_time`, `status` (BOOKED_PENDING, QR_SCANNED, CHECKED_IN, COMPLETED, NO_SHOW_RELEASED, CANCELLED), `created_at`, `prepaid_item` (cafes only, mocked)
-- **Query:** `area`, `party_size`, `needs_outlet`, `quiet`, `zone`, `venue_type`, `arrival_minutes`
+### 7.1 Models
 
-### Demo venues
+- **Venue:** `venue_id`, `name`, `area`, `type` (library, cafe, cowork, study_room), `lat`, `lon`, `source` (live, recorded, simulated), `drive_minutes` (approximate, from Nestwork Msheireb), `open_until` (display text, for example "Open till 23:00"), `open_late` (bool, for the "Open late" sort), `amenities` (chip labels, for example "Quiet zone", "Women's section", "Outlets", "Wi-Fi"), `zones`, `floor_plan`. `noise_db` is optional and used only by the focus score.
+- **FloorPlan:** `width` (362), `height` (360 to 490), `window_top` (bool), `tables`, `fixtures`. Units are design points on a 362-wide plan; the app scales to the screen.
+  - **Table:** `table_id` (a letter, for example "A"), `name` (for example "Table A", "Window bar"), `shape` (rect or round), then `x`, `y`, `w`, `h` for rect or `cx`, `cy`, `r` for round.
+  - **Fixture:** `label` (for example "Books", "Counter"), `x`, `y`, `w`, `h`.
+  - The prototype's `LAYOUTS` and `chairsFor()` in `design/mobile/prototype.html` show how tables and chair positions fit together.
+- **Seat:** `seat_id` (the label users see: table letter plus number, for example "A3"), `venue_id`, `table_id`, `zone`, `has_outlet`, `has_window`, `plan_x`, `plan_y` (chair centre on the floor plan), `plan_rot` (degrees: 0 above the table, 180 below, -90 left, 90 right, radial around round tables), `polygon` (normalised 0 to 1 camera coordinates; live venue only).
+- **SeatSnapshot:** `venue_id`, `seat_id`, `state` (FREE, OCCUPIED, HELD), `since`, `updated_at`.
+- **SeatEvent:** `ts`, `venue_id`, `seat_id`, `old_state`, `new_state`.
 
-| venue_id | Name | Source |
-|---|---|---|
-| `nestwork-msheireb` | Nestwork Msheireb, Doha | Live (camera in the room) |
-| `qnl` | Qatar National Library, Education City | Simulated |
-| `qu-library` | Qatar University Library | Simulated |
-| `qahwa-corner` | Qahwa Corner (demo cafe), Lusail | Simulated (invented name) |
+Removed: `Booking`, `Query`, `bookable`, `bookable_fraction`, `prepaid_item`, and anything to do with check-in or QR codes.
+
+### 7.2 API (JSON, read-only)
+
+| Method and path | Response |
+|---|---|
+| `GET /api/venues` | List of venues (no floor plan), each with `counts`: `free`, `taken`, `held`, `total` |
+| `GET /api/venues/{venue_id}` | Venue with `floor_plan` and `seats`. Each seat has `seat_id`, `table_id`, `has_outlet`, `has_window`, `plan_x`, `plan_y`, `plan_rot`, `status` (free, taken, held) and `since` (when it entered that status) |
+
+Status mapping: FREE is `free`, OCCUPIED is `taken`, HELD is `held`.
+
+### 7.3 Demo venues
+
+| venue_id | Name | Type | Area | Source | Drive time (approx.) |
+|---|---|---|---|---|---|
+| `nestwork-msheireb` | Nestwork Msheireb | Coworking | Msheireb Downtown | Live (camera in the room) | You're here |
+| `qnl` | Qatar National Library | Library | Education City | Simulated | ~15 min |
+| `qu-library` | Qatar University Library | Library | Qatar University | Simulated | ~25 min |
+| `qahwa-corner` | Qahwa Corner (invented) | Cafe | Lusail | Simulated | ~25 min |
+
+Optional: add 2 to 4 more simulated venues with invented names (for example a cafe in West Bay, a study-room venue) so the browse list looks full and every category has something. Hide a category if it has no venues. The Nestwork floor plan must match the real tables in the demo room, and its seat IDs must match the camera polygons.
 
 ---
 
@@ -223,7 +270,7 @@ Both backend repos use these models (in `birdie/models.py`, documented in `docs/
 
 ### 8.1 Seat state
 
-- Each venue's seats are polygons on the camera frame, drawn once with the seat setup tool in the Camera tab.
+- Each live venue's seats are polygons on the camera frame, drawn once with the seat setup tool in the operator console.
 - Each frame:
   1. Detect people and belongings.
   2. Assign each detection to the seat whose polygon contains the box centre; if none does, to the seat with the largest overlap above 20%.
@@ -231,62 +278,53 @@ Both backend repos use these models (in `birdie/models.py`, documented in `docs/
   4. A new observation only counts after it holds for k consecutive frames (smoothing against occlusion and bad detections).
   5. `PERSON` gives `OCCUPIED`. `ITEMS` keeps the seat `OCCUPIED` (the person stepped away) until items have been there with no person for the hold time, then `HELD`. `EMPTY` gives `FREE`.
 - Every state change is stored as a `SeatEvent`.
+- Simulated venues change seat states through the same state code, driven by the simulator.
+- A background scheduler ticks every 2 seconds for staff alerts and occupancy buckets.
 
-### 8.2 Booking
+### 8.2 Mobile app screens
 
-- Only seats marked `bookable` can be booked, and at most `bookable_fraction` of a venue's seats.
-- `BOOKED_PENDING` → user scans the table's QR code (URL with `?checkin=<booking_id>`) → `QR_SCANNED` → camera (or simulator) sees the seat `OCCUPIED` within the confirmation window → `CHECKED_IN` → `COMPLETED`.
-- Still not occupied after the no-show time → `NO_SHOW_RELEASED`, and the seat goes back to walk-ins.
-- A background scheduler ticks every 2 seconds for releases, completions and staff alerts.
+Build **screens 1 to 3** of `design/mobile/README.md`. Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. Changes from the handoff:
 
-### 8.3 Forecast
+- **1. Splash:** as designed.
+- **2. Browse:**
+  - The header reads "Seats near Msheireb".
+  - Rows show "N of M free · N min drive" and a "Simulated" chip where it applies.
+  - The share bar is split green / amber / red (free / held / taken).
+  - Categories: All, Libraries, Cafés, Coworking, Study rooms (hide a category with no venues).
+- **3. Place:**
+  - The meta line reads "Type · Area · N min drive · Open till HH:MM", with a "Simulated" chip where it applies.
+  - The amenity chips include zones such as Women's section, Family section and Quiet zone.
+  - Chairs are coloured from the API status (green, red, amber), and the legend reads Free / Taken / Held.
+  - **Seat sheet:** tapping a free or held chair opens the bottom sheet, **without the "Scan to check in" button**. A free chair shows "Seat A3 is free" plus its chips (table, Window, Outlet). A held chair shows "Seat A3 is held by a bag" and "Nobody here for N min" (from `since`). Taken chairs can't be tapped.
+  - Place photos: none are supplied. Use the mist placeholder with the venue type's icon.
+- **Live updates:** poll the API every 2 seconds instead of the prototype's random flips.
 
-- **Calendar features:** weekend is Friday and Saturday; Friday mornings are quiet until after midday prayer; Ramadan flag and exam-season flag (configurable date ranges); hour of day.
-- **History:** live data captured during the event plus four weeks of **synthetic** history per venue in 15-minute buckets, shaped by venue type and the calendar. Clearly labelled synthetic.
-- **Models:** baseline = average occupancy by venue, day type and 15-minute slot, adjusted by the calendar flags. Optional: `amazon/chronos-bolt-small`.
-- **Backtest:** `jobs/backtest.py` holds out the last week and compares both models (MAE on free seats at 15, 30 and 60 minute horizons). Runs locally on CPU and as an HF Job, results pushed to the Hub.
+### 8.3 Built but not used by the mobile app
 
-### 8.4 Availability at arrival
+- **Forecast:** calendar features (Friday and Saturday weekend, quiet Friday mornings, Ramadan and exam-season flags, hour of day), four weeks of synthetic history per venue, a baseline model and optional Chronos-Bolt. `jobs/backtest.py` compares them (MAE at 15, 30 and 60 minutes) locally or as an HF Job.
+- **`availability_at(venue_id, arrival_minutes)`, `focus_score()`, `recommend()`:** they blend live data with the forecast.
+- If the must-haves are finished early, the cheapest way to surface this is one line on the place screen, for example "about 6 likely free when you arrive in 15 min". This is the strongest drive-time angle for the pitch. Otherwise leave it.
 
-`availability_at(venue_id, arrival_minutes)` blends the live free-seat count with the forecast (live data counts more for short arrival times), subtracts bookings that start before arrival, and returns expected free seats with a low/high range.
+### 8.4 The number for the judges
 
-### 8.5 Focus score and recommendations
-
-- `focus_score(venue_id, arrival_minutes)`, 0 to 100, with a breakdown shown to the user:
-  - Free-seat ratio at arrival: 40%
-  - Noise level (`noise_db`): 25%
-  - Free seats with outlets: 20%
-  - Crowd trend (emptying is better): 15%
-- `recommend(query)` filters venues by the query (party size, outlets, quiet, zone, type, area), ranks them by focus score, and returns the top 3 with short reasons.
-
-### 8.6 Assistant (Arabic and English)
-
-1. Fanar reads the question and outputs a `Query` as JSON.
-2. Python runs `recommend()` and `availability_at()` on live data.
-3. Fanar writes the reply in the user's language.
-
-Why not tool calling: Fanar-1-9B-Instruct doesn't support it. Fanar-2-27B-Instruct does, but at 27B it's too heavy for our budget and too risky live. Fallback if Fanar is too slow: a small Qwen instruct model.
-
-### 8.7 The number for the judges
-
-Label about 150 to 300 frames from our own footage (seat → free / occupied / held) and report **seat-state accuracy**. Run the evaluation as an HF Job and push the dataset and results to the Hub.
+Label about 150 to 300 frames from our own footage (seat → free / occupied / held) and report **seat-state accuracy**. Run the evaluation as an HF Job and push the dataset and results to the Hub. The tooling exists: `tools/extract_frames.py`, `tools/label_app.py`, `jobs/evaluate.py`, `docs/LABELLING.md`.
 
 ---
 
 ## 9. Accounts, compute and deploy
 
-- **Dev Space:** `birdie` on Yacine's Hugging Face account, free CPU. Deploy with `hf upload`, excluding `.venv`, `data/` and anything gitignored.
+- **Dev Space:** `birdie` on Yacine's Hugging Face account, free CPU. Deploy with `scripts/deploy_space.sh` (`hf upload` of git-tracked files only).
 - **Final Space:** `birdie` on the teammate's account that holds the $100 credit. Yacine pushes to it with a fine-grained token scoped to that one Space. The token is never written into any file in the repo.
-- **The account owner handles anything that costs money:** switching hardware, a short sleep time so paid hardware doesn't idle, and Space secrets (for example an HF token for model downloads).
-- **GPU only when needed:** vision, forecasting and decisions run on CPU. A GPU is only needed for the assistant (Fanar). Ask the HF engineers on site whether ZeroGPU is available, or which paid tier makes sense.
-- **Track every dollar** (hardware hours, Jobs) for the efficiency slide.
+- **The account owner handles anything that costs money:** HF Jobs, any hardware change, and Space secrets (for example an HF token for model downloads).
+- **No GPU.** The whole app runs on the free CPU tier. Money is spent only on HF Jobs (accuracy evaluation, backtest).
+- **Track every dollar** for the efficiency slide.
 
 ### Efficiency story
 
 - One detector covers people and belongings, so one model pass per frame instead of two.
 - About 1 frame per second, 640 px, on CPU.
-- A small forecaster (baseline, optional Chronos-Bolt small) on CPU.
-- GPU only for the LLM, with a short sleep time.
+- No LLM and no GPU: the entire live app runs on Hugging Face's free CPU tier.
+- The only spend is short HF Jobs for evaluation, with results saved to the Hub.
 
 ---
 
@@ -294,23 +332,33 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 
 ### Team
 
-1. **Yacine (software lead):** this repo: foundation, vision, booking, forecast, decision logic, deploy.
-2. **Coding teammate:** backend work in a separate repo. The two repos get merged into a new repo, keeping the best of both, using the data contract in section 7.
-3. **Two teammates (research and pitch):** organizer permission for the camera in the room, asking HF engineers about hardware, the room survey, venue clips (with permission), the pitch deck, compute-cost tracking, and frame labelling.
+1. **Yacine and Daffa (backend):** the core package, vision, the API, the operator console, Doha venue data and floor plans, deploy. They split the section 16 checklist between them.
+2. **Omair (frontend):** the mobile web app in `web/`, built from screens 1 to 3 of the design handoff against the API in section 7.2. Starts on mock data shaped exactly like the API responses, so wiring up later is a URL change.
+3. **Khalid (pitch):**
+   - The pitch deck and the demo script.
+   - The room survey (section 13).
+   - Organizer permission for the camera in the room.
+   - Compute-cost tracking.
+   - The backup video.
+4. **Everyone:** frame labelling for the accuracy number, when free.
 
 ### Priority
 
-- **Must have:** seat zones, 3 states, live camera, booking with QR check-in, no-show release, deployed on an HF Space.
-- **Should have:** availability at arrival time, focus score, venue dashboard, Arabic/English assistant.
-- **Fake or skip:** payments (mocked), real cafe partnerships (simulated venues, clearly labelled), user accounts and login.
+- **Must have:**
+  - The 3 seat states from the live camera.
+  - The mobile app: browse and the live floor plan.
+  - Doha venue data.
+  - The operator Camera console.
+  - Deployed on an HF Space.
+- **Should have:** venue dashboard, staff alerts, accuracy evaluation, splash screen.
+- **Skip:** booking, check-in, QR codes, payments, user accounts and login, the LLM assistant, a native app, place photos.
 
-### Timeline (from Friday 17:00)
+### Timeline (from Friday 20:00)
 
 | When | Goal |
 |---|---|
-| Fri 17:00 to 20:00 | Foundation, vision core, Camera tab, booking; first deploy to the dev Space |
-| Fri 20:00 to 23:00 | Forecast, decision logic, Find a seat and dashboard tabs; merge with the second repo |
-| Fri 23:00 to 02:00 | Arabic/English assistant; move to the final Space if a GPU is needed; teammates label frames |
+| Fri 20:00 to 23:00 | Frontend: screens 1 to 3 on mock data. Backend: remove booking and the assistant, add the API, floor plans and Doha data; serve `web/` and `/operator` from one process |
+| Fri 23:00 to 02:00 | Wire the app to the live API; deploy; test on real phones with the camera in the room; label frames |
 | Fri night | **Record a backup demo video** |
 | Sat 07:00 to 11:00 | Accuracy evaluation as an HF Job, polish, rehearse. **Freeze at 11:00, submit by 12:00** (hard deadline 14:00) |
 
@@ -320,15 +368,15 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 
 1. **Hook (15 s):** the founder story: drove to study, no seat, wasted trip.
 2. **Data (15 s):** room survey result (section 13), plus the car-dependent Doha framing.
-3. **Live (60 s):**
-   - Birdie shows "Nestwork Msheireb" with live seats from a laptop camera pointed at tables in this room (organizer permission needed).
-   - A teammate stands up → the seat flips to `FREE`.
-   - A bag is left on a chair → after the demo timer it flips to `HELD`.
-   - Book a seat → scan the QR → camera confirms `CHECKED_IN`.
-   - Show a booking where nobody arrives → `NO_SHOW_RELEASED`.
-   - Ask in Arabic: "Where can I study near Msheireb in 20 minutes?" → the answer gives availability at arrival and a focus score.
-4. **Venue dashboard (15 s):** occupancy by hour, no-shows, held-seat minutes.
-5. **Trust and efficiency (15 s):** models used, total dollars spent, accuracy on our labelled set, "no images ever leave the venue."
+3. **Live (60 s):** a phone mirrored on the screen, and the operator console on a laptop with its camera pointed at tables in this room (organizer permission needed).
+   - Open Birdie: Doha venues with drive times, Nestwork live, the others marked Simulated.
+   - Open Nestwork: the floor plan matches the tables in this room.
+   - A teammate stands up and leaves → the chair turns green on the phone.
+   - A teammate sits down → it turns red.
+   - A bag is left on a chair with nobody there → after the demo timer it turns amber, Held. Tapping it shows "held by a bag", and a staff alert appears in the console.
+   - Back on Browse, Nestwork's free count has changed with the room.
+4. **Venue dashboard (15 s):** occupancy by hour, held-seat minutes, peak times.
+5. **Trust and efficiency (15 s):** one small model on a free CPU Space, total dollars spent, accuracy on our labelled set, "no images ever leave the venue."
 
 Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 
@@ -336,13 +384,15 @@ Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 
 ## 12. Likely judge questions, with answers
 
-- **"Isn't this just Google popular times?"** Google estimates relative busyness from phone location. We show actual seats, sections, outlets, noise, seats held by bags, verified bookings, and availability when you arrive.
-- **"UTSeat and coworking apps already do booking."** Their availability depends on bookings. Ours is verified by camera: walk-ins are counted, no-shows are released, bags are flagged.
-- **"Why would a cafe or library give you camera access?"** Many venues already have cameras. Only seat states leave the device, and the venue gets analytics and staff alerts. Cafes get prepaid bookings. Libraries (QNL, QU) are natural anchor customers because they already run booking systems.
-- **"Privacy?"** No face recognition, no stored images, no identifying individuals, people blurred on screen. Check-in uses a QR code, not a face. Designed with Qatar's data protection law in mind.
-- **"Why is this Qatar-specific?"** Car-dependent sprawl and heat make every wasted check a drive. Qatar-specific calendar patterns (Ramadan nights, the Friday and Saturday weekend, exam season around QNL). Arabic-first assistant using Qatar's own LLM (Fanar).
-- **"Where is Hugging Face in this?"** Models from the Hub, the app and inference on a Space, evaluation and backtests on HF Jobs, the labelled dataset published to the Hub.
+- **"Isn't this just Google popular times?"** Google estimates relative busyness from phone location. We show actual seats, outlets, windows, sections and seats held by bags, verified by camera.
+- **"Why no booking? UTSeat and coworking apps do booking."** On purpose. Booking-based availability is what makes those apps wrong: walk-ins aren't counted and no-shows block seats. We show what the camera sees.
+- **"Can't someone grab the seat before I get there?"** Yes, and that's honest: we show what's free right now, with a free count per venue. In a big venue like QNL, a place with 30 free seats will still have seats when you arrive.
+- **"Why would a cafe or library give you camera access?"** Many venues already have cameras. Only seat states leave the device. The venue gets live occupancy, alerts for seats hogged by bags, and peak-time analytics. Libraries (QNL, QU) are natural anchor customers.
+- **"Privacy?"** No face recognition, no stored images, no identifying individuals, people blurred on screen. The app has no accounts and collects nothing about its users. Designed with Qatar's data protection law in mind.
+- **"Why is this Qatar-specific?"** Car-dependent sprawl and heat make every wasted check a drive, which is why we show drive times. Doha venues, family and women's sections, the Friday and Saturday weekend, Ramadan nights and exam season around QNL.
+- **"Where is Hugging Face in this?"** The detector from the Hub, the whole app on a Space, evaluation and backtests on HF Jobs, the labelled dataset published to the Hub.
 - **"Why only one vision model?"** COCO already includes people, bags, laptops and cups, so one small detector does both jobs in one pass. That halves the compute and lets vision run on CPU.
+- **"Why a web app and not a native app?"** You open it from a link with no install, on any phone.
 - **"How accurate is it?"** Report seat-state accuracy on our labelled frames, and be upfront about failure cases (occlusion, lighting).
 - **"Is the other venues' data real?"** No: only Nestwork is live. The others are simulated and labelled as such, to show how Birdie works across a city.
 
@@ -353,7 +403,7 @@ Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 Ask about 20 people in the room:
 1. "In the last month, have you gone to a cafe or QNL to study and found no seat?"
 2. "Roughly how much time did that cost you?"
-3. "Would you book a seat if it came with your drink prepaid?"
+3. "Would you check an app like this before driving somewhere to study?"
 
 Put the real numbers on a slide: for example, "X of 20 builders here said yes, losing about Y minutes each time." **Don't invent these numbers. Only use what you actually collect.**
 
@@ -363,15 +413,13 @@ Put the real numbers on a slide: for example, "X of 20 builders here said yes, l
 
 | Risk | Mitigation |
 |---|---|
-| Judges call it "not clearly regional" | Lead with the Doha framing (car dependency, QNL, Ramadan and weekend patterns, Arabic assistant using Fanar) |
-| Judges call it a convenience app | Room survey data + venue-side value (no-shows, utilisation) + verified-availability framing |
+| Judges call it "not clearly regional" | Lead with the Doha framing: car dependency and drive times, QNL, Doha venues, sections, Ramadan and weekend patterns |
+| Judges call it a convenience app | Room survey data + venue-side value (held-seat alerts, utilisation) + verified-availability framing |
 | Detection flicker from occlusion or lighting | Smoothing over k frames; good camera angle; test in the actual demo room early |
-| Space latency or Wi-Fi failure in the demo | About 1 fps; local fallback; backup video |
-| Merging two backend repos eats the night | Both repos follow the data contract (section 7); merge module by module |
-| Fanar is slow or won't fit the budget | Parse, compute, phrase pattern (no tool calling); small Qwen fallback |
-| Booking eats the schedule | Strict must/should/skip list; no payments, no accounts |
-| Privacy concerns from the audience | No faces, no storage, blurred view, QR check-in, on-device in production |
-| Burning the $100 credits | CPU for everything except the LLM, short sleep time, shut down idle hardware, track spend |
+| Frontend and backend don't fit together | The API shapes in section 7.2 are fixed; the frontend builds on mock data in exactly that shape |
+| Space latency or Wi-Fi failure in the demo | About 1 fps, 2 s polling; local fallback; backup video |
+| Privacy concerns from the audience | No faces, no storage, blurred view, no accounts, on-device in production |
+| Burning the $100 credits | Free CPU Space for the whole app; money only for short HF Jobs; track spend |
 
 ---
 
@@ -387,7 +435,21 @@ Put the real numbers on a slide: for example, "X of 20 builders here said yes, l
 - Coworking booking apps in Doha: [Worka](https://www.worka.com/en/locations/qatar) · [Regus](https://www.regus.com/en-us/qatar/doha/coworking)
 - Qatar data protection law (Law No. 13 of 2016): [Qatar Tribune](https://www.qatar-tribune.com/article/31687/FIRSTPAGE/New-law-on-personal-data-protection/amp) · [DLA Piper overview](https://www.dlapiperdataprotection.com/guide.pdf?c=QA)
 - AC share of building electricity (Tarsheed): [The Peninsula, Jul 2026](https://www.thepeninsulaqatar.com/article/26/07/2026/qatar-makes-significant-progress-in-water-power-conservation-goals)
-- Fanar models: [Fanar 2.0 collection](https://huggingface.co/collections/QCRI/fanar-20) · [Fanar-2-27B-Instruct model card](https://huggingface.co/QCRI/Fanar-2-27B-Instruct) (its comparison table shows Fanar 1 has no tool calling)
 - Hugging Face CLI and login: [HF CLI guide](https://huggingface.co/docs/huggingface_hub/guides/cli)
 - Qai (organizer): [Qatar Government Communications Office](https://www.gco.gov.qa/en/media-centre/top-news/qatar-launches-qai-to-power-its-global-ai-ambitions/)
 - HF Jobs pricing: [HF docs](https://huggingface.co/docs/hub/jobs-pricing)
+
+---
+
+## 16. Changes from the previous plan (for the backend)
+
+The code was built for the earlier plan. To match this file:
+
+1. **Remove booking and check-in:** `birdie/booking.py`, `birdie/ui/checkin.py`, the `Booking` model, no-show release, `bookable` seats, `bookable_fraction`, prepaid drinks, QR code generation (and the `qrcode` dependency), and the check-in timers in `config.py`. Keep the scheduler for staff alerts and occupancy buckets.
+2. **Remove the assistant:** delete `birdie/assistant/` and the `Query` model if nothing else needs it.
+3. **New entry point:** `app.py` builds a FastAPI app that serves `web/` at `/` and the read-only API at `/api` (`birdie/api.py`), mounts the Gradio console at `/operator`, and runs uvicorn on port 7860. If the Gradio SDK Space won't run this, switch the Space to the Docker SDK.
+4. **The Gradio UI becomes the operator console:** keep Camera (with seat setup) and Venue dashboard. Drop the Find a seat tab; the mobile app replaces it.
+5. **Venue JSON:** add the floor plan, seat labels (`A3`), `plan_x` / `plan_y` / `plan_rot`, `has_window`, `drive_minutes`, `open_until`, `open_late`, `amenities` and the `study_room` type. Make the Nestwork plan match the real room.
+6. **Dashboard:** drop the no-show rate and anything else that came from bookings.
+7. **Keep without changes:** vision, the simulator, forecast, `decision.py`, the backtest and evaluation jobs.
+8. **Update the docs and tests:** `README.md` (the Space card still describes booking), `docs/CONTRACT.md`, the booking tests, and the architecture guards (FastAPI only in `birdie/api.py`; the `booking.py` exception for QR images goes away).
