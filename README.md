@@ -11,35 +11,71 @@ short_description: Camera-verified live study seats in Doha
 
 # Birdie
 
-**A bird's-eye view of every study seat in Doha before you drive there.**
-Camera-verified live seats for cafes, libraries and study spaces: see which seats are free, taken or held by a bag
-before you leave home. Built at the Qai x Hugging Face Hackathon 01 (Nestwork Msheireb, Doha).
-Data models, API and public functions: [docs/CONTRACT.md](docs/CONTRACT.md).
+**See which study seats are free in Doha before you drive there.** Birdie reads camera footage with one small vision
+model and shows every chair as **Free**, **Taken** or **Held by a bag**, on a phone, per venue and per seat.
 
-## What runs on this Space
+**Why Doha:** it is a car city. Checking a study spot means a drive, parking and the heat, so a wrong guess wastes a
+trip. Booking systems and busyness estimates are guesses (walk-ins aren't counted, no-shows block seats, a bag on a
+chair looks like a person). Birdie shows what is actually happening right now. It takes no bookings, on purpose.
 
-One Docker Space, one Python process on port 7860:
+## Try it in 30 seconds
 
-| Path | What |
-|---|---|
-| `/` | The mobile web app (`web/`): browse Doha venues, live floor plans, Free / Taken / Held |
-| `/api/venues`, `/api/venues/{id}` | Read-only JSON API the app polls every 2 seconds |
-| `/operator` | Gradio operator console: Camera (clip playback, seat setup, seat status, staff alerts) and Venue dashboard |
+- **Phone app:** open **https://affaad-birdie.hf.space/** (works on any phone, no install). Browse Doha venues with
+  drive times, open one to see its floor plan, one chair per seat, coloured live.
+- **Operator console (for venue staff):** **https://affaad-birdie.hf.space/operator/**. Play a recorded clip into
+  Nestwork, watch seats change state, see staff alerts for bags left too long, and set up the seats with "Detect chairs".
+- **JSON API:** `/api/venues` and `/api/venues/{venue_id}` (the shapes are in [docs/CONTRACT.md](docs/CONTRACT.md)).
 
-- **One detector**, `PekingU/rtdetr_r18vd` (COCO, Apache-2.0), finds every chair, person and belonging in one pass on CPU.
-- **One seat per chair.** "Detect chairs" in the console turns each detected chair into its own seat outline, matched to
-  a seat id on the venue's floor plan (A3). Each frame, people and belongings are assigned to those outlines; 3-frame
-  smoothing and a hold timer give `FREE`, `OCCUPIED` (Taken) or `HELD` (belongings with nobody there, 30 s in demo mode).
-- **Camera input:** a clip recorded in the venue, played through the pipeline at 1 frame per second in real time
-  (optionally looped). If no frame arrives for 10 s, the venue is shown as camera offline and its seats keep their state.
-- **Only Nestwork Msheireb is live.** The other six venues are **simulated** with **synthetic** history and labelled
-  "Simulated" everywhere.
+## How it works
+
+```
+recorded clip (1 frame/s)
+   -> RT-DETR r18: chairs, people, bags, laptops, cups   (one model, one pass, CPU)
+   -> seat assignment: each person or belonging goes to the chair outline it sits in
+   -> seat states: 3-frame smoothing + hold timer -> FREE / OCCUPIED / HELD
+   -> JSON API (/api/venues)
+   -> phone app (polls every 2 s)
+```
+
+- **One seat per chair.** "Detect chairs" turns every detected chair into its own seat outline, matched to a seat id on
+  the venue's floor plan (A3).
+- **States:** a person in the seat is *Taken*. Belongings with nobody there stay *Taken*, then become *Held* after the
+  hold timer (30 s in demo mode, 30 min in production). Nothing there is *Free*.
+- If no frame arrives for 10 s the venue shows as camera offline and its seats keep their last state.
+
+## Hugging Face pieces
+
+- **Model:** [`PekingU/rtdetr_r18vd`](https://huggingface.co/PekingU/rtdetr_r18vd) (Apache-2.0, COCO), used as is, no
+  fine-tuning. It is the only model the live app runs.
+- **Space:** this one, a Docker Space with the app, the API and the operator console in one Python process.
+- **Jobs:** [`jobs/evaluate.py`](jobs/evaluate.py) (seat-state accuracy on our labelled frames) and
+  [`jobs/backtest.py`](jobs/backtest.py) (forecast comparison) are written to run as HF Jobs on `cpu-basic`. They have
+  been run locally; see "Honest limits".
+- Optional, off by default: [`amazon/chronos-bolt-small`](https://huggingface.co/amazon/chronos-bolt-small) for
+  forecasts (`BIRDIE_USE_CHRONOS=1`).
 
 ## Privacy
 
 Frames are processed in memory and discarded: never written to disk or logged. People are blurred (pixelated) in every
-frame shown, including the operator console. The uploaded clip is deleted from the Space when playback stops. Only
-seat states and counts are stored. No face recognition, no accounts, nothing about who sits where.
+frame shown, including the operator console. A clip uploaded to the console is deleted when playback stops. Only seat
+states, events and counts are stored. No face recognition, no accounts, nothing about who sits where.
+
+## Efficiency and cost
+
+One small detector on CPU at 1 frame per second (long side at most 640 px), no GPU and no LLM. The Space runs on
+**CPU Upgrade at about $0.03 an hour** (Hugging Face refused free CPU for this Space type).
+
+## Honest limits
+
+- **Only Nestwork Msheireb is "live", and it runs from a recorded clip** played through the real pipeline in real time
+  (looped). The detection, seat states and timers are live; the footage is recorded.
+- **The other six venues are simulated.** Their seats move through the same state code, driven by a simulator.
+- **The forecast is not in the app.** It exists in the code (calendar-aware baseline, optional Chronos) but runs on
+  synthetic history and has not been validated on real data.
+- **Seat-state accuracy on real footage has not been measured yet.** The labelling and evaluation tools are built
+  ([docs/LABELLING.md](docs/LABELLING.md)); no accuracy number is claimed here.
+- A chair hidden behind a person or a table may not be detected, and a bag on the table in front of a chair can be
+  missed by that chair's outline.
 
 ## Run locally
 
