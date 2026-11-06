@@ -31,7 +31,7 @@ def venue_cards(svc: BirdieService, arrival: int) -> str:
     for v in svc.venues():
         snaps = svc.snapshots(v.venue_id)
         free = sum(1 for s in snaps if s.state == SeatState.FREE)
-        unknown = sum(1 for s in snaps if s.state == SeatState.UNKNOWN)
+        unknown = 0
         known = len(snaps) - unknown
         f = focus_score(svc, v.venue_id, arrival)
         zones = zone_free_now(svc, v.venue_id)

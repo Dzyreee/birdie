@@ -9,13 +9,14 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 
 from birdie.clock import Clock, RealClock
 from birdie.config import (
+    BLUR_THRESHOLD,
     DETECTION_THRESHOLD,
     SCHEDULER_INTERVAL_SECONDS,
     TIMERS,
@@ -30,7 +31,8 @@ from birdie.simulator import Simulator
 from birdie.storage import Repository
 from birdie.venues import load_all, save_venue
 from birdie.vision import render
-from birdie.vision.detector import resize_long_side
+from birdie.vision.chairs import chair_candidates
+from birdie.vision.detector import CHAIR, PERSON, resize_long_side
 from birdie.vision.seats import assign_detections, observe
 from birdie.vision.state import VenueTracker
 
@@ -75,9 +77,6 @@ class BirdieService:
                 on_event=self._on_seat_event,
                 k=timers.smoothing_frames,
                 hold_seconds=timers.hold_seconds,
-                stale_seconds=(
-                    timers.camera_stale_seconds if cfg.venue.source != VenueSource.simulated else None
-                ),
             )
             for vid, cfg in self.configs.items()
         }
@@ -89,6 +88,11 @@ class BirdieService:
         self._last_refit = self.clock.now()
         self.started_at = self.clock.now()
         self._observed_since: dict[str, object] = {vid: self.started_at for vid in self.configs}
+        # Camera state per venue, in memory only: when the last frame arrived, the last frame (for the seat
+        # setup snapshot) and the person boxes in it (blurred again in the next frame, in case of a miss).
+        self._last_frame_at: dict[str, datetime] = {}
+        self._last_person_boxes: dict[str, list[list[float]]] = {}
+        self._setup: dict[str, dict] = {}  # venue_id -> {"frame", "detections", "candidates"}
 
     # --- venues and seats -------------------------------------------------------
     def venues(self) -> list[Venue]:
@@ -121,15 +125,52 @@ class BirdieService:
         return self.trackers[venue_id].counts()
 
     def zone_counts(self, venue_id: str) -> dict[str, dict[str, int]]:
-        """zone -> {total, UNKNOWN, FREE, OCCUPIED, HELD}."""
+        """zone -> {total, FREE, OCCUPIED, HELD}."""
+        zones = {s.seat_id: s.zone for s in self.seats(venue_id)}
         out: dict[str, dict[str, int]] = {}
         for z in self.venue(venue_id).zones:
             out[z] = {"total": 0, **{state.value: 0 for state in SeatState}}
         for snap in self.snapshots(venue_id):
-            z = out.setdefault(snap.zone, {"total": 0, **{state.value: 0 for state in SeatState}})
+            z = out.setdefault(zones.get(snap.seat_id, ""), {"total": 0, **{state.value: 0 for state in SeatState}})
             z["total"] += 1
             z[snap.state.value] += 1
         return out
+
+    def set_seat_polygon(self, venue_id: str, seat_id: str, polygon: list[tuple[float, float]]) -> Seat:
+        """Save a camera outline into an existing seat. Floor-plan fields are never touched."""
+        with self._lock:
+            cfg = self.configs[venue_id]
+            if not any(s.seat_id == seat_id for s in cfg.seats):
+                raise KeyError(f"{seat_id} is not a seat of {venue_id}")
+            seats = [
+                Seat.model_validate(s.model_dump() | {"polygon": [tuple(p) for p in polygon]})
+                if s.seat_id == seat_id else s
+                for s in cfg.seats
+            ]
+            self._replace_config(VenueConfig(venue=cfg.venue, seats=seats))
+            return next(s for s in seats if s.seat_id == seat_id)
+
+    def set_seat_polygons(self, venue_id: str, polygons: dict[str, list[tuple[float, float]]]) -> None:
+        """Save several camera outlines at once (the "Detect chairs" mapping)."""
+        with self._lock:
+            cfg = self.configs[venue_id]
+            unknown = set(polygons) - {s.seat_id for s in cfg.seats}
+            if unknown:
+                raise KeyError(f"not seats of {venue_id}: {sorted(unknown)}")
+            seats = [
+                Seat.model_validate(s.model_dump() | {"polygon": [tuple(p) for p in polygons[s.seat_id]]})
+                if s.seat_id in polygons else s
+                for s in cfg.seats
+            ]
+            self._replace_config(VenueConfig(venue=cfg.venue, seats=seats))
+
+    def clear_seat_polygon(self, venue_id: str, seat_id: str) -> bool:
+        """Remove a seat's camera outline (the seat stays on the floor plan)."""
+        seat = self.seat(venue_id, seat_id)
+        if seat is None or not seat.polygon:
+            return False
+        self.set_seat_polygon(venue_id, seat_id, [])
+        return True
 
     def upsert_seat(self, seat: Seat) -> None:
         """Add or replace a configured seat region and save the venue JSON."""
@@ -183,17 +224,21 @@ class BirdieService:
 
     # --- background tick ------------------------------------------------------
     def tick(self) -> None:
-        """Run by the scheduler every ~2 s: simulator, timers, staff alerts and occupancy buckets."""
+        """Run by the scheduler every ~2 s: simulator, timers, staff alerts and occupancy buckets.
+
+        A live venue whose camera went offline keeps its last seat states: no timers, no buckets.
+        """
         now = self.clock.now()
         self.simulator.step()
-        for tracker in self.trackers.values():
-            tracker.tick()  # OCCUPIED -> HELD even if no new frame arrives
+        for vid, tracker in self.trackers.items():
+            if not self._frozen(vid):
+                tracker.tick()  # OCCUPIED -> HELD even if no new frame arrives
         self._check_held_alerts(now)
         for vid in self.configs:
+            if self._frozen(vid):
+                continue
             c = self.counts(vid)
-            # Partial samples would treat unknown seats as empty in historical occupancy ratios.
-            if c[SeatState.UNKNOWN] == 0:
-                self.repo.record_occupancy(vid, now, c[SeatState.FREE], c[SeatState.OCCUPIED], c[SeatState.HELD])
+            self.repo.record_occupancy(vid, now, c[SeatState.FREE], c[SeatState.OCCUPIED], c[SeatState.HELD])
         if (now - self._last_refit).total_seconds() >= 15 * 60:
             self._last_refit = now
             self.forecast.refit()  # fold live buckets into the baseline
@@ -215,7 +260,7 @@ class BirdieService:
                     minutes = (now - snap.since).total_seconds() / 60
                     self.repo.add_alert(
                         now, vid, snap.seat_id, "held_too_long",
-                        f"Seat {snap.seat_id} ({snap.zone}) has been held by belongings with nobody there "
+                        f"Seat {snap.seat_id} has been held by belongings with nobody there "
                         f"for {minutes:.1f} min.",
                     )
 
@@ -242,15 +287,73 @@ class BirdieService:
                 log.exception("seat event listener failed")
 
     # --- camera pipeline ------------------------------------------------------
+    def camera_online(self, venue_id: str) -> bool | None:
+        """True if the venue's camera sent a frame recently, False if not, None for simulated venues."""
+        if self.venue(venue_id).source == VenueSource.simulated:
+            return None
+        last = self._last_frame_at.get(venue_id)
+        return last is not None and (self.clock.now() - last).total_seconds() < self.timers.camera_stale_seconds
+
+    def _frozen(self, venue_id: str) -> bool:
+        """A camera venue that had frames but went quiet keeps its last states."""
+        return venue_id in self._last_frame_at and self.camera_online(venue_id) is False
+
+    def _detect_all(self, img) -> list[dict]:
+        # One pass at the low blur threshold: people to blur, chairs, and the boxes that count.
+        return self._detect(img, threshold=BLUR_THRESHOLD)
+
     def process_frame(self, venue_id: str | None, frame: np.ndarray, update_state: bool = True) -> np.ndarray:
-        """Detect objects and optionally update a calibrated venue's hidden seat states."""
+        """One camera frame: detect, assign people and belongings to seat outlines (one per chair), update the
+        seat states, and return the annotated frame (people blurred). The frame stays in memory.
+        """
         img = resize_long_side(frame)
         arr = np.asarray(img)
-        detections = self._detect(img, threshold=DETECTION_THRESHOLD)
-        counted = [d for d in detections if d["score"] >= DETECTION_THRESHOLD]
-        if update_state and venue_id is not None:
+        detections = self._detect_all(img)
+        counted = [d for d in detections if d["score"] >= DETECTION_THRESHOLD and d["label"] != CHAIR]
+        shown = counted + [d for d in detections if d["label"] == CHAIR and d["score"] >= DETECTION_THRESHOLD]
+        persons = [d["box"] for d in detections if d["label"] == PERSON]
+        key = venue_id or "_preview"
+        blur = persons + self._last_person_boxes.get(key, [])
+        self._last_person_boxes[key] = persons
+        seats: list[Seat] = []
+        snapshots: dict[str, SeatSnapshot] = {}
+        if venue_id is not None:
             tracker = self.trackers[venue_id]
-            seats = list(tracker.seats.values())
-            assigned = assign_detections(counted, seats, img.size)
-            tracker.process(observe(assigned))
-        return render.annotate(arr, counted)
+            seats = [s for s in tracker.seats.values() if len(s.polygon) >= 3]
+            if update_state:
+                self._last_frame_at[venue_id] = self.clock.now()
+                assigned = assign_detections(counted, seats, img.size)
+                tracker.process(observe(assigned))
+            snapshots = self.snapshot_map(venue_id)
+        return render.annotate(arr, shown, seats, snapshots, blur_boxes=blur)
+
+    # --- seat setup (one seat per chair) ---------------------------------------------
+    def set_setup_frame(self, venue_id: str, frame: np.ndarray) -> int:
+        """Keep one snapshot for the seat setup tool (memory only) and run the detector on it.
+
+        Returns the number of chairs found.
+        """
+        img = resize_long_side(frame)
+        detections = self._detect_all(img)
+        candidates = chair_candidates(detections, img.size)
+        self._setup[venue_id] = {"frame": np.asarray(img), "detections": detections, "candidates": candidates}
+        return len(candidates)
+
+    def has_setup_frame(self, venue_id: str) -> bool:
+        return venue_id in self._setup
+
+    def chair_candidates(self, venue_id: str) -> list[dict]:
+        return list(self._setup.get(venue_id, {}).get("candidates", []))
+
+    def setup_view(self, venue_id: str, points: list[tuple[float, float]] | None = None,
+                   show_candidates: bool = True) -> np.ndarray | None:
+        """The snapshot with people blurred, saved seat outlines, numbered chair candidates and clicked corners."""
+        setup = self._setup.get(venue_id)
+        if setup is None:
+            return None
+        persons = [d["box"] for d in setup["detections"] if d["label"] == PERSON]
+        img = render.blur_people(setup["frame"], persons)
+        img = render.draw_seats(img, self.seats(venue_id), self.snapshot_map(venue_id))
+        if show_candidates:
+            img = render.draw_candidates(img, setup["candidates"])
+        return render.draw_setup_points(img, points or [])

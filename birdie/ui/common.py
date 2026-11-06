@@ -10,6 +10,8 @@ from birdie.models import Venue, VenueSource
 from birdie.vision import render
 
 CSS = """
+#birdie-webcam video { filter: blur(22px) saturate(0.6); }
+.birdie-setup { cursor: crosshair; width: 100%; height: auto; border-radius: 10px; display: block; }
 .birdie-frame img { width: 100%; height: auto; border-radius: 10px; display: block; }
 .birdie-frame { min-height: 120px; }
 .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.78em; font-weight: 600;
@@ -24,6 +26,19 @@ CSS = """
 .focus-bar { background: var(--border-color-primary); border-radius: 6px; height: 8px; overflow: hidden; }
 .focus-bar > div { background: #22c55e; height: 8px; }
 """
+
+# Clicking the setup snapshot sends normalised (x, y) to Python through the HTML component's click event.
+SETUP_CLICK_JS = """
+element.addEventListener('click', (e) => {
+  const img = e.target.closest('img.birdie-setup');
+  if (!img) return;
+  const r = img.getBoundingClientRect();
+  const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+  trigger('click', {x: x, y: y});
+});
+"""
+
 
 def frame_html(frame: np.ndarray | None, css_class: str = "", text: str = "No frame yet") -> str:
     """An in-memory <img> (data URL) for a frame. Nothing is cached on disk."""

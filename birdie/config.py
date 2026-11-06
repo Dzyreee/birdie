@@ -19,7 +19,7 @@ class Timers:
 
     hold_seconds: int  # OCCUPIED -> HELD: belongings with no person for this long
     smoothing_frames: int  # an observation only counts after k consecutive frames
-    camera_stale_seconds: int  # live seat states expire when no usable frame arrives for this long
+    camera_stale_seconds: int  # a live venue is "camera offline" after this long without a frame
     staff_alert_seconds: int  # a seat HELD for this long raises a staff alert
 
 
@@ -42,7 +42,9 @@ TIMERS: Timers = DEMO_TIMERS if DEMO_MODE else PRODUCTION_TIMERS
 # --- Vision ---------------------------------------------------------------
 DETECTOR_MODEL_ID = "PekingU/rtdetr_r18vd"
 DETECTION_THRESHOLD = 0.4  # minimum detector score that counts for seat states
+BLUR_THRESHOLD = 0.2  # people are blurred from this lower score, to err on the side of privacy
 MAX_FRAME_SIDE = 640  # long side of a frame is resized to at most this many pixels
+WEBCAM_ENABLED = os.getenv("BIRDIE_ENABLE_WEBCAM", "0").strip().lower() in ("1", "true", "yes", "on")  # off: clip upload only
 TARGET_FPS = 1.0  # frames per second sent from the browser / sampled from clips
 MIN_OVERLAP = 0.2  # fallback seat assignment: box must overlap the seat polygon by more than this
 

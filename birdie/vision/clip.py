@@ -31,3 +31,30 @@ def iter_clip_frames(path: str, fps: float = TARGET_FPS) -> Iterator[tuple[float
             index += 1
     finally:
         cap.release()
+
+
+def clip_duration(path: str) -> float:
+    """Length of the clip in seconds (0 if unknown)."""
+    cap = cv2.VideoCapture(path)
+    try:
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+        count = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0.0
+        return float(count / fps) if fps > 0 else 0.0
+    finally:
+        cap.release()
+
+
+def frame_at(path: str, seconds: float = 0.0) -> np.ndarray | None:
+    """One RGB frame at `seconds` into the clip, in memory (None if the clip can't be read)."""
+    cap = cv2.VideoCapture(path)
+    try:
+        if not cap.isOpened():
+            return None
+        cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, float(seconds)) * 1000.0)
+        ok, bgr = cap.read()
+        if not ok:
+            cap.set(cv2.CAP_PROP_POS_MSEC, 0.0)
+            ok, bgr = cap.read()
+        return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB) if ok else None
+    finally:
+        cap.release()

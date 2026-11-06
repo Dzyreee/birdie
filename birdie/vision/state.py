@@ -1,7 +1,6 @@
 """Seat state machine (CLAUDE.md section 8.1).
 
 Per seat, per frame:
-- UNKNOWN evidence or a stale camera feed makes the seat UNKNOWN immediately;
 - a raw observation (PERSON, ITEMS or EMPTY) only counts after it holds for k consecutive frames;
 - PERSON gives OCCUPIED;
 - ITEMS keeps the seat OCCUPIED (the person stepped away) until items have been there with
@@ -23,14 +22,12 @@ from birdie.models import Seat, SeatEvent, SeatSnapshot, SeatState
 
 
 class Observation(str, Enum):
-    UNKNOWN = "UNKNOWN"
     PERSON = "PERSON"
     ITEMS = "ITEMS"
     EMPTY = "EMPTY"
 
 
 _STATE_TO_OBS = {
-    SeatState.UNKNOWN: None,
     SeatState.FREE: Observation.EMPTY,
     SeatState.OCCUPIED: Observation.PERSON,
     SeatState.HELD: Observation.ITEMS,
@@ -46,15 +43,13 @@ class SeatStateMachine:
         *,
         k: int | None = None,
         hold_seconds: float | None = None,
-        initial: SeatState = SeatState.UNKNOWN,
-        stale_seconds: float | None = TIMERS.camera_stale_seconds,
+        initial: SeatState = SeatState.FREE,
     ) -> None:
         self.venue_id = venue_id
         self.seat_id = seat_id
         self.clock = clock
         self.k = max(1, k if k is not None else TIMERS.smoothing_frames)
         self.hold = timedelta(seconds=hold_seconds if hold_seconds is not None else TIMERS.hold_seconds)
-        self.stale = timedelta(seconds=stale_seconds) if stale_seconds is not None else None
         now = clock.now()
         self.state = initial
         self.since = now
@@ -69,12 +64,6 @@ class SeatStateMachine:
     def update(self, obs: Observation) -> SeatEvent | None:
         """Feed one frame's raw observation. Returns a SeatEvent if the state changed."""
         now = self.clock.now()
-        if obs == Observation.UNKNOWN:
-            self._stable = None
-            self._candidate = None
-            self._count = 0
-            self._items_since = None
-            return self._apply(now)
         if obs == self._candidate:
             self._count += 1
         else:
@@ -89,15 +78,8 @@ class SeatStateMachine:
         return self._apply(now)
 
     def tick(self) -> SeatEvent | None:
-        """Apply hold timers and expire states when their camera feed has gone stale."""
-        now = self.clock.now()
-        if self.stale is not None and self.state != SeatState.UNKNOWN and now - self.updated_at >= self.stale:
-            self._stable = None
-            self._candidate = None
-            self._count = 0
-            self._items_since = None
-            return self._apply(now, touch=False)
-        return self._apply(now, touch=False)
+        """Apply time-based transitions (OCCUPIED -> HELD) without a new frame."""
+        return self._apply(self.clock.now(), touch=False)
 
     def force(self, state: SeatState) -> None:
         """Set the state directly with no event (used to initialise simulated venues)."""
@@ -111,9 +93,7 @@ class SeatStateMachine:
         self._items_since = now - self.hold if state == SeatState.HELD else None
 
     def _apply(self, now, touch: bool = True) -> SeatEvent | None:
-        if self._stable is None:
-            new = SeatState.UNKNOWN
-        elif self._stable == Observation.PERSON:
+        if self._stable == Observation.PERSON:
             new = SeatState.OCCUPIED
             self._items_since = None
         elif self._stable == Observation.ITEMS:
@@ -157,24 +137,19 @@ class VenueTracker:
         *,
         k: int | None = None,
         hold_seconds: float | None = None,
-        stale_seconds: float | None = TIMERS.camera_stale_seconds,
     ) -> None:
         self.venue_id = venue_id
         self.clock = clock
         self.on_event = on_event
         self._k = k
         self._hold = hold_seconds
-        self.stale_seconds = stale_seconds
         self._lock = threading.RLock()
         self.seats: dict[str, Seat] = {}
         self.machines: dict[str, SeatStateMachine] = {}
         self.set_seats(seats)
 
-    def _machine(self, seat_id: str, initial: SeatState = SeatState.UNKNOWN) -> SeatStateMachine:
-        return SeatStateMachine(
-            self.venue_id, seat_id, self.clock, k=self._k, hold_seconds=self._hold,
-            initial=initial, stale_seconds=self.stale_seconds
-        )
+    def _machine(self, seat_id: str, initial: SeatState = SeatState.FREE) -> SeatStateMachine:
+        return SeatStateMachine(self.venue_id, seat_id, self.clock, k=self._k, hold_seconds=self._hold, initial=initial)
 
     def set_seats(self, seats: Iterable[Seat]) -> None:
         """Replace the seat layout, keeping state for seats that still exist."""
@@ -184,11 +159,17 @@ class VenueTracker:
             self.seats = new
 
     def process(self, observations: dict[str, Observation]) -> list[SeatEvent]:
-        """One frame: a missing seat observation is UNKNOWN, never an empty seat."""
+        """One frame: an observation per observed seat.
+
+        Seats missing from `observations` (for example chairs without a camera outline) keep their state.
+        """
         events = []
         with self._lock:
-            for seat_id, machine in self.machines.items():
-                event = machine.update(observations.get(seat_id, Observation.UNKNOWN))
+            for seat_id, obs in observations.items():
+                machine = self.machines.get(seat_id)
+                if machine is None:
+                    continue
+                event = machine.update(obs)
                 if event:
                     events.append(event)
         self._emit(events)

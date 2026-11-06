@@ -69,15 +69,24 @@ def build_seat_editor(
     json_label: str = "Seat layout JSON",
     default_zone: str = "seat",
     initial_key: str | None = None,
+    pick_existing: bool = False,
 ) -> SeatEditor:
-    """Build the editor inside the current Blocks context and wire its events."""
+    """Build the editor inside the current Blocks context and wire its events.
+
+    With `pick_existing`, the seat id is chosen from the backend's existing seats (the venue's floor plan)
+    instead of typed, and "delete" lists only seats that have an outline.
+    """
     init_seats = backend.seats(initial_key) if initial_key else []
     init_zones = (backend.zones(initial_key) if initial_key else []) or [default_zone]
     snap_btn = gr.Button(snapshot_label)
     image = gr.HTML(frame_html(None, css_class="birdie-setup", text=empty_text), js_on_load=SETUP_CLICK_JS)
     points = gr.State([])
     with gr.Row():
-        seat_id = gr.Textbox(label="Seat id", placeholder="e.g. S07", value=next_seat_id(init_seats))
+        if pick_existing:
+            seat_id = gr.Dropdown(choices=[s.seat_id for s in init_seats], value=None,
+                                  label="Seat id (from the floor plan)")
+        else:
+            seat_id = gr.Textbox(label="Seat id", placeholder="e.g. S07", value=next_seat_id(init_seats))
         zone = gr.Dropdown(choices=init_zones, value=init_zones[0], allow_custom_value=True, label="Zone",
                            visible=show_details)
         has_outlet = gr.Checkbox(label="Has outlet", visible=show_details)
@@ -85,7 +94,8 @@ def build_seat_editor(
         save_btn = gr.Button("💾 Save seat", variant="primary")
         redo_btn = gr.Button("↺ Redo corners")
     with gr.Row():
-        delete_dd = gr.Dropdown(choices=[s.seat_id for s in init_seats], label="Seat to delete")
+        delete_dd = gr.Dropdown(choices=[s.seat_id for s in init_seats if not pick_existing or len(s.polygon) >= 3],
+                                label="Outline to delete" if pick_existing else "Seat to delete")
         delete_btn = gr.Button("🗑 Delete seat", variant="stop")
     message = gr.Markdown()
     with gr.Accordion(json_label, open=False):
@@ -97,7 +107,14 @@ def build_seat_editor(
                           text=text)
 
     def seat_ids(key_value):
-        return [s.seat_id for s in backend.seats(key_value)] if key_value else []
+        if not key_value:
+            return []
+        return [s.seat_id for s in backend.seats(key_value) if not pick_existing or len(s.polygon) >= 3]
+
+    def id_update(key_value):
+        if pick_existing:
+            return gr.update(choices=[s.seat_id for s in backend.seats(key_value)] if key_value else [])
+        return next_seat_id(backend.seats(key_value)) if key_value else gr.skip()
 
     def on_key(key_value):
         if not key_value:
@@ -108,7 +125,7 @@ def build_seat_editor(
             [],
             gr.update(choices=zones, value=zones[0]),
             gr.update(choices=seat_ids(key_value), value=None),
-            next_seat_id(backend.seats(key_value)),
+            id_update(key_value),
             backend.export(key_value),
         )
 
@@ -158,7 +175,7 @@ def build_seat_editor(
             [],
             msg,
             gr.update(choices=seat_ids(key_value)),
-            next_seat_id(backend.seats(key_value)),
+            gr.skip() if pick_existing else next_seat_id(backend.seats(key_value)),
             backend.export(key_value),
         )
 

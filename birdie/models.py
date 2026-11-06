@@ -13,7 +13,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SeatState(str, Enum):
-    UNKNOWN = "UNKNOWN"  # no recent, usable camera evidence
     FREE = "FREE"  # no person, no belongings
     OCCUPIED = "OCCUPIED"  # a person, or belongings left recently
     HELD = "HELD"  # belongings with no person for longer than the hold time

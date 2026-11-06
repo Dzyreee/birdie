@@ -31,12 +31,12 @@ def dashboard_outputs(svc: BirdieService, venue_id: str, window: str):
     d = venue_dashboard(svc.repo, venue_id, seat_ids, now, hours=hours, observed_since=svc.observed_since(venue_id))
     counts = svc.counts(venue_id)
     total = sum(counts.values())
-    known = total - counts[SeatState.UNKNOWN]
+    known = total
     occ_now = (counts[SeatState.OCCUPIED] + counts[SeatState.HELD]) / known if known else None
     peak = ", ".join(f"{p['hour']:02d}:00" for p in d.peak_hours) or "–"
     tiles = "<div style='display:flex;gap:10px;flex-wrap:wrap'>" + "".join([
         _tile("Observed occupancy", f"{occ_now:.0%}" if occ_now is not None else "–",
-              f"{counts[SeatState.FREE]} of {known} known seats free · {counts[SeatState.UNKNOWN]} unknown"),
+              f"{counts[SeatState.FREE]} of {known} seats free"),
         _tile("Held by belongings", f"{d.held_minutes_total:.0f} min", f"{window.lower()}, all seats"),
         _tile("Peak times", peak, f"since {d.start.strftime('%a %H:%M')}"),
     ]) + "</div>"
