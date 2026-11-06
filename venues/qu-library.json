@@ -12,7 +12,11 @@
       "group"
     ],
     "source": "simulated",
-    "noise_db": 38.0
+    "noise_db": 38.0,
+    "drive_minutes": 25,
+    "open_until": "Open till 21:00",
+    "open_late": false,
+    "amenities": ["Quiet zone", "Women's section", "Printing"]
   },
   "seats": [
     {

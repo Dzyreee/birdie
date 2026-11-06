@@ -15,7 +15,7 @@ from pathlib import Path
 
 from birdie.clock import to_doha
 from birdie.config import BUCKET_MINUTES, DB_PATH
-from birdie.models import SeatEvent, SeatState
+from birdie.models import SeatEvent, SeatSnapshot, SeatState
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS seat_events (
@@ -28,6 +28,20 @@ CREATE TABLE IF NOT EXISTS seat_events (
     synthetic INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_seat_events_venue_ts ON seat_events (venue_id, ts);
+
+CREATE TABLE IF NOT EXISTS seat_status (
+    venue_id TEXT NOT NULL,
+    seat_id TEXT NOT NULL,
+    state TEXT NOT NULL,
+    state_changed_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    person_detected INTEGER,
+    belongings_detected INTEGER,
+    confidence REAL,
+    unattended_since TEXT,
+    manual_override INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (venue_id, seat_id)
+);
 
 CREATE TABLE IF NOT EXISTS occupancy (
     venue_id TEXT NOT NULL,
@@ -154,6 +168,61 @@ class Repository:
 
     def delete_seat_events(self, venue_id: str, seat_id: str) -> None:
         self._execute("DELETE FROM seat_events WHERE venue_id = ? AND seat_id = ?", [venue_id, seat_id])
+
+    def save_seat_snapshots(self, snapshots: Iterable[SeatSnapshot]) -> None:
+        rows = [
+            (
+                snapshot.venue_id,
+                snapshot.seat_id,
+                snapshot.state.value,
+                _iso(snapshot.state_changed_at or snapshot.since),
+                _iso(snapshot.updated_at),
+                None if snapshot.person_detected is None else int(snapshot.person_detected),
+                None if snapshot.belongings_detected is None else int(snapshot.belongings_detected),
+                snapshot.confidence,
+                _iso(snapshot.unattended_since) if snapshot.unattended_since else None,
+                int(snapshot.manual_override),
+            )
+            for snapshot in snapshots
+        ]
+        if not rows:
+            return
+        with self._lock:
+            self._conn.executemany(
+                "INSERT INTO seat_status (venue_id, seat_id, state, state_changed_at, updated_at, "
+                "person_detected, belongings_detected, confidence, unattended_since, manual_override) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(venue_id, seat_id) DO UPDATE SET state=excluded.state, "
+                "state_changed_at=excluded.state_changed_at, updated_at=excluded.updated_at, "
+                "person_detected=excluded.person_detected, belongings_detected=excluded.belongings_detected, "
+                "confidence=excluded.confidence, unattended_since=excluded.unattended_since, "
+                "manual_override=excluded.manual_override",
+                rows,
+            )
+            self._conn.commit()
+
+    def seat_snapshots(self, venue_id: str) -> list[SeatSnapshot]:
+        return [
+            SeatSnapshot(
+                venue_id=row["venue_id"],
+                seat_id=row["seat_id"],
+                zone="",
+                has_outlet=False,
+                state=SeatState(row["state"]),
+                since=_dt(row["state_changed_at"]),
+                state_changed_at=_dt(row["state_changed_at"]),
+                updated_at=_dt(row["updated_at"]),
+                person_detected=None if row["person_detected"] is None else bool(row["person_detected"]),
+                belongings_detected=None if row["belongings_detected"] is None else bool(row["belongings_detected"]),
+                confidence=row["confidence"],
+                unattended_since=_dt(row["unattended_since"]) if row["unattended_since"] else None,
+                requires_staff_review=row["state"] == SeatState.REVIEW_REQUIRED.value,
+                manual_override=bool(row["manual_override"]),
+            )
+            for row in self._execute(
+                "SELECT * FROM seat_status WHERE venue_id = ? ORDER BY seat_id", [venue_id]
+            )
+        ]
 
     # --- occupancy buckets (15 minutes) ---------------------------------------
     def record_occupancy(self, venue_id: str, ts: datetime, free: int, occupied: int, held: int) -> None:

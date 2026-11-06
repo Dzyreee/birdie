@@ -32,7 +32,9 @@ def venue_cards(svc: BirdieService, arrival: int) -> str:
         snaps = svc.snapshots(v.venue_id)
         free = sum(1 for s in snaps if s.state == SeatState.FREE)
         unknown = sum(1 for s in snaps if s.state == SeatState.UNKNOWN)
-        known = len(snaps) - unknown
+        unavailable = sum(1 for s in snaps if s.state == SeatState.UNAVAILABLE)
+        review = sum(1 for s in snaps if s.state == SeatState.REVIEW_REQUIRED)
+        known = len(snaps) - unknown - unavailable
         f = focus_score(svc, v.venue_id, arrival)
         zones = zone_free_now(svc, v.venue_id)
         zone_txt = "".join(f"<span>{esc(zone_label(z))}: <b>{n}</b></span>" for z, n in zones.items())
@@ -40,7 +42,7 @@ def venue_cards(svc: BirdieService, arrival: int) -> str:
             f"""<div class="birdie-card">
   <h3>{esc(v.name)} {source_badge(v)}</h3>
   <div class="birdie-muted">{esc(v.area)} · {esc(v.type.value)} · {v.noise_db:.0f} dB</div>
-  <div style="margin:6px 0"><b style="font-size:1.4em">{free}</b> of {known} known seats free · {unknown} status unknown ·
+  <div style="margin:6px 0"><b style="font-size:1.4em">{free}</b> of {known} known seats free · {unknown} status unknown · {review} need staff review · {unavailable} unavailable ·
      {esc(f.availability.summary())}</div>
   <div class="birdie-zones birdie-muted">Free by zone: {zone_txt}</div>
   <div style="margin-top:6px">Focus score <b>{f.score}</b>/100 {_score_bar(f.score)}</div>
@@ -71,7 +73,7 @@ def build_find_tab(svc: BirdieService, demo: gr.Blocks) -> None:
     areas = sorted({v.area for v in venues} | {a.title() for a in AREA_COORDS})
 
     gr.Markdown(
-        "See live free seats by venue and zone. **Only Nestwork Msheireb is live**; "
+        "See free-seat estimates by venue and zone. Nestwork Msheireb uses recorded clips; "
         "the other venues are simulated demo data."
     )
     arrival = gr.Slider(0, 120, value=20, step=5, label="I'll arrive in (minutes)")

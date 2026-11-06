@@ -17,24 +17,21 @@ DEMO_MODE: bool = os.getenv("BIRDIE_DEMO_MODE", "1").strip().lower() not in ("0"
 class Timers:
     """Timers in seconds. One instance for demo mode and one for production."""
 
-    hold_seconds: int  # OCCUPIED -> HELD: belongings with no person for this long
+    hold_seconds: int  # HELD -> REVIEW_REQUIRED after belongings remain unattended this long
     smoothing_frames: int  # an observation only counts after k consecutive frames
     camera_stale_seconds: int  # live seat states expire when no usable frame arrives for this long
-    staff_alert_seconds: int  # a seat HELD for this long raises a staff alert
 
 
 DEMO_TIMERS = Timers(
     hold_seconds=30,
     smoothing_frames=3,
     camera_stale_seconds=10,
-    staff_alert_seconds=30,
 )
 
 PRODUCTION_TIMERS = Timers(
     hold_seconds=30 * 60,
     smoothing_frames=3,
     camera_stale_seconds=10,
-    staff_alert_seconds=30 * 60,
 )
 
 TIMERS: Timers = DEMO_TIMERS if DEMO_MODE else PRODUCTION_TIMERS
@@ -42,6 +39,7 @@ TIMERS: Timers = DEMO_TIMERS if DEMO_MODE else PRODUCTION_TIMERS
 # --- Vision ---------------------------------------------------------------
 DETECTOR_MODEL_ID = "PekingU/rtdetr_r18vd"
 DETECTION_THRESHOLD = 0.4  # minimum detector score that counts for seat states
+UNCERTAIN_DETECTION_THRESHOLD = 0.2  # lower scores make an affected seat UNKNOWN, never FREE
 MAX_FRAME_SIDE = 640  # long side of a frame is resized to at most this many pixels
 TARGET_FPS = 1.0  # frames per second sent from the browser / sampled from clips
 MIN_OVERLAP = 0.2  # fallback seat assignment: box must overlap the seat polygon by more than this

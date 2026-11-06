@@ -12,6 +12,7 @@ from birdie.vision import render
 CSS = """
 .birdie-frame img { width: 100%; height: auto; border-radius: 10px; display: block; }
 .birdie-frame { min-height: 120px; }
+.birdie-setup { cursor: crosshair; }
 .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.78em; font-weight: 600;
          vertical-align: middle; margin-left: 6px; }
 .badge-sim { background: #fde68a; color: #78350f; }
@@ -23,6 +24,18 @@ CSS = """
 .birdie-zones span { display: inline-block; margin-right: 10px; }
 .focus-bar { background: var(--border-color-primary); border-radius: 6px; height: 8px; overflow: hidden; }
 .focus-bar > div { background: #22c55e; height: 8px; }
+"""
+
+# Send normalised click coordinates from the calibration image to the seat editor.
+SETUP_CLICK_JS = """
+element.addEventListener('click', (e) => {
+  const img = e.target.closest('img.birdie-setup');
+  if (!img) return;
+  const r = img.getBoundingClientRect();
+  const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+  trigger('click', {x, y});
+});
 """
 
 def frame_html(frame: np.ndarray | None, css_class: str = "", text: str = "No frame yet") -> str:

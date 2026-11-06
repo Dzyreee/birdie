@@ -7,16 +7,19 @@ the simulator, the forecaster and the decision logic. Framework-free.
 from __future__ import annotations
 
 import logging
+import hashlib
 import threading
 from collections.abc import Callable
 from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
+from shapely.geometry import Point, Polygon
 
 from birdie.clock import Clock, RealClock
 from birdie.config import (
     DETECTION_THRESHOLD,
+    UNCERTAIN_DETECTION_THRESHOLD,
     SCHEDULER_INTERVAL_SECONDS,
     TIMERS,
     VENUES_DIR,
@@ -30,8 +33,8 @@ from birdie.simulator import Simulator
 from birdie.storage import Repository
 from birdie.venues import load_all, save_venue
 from birdie.vision import render
-from birdie.vision.detector import resize_long_side
-from birdie.vision.seats import assign_detections, observe
+from birdie.vision.detector import PERSON, resize_long_side
+from birdie.vision.seats import assign_detections, observe_evidence
 from birdie.vision.state import VenueTracker
 
 log = logging.getLogger(__name__)
@@ -66,6 +69,7 @@ class BirdieService:
         self.configs: dict[str, VenueConfig] = venues if venues is not None else load_all(self.venues_dir)
         self._detect = detector or _default_detector
         self._lock = threading.RLock()
+        self.recorded_demo_status: dict = {"state": "not_configured"}
         self._listeners: list[Callable[[SeatEvent], None]] = []
         self.trackers: dict[str, VenueTracker] = {
             vid: VenueTracker(
@@ -81,6 +85,11 @@ class BirdieService:
             )
             for vid, cfg in self.configs.items()
         }
+        for vid, cfg in self.configs.items():
+            if cfg.venue.source != VenueSource.simulated:
+                self.trackers[vid].restore(self.repo.seat_snapshots(vid))
+                self.trackers[vid].tick()
+                self.repo.save_seat_snapshots(self.trackers[vid].snapshots())
         self.forecast = forecast or ForecastEngine(self.configs, self.clock, self.repo)
         self.simulator = Simulator(
             self.configs, self.trackers, self.forecast.ratio_at, self.clock, seed=seed
@@ -106,6 +115,15 @@ class BirdieService:
     def camera_venues(self) -> list[Venue]:
         """Venues fed by a camera or a recorded clip (simulated venues are driven by the simulator)."""
         return [v for v in self.venues() if v.source != VenueSource.simulated]
+
+    def validate_recording(self, venue_id: str, path: str) -> None:
+        """Reject a recording from another view when calibration is tied to a clip."""
+        expected = self.configs[venue_id].recording_sha256
+        if expected:
+            with open(path, "rb") as video:
+                actual = hashlib.file_digest(video, "sha256").hexdigest()
+            if actual != expected:
+                raise ValueError("This clip needs its own seat and mirror calibration")
 
     def snapshots(self, venue_id: str) -> list[SeatSnapshot]:
         return self.trackers[venue_id].snapshots()
@@ -140,7 +158,7 @@ class BirdieService:
             zones = list(cfg.venue.zones)
             if seat.zone not in zones:
                 zones.append(seat.zone)
-            self._replace_config(VenueConfig(venue=cfg.venue.model_copy(update={"zones": zones}), seats=seats))
+            self._replace_config(cfg.model_copy(update={"venue": cfg.venue.model_copy(update={"zones": zones}), "seats": seats}))
 
     def delete_seat(self, venue_id: str, seat_id: str) -> bool:
         with self._lock:
@@ -148,12 +166,13 @@ class BirdieService:
             seats = [s for s in cfg.seats if s.seat_id != seat_id]
             if len(seats) == len(cfg.seats):
                 return False
-            self._replace_config(VenueConfig(venue=cfg.venue, seats=seats))
+            self._replace_config(cfg.model_copy(update={"seats": seats}))
             return True
 
     def _replace_config(self, cfg: VenueConfig) -> None:
         self.configs[cfg.venue.venue_id] = cfg
         self.trackers[cfg.venue.venue_id].set_seats(cfg.seats)
+        self.mark_unknown(cfg.venue.venue_id)
         if self.persist_venues:
             save_venue(cfg, self.venues_dir)
 
@@ -187,37 +206,20 @@ class BirdieService:
         now = self.clock.now()
         self.simulator.step()
         for tracker in self.trackers.values():
-            tracker.tick()  # OCCUPIED -> HELD even if no new frame arrives
-        self._check_held_alerts(now)
+            tracker.tick()
+            self.repo.save_seat_snapshots(tracker.snapshots())
         for vid in self.configs:
             c = self.counts(vid)
             # Partial samples would treat unknown seats as empty in historical occupancy ratios.
             if c[SeatState.UNKNOWN] == 0:
-                self.repo.record_occupancy(vid, now, c[SeatState.FREE], c[SeatState.OCCUPIED], c[SeatState.HELD])
+                self.repo.record_occupancy(
+                    vid, now, c[SeatState.FREE],
+                    c[SeatState.OCCUPIED] + c[SeatState.UNAVAILABLE],
+                    c[SeatState.HELD] + c[SeatState.REVIEW_REQUIRED],
+                )
         if (now - self._last_refit).total_seconds() >= 15 * 60:
             self._last_refit = now
             self.forecast.refit()  # fold live buckets into the baseline
-
-    def _check_held_alerts(self, now) -> None:
-        threshold = self.timers.staff_alert_seconds
-        for vid in self.configs:
-            snaps = [
-                snap for snap in self.snapshots(vid)
-                if snap.state == SeatState.HELD and (now - snap.since).total_seconds() >= threshold
-            ]
-            if not snaps:
-                continue
-            open_alerts = {
-                a["seat_id"] for a in self.repo.alerts(vid, unresolved_only=True, limit=500) if a["kind"] == "held_too_long"
-            }
-            for snap in snaps:
-                if snap.seat_id not in open_alerts:
-                    minutes = (now - snap.since).total_seconds() / 60
-                    self.repo.add_alert(
-                        now, vid, snap.seat_id, "held_too_long",
-                        f"Seat {snap.seat_id} ({snap.zone}) has been held by belongings with nobody there "
-                        f"for {minutes:.1f} min.",
-                    )
 
     def start(self, backfill_hours: float = 24) -> None:
         """Seed the simulated venues and start the background scheduler."""
@@ -233,8 +235,13 @@ class BirdieService:
 
     def _on_seat_event(self, event: SeatEvent) -> None:
         self.repo.add_seat_event(event)
-        if event.new_state in (SeatState.FREE, SeatState.OCCUPIED):
-            self.repo.resolve_alerts(event.venue_id, event.seat_id, "held_too_long")
+        if event.new_state == SeatState.REVIEW_REQUIRED:
+            self.repo.add_alert(
+                event.ts, event.venue_id, event.seat_id, "review_required",
+                f"Seat {event.seat_id} needs staff review: belongings remained after the grace period.",
+            )
+        elif event.new_state in (SeatState.FREE, SeatState.OCCUPIED, SeatState.UNAVAILABLE):
+            self.repo.resolve_alerts(event.venue_id, event.seat_id, "review_required")
         for fn in self._listeners:
             try:
                 fn(event)
@@ -243,14 +250,53 @@ class BirdieService:
 
     # --- camera pipeline ------------------------------------------------------
     def process_frame(self, venue_id: str | None, frame: np.ndarray, update_state: bool = True) -> np.ndarray:
-        """Detect objects and optionally update a calibrated venue's hidden seat states."""
-        img = resize_long_side(frame)
-        arr = np.asarray(img)
-        detections = self._detect(img, threshold=DETECTION_THRESHOLD)
+        """Detect objects, update calibrated seat states, and keep source frames in memory."""
+        with self._lock:
+            if venue_id is not None and venue_id not in self.trackers:
+                raise KeyError(f"unknown venue: {venue_id}")
+            config = self.configs.get(venue_id) if venue_id is not None else None
+        try:
+            arr = np.asarray(frame)
+            if arr.ndim != 3 or arr.shape[0] <= 0 or arr.shape[1] <= 0 or arr.shape[2] not in (3, 4):
+                raise ValueError("frame must be a non-empty RGB or RGBA image")
+            img = resize_long_side(arr)
+            detections = self._detect(img, threshold=UNCERTAIN_DETECTION_THRESHOLD)
+            if config is not None:
+                regions = [Polygon(points) for points in config.ignored_person_regions]
+                w, h = img.size
+                detections = [d for d in detections if d["label"] != PERSON or not any(
+                    region.covers(Point((d["box"][0] + d["box"][2]) / (2 * w),
+                                        (d["box"][1] + d["box"][3]) / (2 * h)))
+                    for region in regions
+                )]
+        except Exception:
+            if update_state and venue_id is not None:
+                self.mark_unknown(venue_id)
+            raise
         counted = [d for d in detections if d["score"] >= DETECTION_THRESHOLD]
         if update_state and venue_id is not None:
-            tracker = self.trackers[venue_id]
-            seats = list(tracker.seats.values())
-            assigned = assign_detections(counted, seats, img.size)
-            tracker.process(observe(assigned))
-        return render.annotate(arr, counted)
+            with self._lock:
+                if self.configs[venue_id] is not config:
+                    self.mark_unknown(venue_id)
+                else:
+                    tracker = self.trackers[venue_id]
+                    assigned = assign_detections(detections, list(tracker.seats.values()), img.size,
+                                                 table_regions=config.camera_table_regions)
+                    tracker.process(observe_evidence(assigned))
+                    self.repo.save_seat_snapshots(tracker.snapshots())
+        return render.annotate(np.asarray(img), counted)
+
+    def mark_unknown(self, venue_id: str) -> None:
+        """Invalidate all current venue evidence after a decode or camera failure."""
+        tracker = self.trackers[venue_id]
+        tracker.process({})
+        self.repo.save_seat_snapshots(tracker.snapshots())
+
+    def set_seat_unavailable(self, venue_id: str, seat_id: str, unavailable: bool) -> SeatSnapshot | None:
+        tracker = self.trackers.get(venue_id)
+        if tracker is None or seat_id not in tracker.seats:
+            return None
+        tracker.set_unavailable(seat_id, unavailable)
+        snapshots = tracker.snapshots()
+        self.repo.save_seat_snapshots(snapshots)
+        return next(snapshot for snapshot in snapshots if snapshot.seat_id == seat_id)

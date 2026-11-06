@@ -129,14 +129,14 @@ def svc():
     live.stale_seconds = None
     for machine in live.machines.values():
         machine.stale = None
-    live.force({seat.seat_id: SeatState.FREE for seat in live.seats.values()})
+    live.force({seat.seat_id: SeatState.FREE for seat in live.seats.values()}, emit=False)
     return s
 
 
 def test_availability_at_uses_live_and_forecast_data(svc):
     vid = "nestwork-msheireb"
     result = svc.availability_at(vid, 10)
-    assert result.live_free == 6
+    assert result.live_free == len(svc.seats(vid)) > 0
     assert 0 <= result.expected_free <= result.total
 
 

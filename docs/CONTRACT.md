@@ -17,12 +17,12 @@ Rules:
 
 | Model | Fields |
 |---|---|
-| `Venue` | `venue_id: str`, `name: str`, `area: str`, `type: VenueType` (`cafe`, `library`, `cowork`), `lat: float`, `lon: float`, `zones: list[str]`, `source: VenueSource` (`live`, `recorded`, `simulated`), `noise_db: float` |
-| `Seat` | `seat_id: str`, `venue_id: str`, `zone: str`, `has_outlet: bool`, `polygon: list[tuple[float, float]]` (normalised) |
-| `SeatSnapshot` | `venue_id`, `seat_id`, `zone`, `has_outlet`, `state: SeatState` (`UNKNOWN`, `FREE`, `OCCUPIED`, `HELD`), `since: datetime`, `updated_at: datetime` |
+| `Venue` | `venue_id: str`, `name: str`, `area: str`, `type: VenueType` (`cafe`, `library`, `cowork`, `study_room`), `lat: float`, `lon: float`, `zones: list[str]`, `source: VenueSource` (`live`, `recorded`, `simulated`), optional `floor_plan` and display metadata |
+| `Seat` | `seat_id: str`, `venue_id: str`, `zone: str`, `has_outlet: bool`, optional customer-map coordinates, `polygon: list[tuple[float, float]]` (normalised camera region) |
+| `SeatSnapshot` | `venue_id`, `seat_id`, `zone`, `has_outlet`, `state: SeatState` (`UNKNOWN`, `FREE`, `OCCUPIED`, `HELD`, `REVIEW_REQUIRED`, `UNAVAILABLE`), timestamps, detector evidence, grace-period countdown, review and override flags |
 | `SeatEvent` | `ts: datetime`, `venue_id`, `seat_id`, `old_state: SeatState \| None`, `new_state: SeatState` |
 | `Query` | `area: str \| None`, `party_size: int`, `needs_outlet: bool`, `quiet: bool`, `zone: str \| None`, `venue_type: VenueType \| None`, `arrival_minutes: int` |
-| `VenueConfig` | `venue: Venue`, `seats: list[Seat]` (the shape of `venues/<venue_id>.json`) |
+| `VenueConfig` | `venue`, `seats`, private camera `ignored_person_regions` and `camera_table_regions`, and optional `recording_sha256` tying calibration to one clip |
 
 Zone ids used by the demo venues: `quiet`, `open`, `group`, `family`, `women`, `terrace`, `indoor`
 (labels in `birdie.venues.ZONE_LABELS`).
@@ -37,6 +37,7 @@ SQLite at `data/birdie.db` (gitignored). `Repository(path)`; use `Repository(":m
 | `seat_events(venue_id=None, since=None, until=None, include_synthetic=True) -> list[SeatEvent]` | Read the event log in time order |
 | `record_occupancy(venue_id, ts, free, occupied, held)`, `occupancy_buckets(venue_id, since=None)` | Live occupancy in 15-minute buckets |
 | `add_alert(...)`, `alerts(venue_id=None, unresolved_only=False)`, `resolve_alerts(venue_id, seat_id, kind=None)` | Staff alerts |
+| `save_seat_snapshots(snapshots)`, `seat_snapshots(venue_id)` | Persist current state and unattended timer timestamps across process restarts |
 
 ## Venues (`birdie/venues.py`)
 
@@ -48,13 +49,14 @@ SQLite at `data/birdie.db` (gitignored). `Repository(path)`; use `Repository(":m
 |---|---|
 | `detector.detect(frame, threshold=0.4) -> list[{label, score, box}]` | RT-DETR r18 (`PekingU/rtdetr_r18vd`). Keeps COCO classes `chair`, `person`, `backpack, handbag, suitcase, laptop, cup, bottle, book, cell phone`. `box = [x1, y1, x2, y2]` in pixels of the frame passed in. Resizes to long side <= 640 internally |
 | `detector.resize_long_side(frame, 640) -> PIL.Image`, `detector.load()` | Helpers. `_infer` is the pure (frame in, detections out) function wrapped with `@spaces.GPU` when `spaces` is importable |
-| `seats.assign_detections(detections, seats, (w, h), min_overlap=0.2) -> {seat_id: [det]}` | Box centre inside polygon, else largest overlap above 20% |
-| `seats.observe(assigned) -> {seat_id: Observation}` | `PERSON`, `ITEMS` or `EMPTY`; missing seat observations are treated as `UNKNOWN` by the tracker |
-| `state.SeatStateMachine(venue_id, seat_id, clock, k=3, hold_seconds=...)` | `.update(obs) -> SeatEvent \| None`, `.tick()`, `.snapshot(seat)` |
+| `seats.assign_detections(detections, seats, (w, h), min_overlap=0.2, table_regions=None) -> {seat_id: [det]}` | Assign detections to camera regions; ambiguous belongings on shared tables make linked seats unknown |
+| `seats.observe_evidence(assigned)` | Confidence-aware `PERSON`, `ITEMS`, `EMPTY`, or conservative `UNKNOWN` evidence |
+| `state.SeatStateMachine(venue_id, seat_id, clock, k=3, hold_seconds=...)` | Smooths evidence; belongings become `HELD`, then `REVIEW_REQUIRED` after the real-time grace period |
 | `state.VenueTracker(venue_id, seats, clock, on_event)` | `.process({seat_id: Observation}) -> [SeatEvent]` (missing seats = UNKNOWN), `.tick()` (hold timers and stale-feed expiry), `.snapshots()`, `.counts()`, `.force(states)`, `.set_seats(seats)` |
 | `render.annotate(frame, detections)` | RGB frame with detector boxes only; no static seat regions and no blurring |
 | `render.to_data_uri(frame)` | In-memory JPEG data URL (frames never touch disk) |
 | `clip.iter_clip_frames(path, fps=1)` | Sample a recorded clip at 1 fps, in memory |
+| `demo.replay_recording(svc, venue_id, path, stop)` | Repeatedly process a configured clip and invalidate seat states on failure |
 
 ## Forecast (`birdie/forecast/`)
 
@@ -92,7 +94,7 @@ and `forecast_ratio(id, ts)`. `BirdieService` implements it.
 ## Service (`birdie/service.py`)
 
 `BirdieService(repo=None, clock=None, venues=None, timers=TIMERS, detector=None)` is the one object the UI talks to:
-`process_frame(venue_id, frame)`, `snapshots(venue_id)`, `zone_counts(venue_id)`, `upsert_seat(seat)`,
+`process_frame(venue_id, frame)` associates detections and updates seat state; `snapshots(venue_id)`, `zone_counts(venue_id)`, `upsert_seat(seat)`,
 `delete_seat(venue_id, seat_id)`, `availability_at(venue_id, minutes)`,
 `forecast` (ForecastEngine), `simulator`, `tick()`, `start()` (back-fill + 2 s scheduler), `stop()`.
 

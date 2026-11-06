@@ -77,13 +77,13 @@ def occupancy_by_hour(intervals: dict[str, list[tuple[datetime, datetime, SeatSt
     held = defaultdict(float)
     for ivs in intervals.values():
         for a, b, state in ivs:
-            if state == SeatState.UNKNOWN:
+            if state in (SeatState.UNKNOWN, SeatState.UNAVAILABLE):
                 continue
             for hour, secs in _split_by_hour(a, b):
                 total[hour] += secs
                 if state == SeatState.OCCUPIED:
                     occupied[hour] += secs
-                elif state == SeatState.HELD:
+                elif state in (SeatState.HELD, SeatState.REVIEW_REQUIRED):
                     held[hour] += secs
     rows = []
     for hour in range(24):
@@ -107,7 +107,8 @@ def peak_hours(by_hour: list[dict], top: int = 3) -> list[dict]:
 
 def held_minutes(intervals: dict[str, list[tuple[datetime, datetime, SeatState]]]) -> dict[str, float]:
     return {
-        sid: round(sum((b - a).total_seconds() for a, b, s in ivs if s == SeatState.HELD) / 60, 1)
+        sid: round(sum((b - a).total_seconds() for a, b, s in ivs
+                       if s in (SeatState.HELD, SeatState.REVIEW_REQUIRED)) / 60, 1)
         for sid, ivs in intervals.items()
     }
 

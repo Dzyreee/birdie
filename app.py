@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 
 import gradio as gr
+import uvicorn
 
-from birdie.config import DEMO_MODE
+from birdie.api import create_app, mount_mobile_web
+from birdie.config import DEMO_MODE, LIVE_VENUE_ID
 from birdie.service import BirdieService
 from birdie.ui.camera import build_camera_tab
 from birdie.ui.common import CSS
@@ -32,11 +35,17 @@ def _warm_up_detector() -> None:
 
 threading.Thread(target=_warm_up_detector, daemon=True, name="detector-warmup").start()
 
+demo_video = os.getenv("BIRDIE_DEMO_VIDEO", "").strip()
+if demo_video:
+    from birdie.vision.demo import start_recorded_demo
+
+    start_recorded_demo(svc, os.getenv("BIRDIE_DEMO_VENUE", LIVE_VENUE_ID), demo_video)
+
 with gr.Blocks(title="Birdie") as demo:
     gr.Markdown(
         "# 🐦 Birdie\n"
         "**A bird's-eye view of every study seat in Doha before you drive there.** "
-        "Camera-verified live seats for cafes, libraries and study spaces."
+        "Study-seat availability from camera data and recorded demos."
         + (" &nbsp;<span class='badge badge-syn'>Demo timers</span>" if DEMO_MODE else "")
     )
     with gr.Tabs():
@@ -47,5 +56,9 @@ with gr.Blocks(title="Birdie") as demo:
         with gr.Tab("Camera"):
             build_camera_tab(svc)
 
+app = create_app(svc)
+app = gr.mount_gradio_app(app, demo, path="/operator", css=CSS)
+mount_mobile_web(app)
+
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, css=CSS)
+    uvicorn.run(app, host="0.0.0.0", port=7860)

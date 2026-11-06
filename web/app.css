@@ -166,6 +166,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--indigo); ou
 .bar .b-free { background: var(--free); }
 .bar .b-held { background: var(--held); }
 .bar .b-taken { flex: 1; background: var(--taken); }
+.bar .b-unknown { background: #7C8190; }
 
 .empty { padding: 24px 0; text-align: center; font-size: 15px; font-weight: 500; color: var(--slate); }
 .note { margin: 0; padding: 0 20px; text-align: center; font-size: 12px; font-weight: 600; color: var(--slate); }
@@ -246,10 +247,13 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--indigo); ou
 }
 .chair.is-free { --c: var(--free); cursor: pointer; }
 .chair.is-held { --c: var(--held); cursor: pointer; }
+.chair.is-unknown, .chair.is-unavailable { --c: #8A8C98; }
 .chair.is-dim { opacity: 0.22; cursor: default; }
 .chair-back { width: 18px; height: 5px; border-radius: 3px; background: var(--c); transition: background-color 200ms ease; }
 .chair-seat { width: 22px; height: 16px; border-radius: 6px; background: var(--c); transition: background-color 200ms ease; }
+.chair-id { position: absolute; top: 29px; font-size: 10px; font-weight: 800; color: var(--ink); transform: rotate(0deg); }
 .chair.is-sel .chair-seat { box-shadow: 0 0 0 2.5px var(--mist), 0 0 0 5px var(--indigo); }
+.plan-caption { color: var(--slate); font-size: 12px; text-align: center; margin: 8px 0; }
 .entrance {
   position: absolute; left: 0; right: 0; bottom: 10px;
   display: flex; align-items: center; justify-content: center; gap: 5px;
@@ -258,6 +262,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--indigo); ou
 
 .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; padding-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--slate); }
 .legend span { display: flex; align-items: center; gap: 6px; }
+
+.seat-status-list { display: grid; gap: 9px; padding: 12px 0; }
+.seat-status { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 10px 13px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
+.seat-status-id { min-width: 42px; font-weight: 800; }
+.seat-status-label { flex: 1; font-size: 14px; font-weight: 700; }
+.seat-free .seat-status-label { color: var(--free); }
+.seat-held .seat-status-label, .seat-review_required .seat-status-label { color: #9A6500; }
+.seat-unknown .seat-status-label, .seat-unavailable .seat-status-label { color: var(--slate); }
 .legend i { width: 12px; height: 10px; border-radius: 3px; }
 
 /* ---------- Seat sheet ---------- */

@@ -150,8 +150,10 @@ def build_seat_editor(
         if not sid:
             return gr.skip(), pts, "Give the seat an id.", *skip
         zone_value = str(zone_value or default_zone).strip()
-        seat = Seat(seat_id=sid, venue_id=key_value, zone=zone_value, has_outlet=bool(outlet),
-                    polygon=[tuple(p) for p in pts])
+        existing = next((s for s in backend.seats(key_value) if s.seat_id == sid), None)
+        values = existing.model_dump() if existing else {}
+        seat = Seat.model_validate({**values, "seat_id": sid, "venue_id": key_value, "zone": zone_value,
+                                    "has_outlet": bool(outlet), "polygon": [tuple(p) for p in pts]})
         msg = backend.upsert(key_value, seat)
         return (
             render(key_value),

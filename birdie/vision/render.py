@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Iterable
 
 import cv2
 import numpy as np
 
 from birdie.vision.detector import CHAIR, PERSON
+from birdie.models import Seat
 
 BOX_PERSON = (148, 163, 184)
 BOX_CHAIR = (34, 197, 94)
@@ -35,6 +37,28 @@ def annotate(frame: np.ndarray, detections: list[dict]) -> np.ndarray:
     return img
 
 
+def blur_people(frame: np.ndarray, boxes: Iterable[list[float]], pad: float = 0.12) -> np.ndarray:
+    """Pixelate and blur person regions in saved evaluation copies, never in the operator preview."""
+    out = frame.copy()
+    h, w = out.shape[:2]
+    for x1, y1, x2, y2 in boxes:
+        bw, bh = x2 - x1, y2 - y1
+        left, top = max(0, int(x1 - bw * pad)), max(0, int(y1 - bh * pad))
+        right, bottom = min(w, int(x2 + bw * pad)), min(h, int(y2 + bh * pad))
+        if right - left < 2 or bottom - top < 2:
+            continue
+        roi = out[top:bottom, left:right]
+        small = cv2.resize(
+            roi, (max(1, (right - left) // 16), max(1, (bottom - top) // 16)),
+            interpolation=cv2.INTER_LINEAR,
+        )
+        mosaic = cv2.resize(small, (right - left, bottom - top), interpolation=cv2.INTER_NEAREST)
+        out[top:bottom, left:right] = cv2.GaussianBlur(
+            mosaic, (0, 0), sigmaX=max(3, (right - left) / 30)
+        )
+    return out
+
+
 def to_data_uri(frame: np.ndarray, quality: int = 80) -> str:
     """Encode an RGB frame as an in-memory JPEG data URL (never touches disk)."""
     ok, buf = cv2.imencode(".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR), [int(cv2.IMWRITE_JPEG_QUALITY), quality])
@@ -51,6 +75,13 @@ def placeholder(width: int = 640, height: int = 360, text: str = "No frame yet")
 
 
 NUMBERED_COLOR = (56, 132, 255)  # neutral blue: no state or detector hint for labellers
+
+
+def _to_px(points: Iterable[tuple[float, float]], w: int, h: int) -> np.ndarray:
+    return np.asarray(
+        [(round(x * (w - 1)), round(y * (h - 1))) for x, y in points],
+        dtype=np.int32,
+    )
 
 
 def draw_numbered_seats(frame: np.ndarray, seats: Iterable[Seat], highlight: int | None = None) -> np.ndarray:
@@ -76,4 +107,20 @@ def draw_numbered_seats(frame: np.ndarray, seats: Iterable[Seat], highlight: int
                     (255, 255, 255), 3, cv2.LINE_AA)
         x, y = int(pts[:, 0].min()), int(pts[:, 1].min())
         _label(img, seat.seat_id, (x + 2, y + int(16 * scale)), color, 0.45 * scale)
+    return img
+
+
+def draw_seat_calibration(
+    frame: np.ndarray, seats: Iterable[Seat], points: list[tuple[float, float]]
+) -> np.ndarray:
+    """Show saved regions and the four current clicks in the operator calibration view."""
+    img = draw_numbered_seats(frame, seats)
+    h, w = img.shape[:2]
+    px = _to_px(points, w, h).tolist()
+    for i, point in enumerate(px):
+        cv2.circle(img, point, max(5, max(w, h) // 100), (255, 196, 0), -1, cv2.LINE_AA)
+        cv2.putText(img, str(i + 1), (point[0] + 5, point[1] - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (20, 20, 20), 2, cv2.LINE_AA)
+        if i:
+            cv2.line(img, px[i - 1], point, (255, 196, 0), 2, cv2.LINE_AA)
     return img

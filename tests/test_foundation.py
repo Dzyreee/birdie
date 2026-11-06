@@ -56,9 +56,9 @@ def test_occupancy_buckets_average(repo, clock):
 def test_demo_venues_load():
     venues = load_all()
     assert set(venues) == {"nestwork-msheireb", "qnl", "qu-library", "qahwa-corner"}
-    assert next(iter(venues)) == "nestwork-msheireb"  # live venue first
+    assert next(iter(venues)) == "nestwork-msheireb"  # camera-fed venue first
     for cfg in venues.values():
         assert cfg.seats, cfg.venue.venue_id
         assert all(s.zone in cfg.venue.zones for s in cfg.seats)
-    assert venues["nestwork-msheireb"].venue.source == VenueSource.live
+    assert venues["nestwork-msheireb"].venue.source == VenueSource.recorded
     assert all(v.venue.source == VenueSource.simulated for k, v in venues.items() if k != "nestwork-msheireb")

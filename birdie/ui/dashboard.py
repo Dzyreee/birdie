@@ -31,21 +31,26 @@ def dashboard_outputs(svc: BirdieService, venue_id: str, window: str):
     d = venue_dashboard(svc.repo, venue_id, seat_ids, now, hours=hours, observed_since=svc.observed_since(venue_id))
     counts = svc.counts(venue_id)
     total = sum(counts.values())
-    known = total - counts[SeatState.UNKNOWN]
-    occ_now = (counts[SeatState.OCCUPIED] + counts[SeatState.HELD]) / known if known else None
+    known = total - counts[SeatState.UNKNOWN] - counts[SeatState.UNAVAILABLE]
+    occ_now = (
+        counts[SeatState.OCCUPIED] + counts[SeatState.HELD] + counts[SeatState.REVIEW_REQUIRED]
+    ) / known if known else None
     peak = ", ".join(f"{p['hour']:02d}:00" for p in d.peak_hours) or "–"
     tiles = "<div style='display:flex;gap:10px;flex-wrap:wrap'>" + "".join([
         _tile("Observed occupancy", f"{occ_now:.0%}" if occ_now is not None else "–",
-              f"{counts[SeatState.FREE]} of {known} known seats free · {counts[SeatState.UNKNOWN]} unknown"),
-        _tile("Held by belongings", f"{d.held_minutes_total:.0f} min", f"{window.lower()}, all seats"),
+              f"{counts[SeatState.FREE]} free · {counts[SeatState.UNKNOWN]} unknown · {counts[SeatState.UNAVAILABLE]} unavailable"),
+        _tile("Held by belongings", f"{d.held_minutes_total:.0f} min",
+              f"{window.lower()} · {counts[SeatState.HELD]} held · {counts[SeatState.REVIEW_REQUIRED]} need review"),
         _tile("Peak times", peak, f"since {d.start.strftime('%a %H:%M')}"),
     ]) + "</div>"
     header = f"### {esc(v.name)} {source_badge(v)}"
     notes = list(d.notes)
     if v.source == VenueSource.simulated:
         notes.append("Simulated venue: seat states come from the simulator, not a camera.")
+    elif v.source == VenueSource.recorded:
+        notes.append("Recorded-clip venue: seat states come from uploaded video, not a live camera feed.")
     else:
-        notes.append("Live venue: numbers come only from what the camera saw since the app started.")
+        notes.append("Live camera venue: numbers come only from camera evidence received by this app.")
     header += "\n\n" + " ".join(f"<span class='birdie-muted'>{esc(n)}</span>" for n in notes)
 
     occ = pd.DataFrame(

@@ -12,7 +12,11 @@
       "family"
     ],
     "source": "simulated",
-    "noise_db": 40.0
+    "noise_db": 40.0,
+    "drive_minutes": 15,
+    "open_until": "Open till 22:00",
+    "open_late": true,
+    "amenities": ["Quiet zone", "Women's section", "Wi-Fi", "Outlets"]
   },
   "seats": [
     {

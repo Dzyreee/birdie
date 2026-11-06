@@ -23,7 +23,11 @@ from birdie.models import Seat, SeatState, VenueConfig, VenueSource
 from birdie.storage import Repository
 from birdie.vision.state import Observation, VenueTracker
 
-OBS_TO_STATE = {Observation.EMPTY: SeatState.FREE, Observation.PERSON: SeatState.OCCUPIED, Observation.ITEMS: SeatState.OCCUPIED}
+OBS_TO_STATE = {
+    Observation.EMPTY: SeatState.FREE,
+    Observation.PERSON: SeatState.OCCUPIED,
+    Observation.ITEMS: SeatState.HELD,
+}
 
 
 class Simulator:
@@ -104,7 +108,7 @@ class Simulator:
         now = self.clock.now()
         obs = dict(obs) if obs is not None else self._initial_obs(venue_id, now)
         self.obs[venue_id] = obs
-        self.trackers[venue_id].force({sid: OBS_TO_STATE[o] for sid, o in obs.items()})
+        self.trackers[venue_id].force({sid: OBS_TO_STATE[o] for sid, o in obs.items()}, emit=False)
 
     def step(self) -> None:
         """Advance every simulated venue by the time since the last step."""

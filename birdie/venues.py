@@ -36,13 +36,13 @@ def load_venue(venue_id: str, venues_dir: Path = VENUES_DIR) -> VenueConfig:
 
 
 def load_all(venues_dir: Path = VENUES_DIR) -> dict[str, VenueConfig]:
-    """All venues, keyed by venue_id. The live venue comes first, then by name."""
+    """All venues, keyed by venue_id. Camera-fed venues come first, then by name."""
     configs = {}
     for path in sorted(Path(venues_dir).glob("*.json")):
         with open(path, encoding="utf-8") as f:
             cfg = VenueConfig.model_validate(json.load(f))
         configs[cfg.venue.venue_id] = cfg
-    order = sorted(configs.values(), key=lambda c: (c.venue.source.value != "live", c.venue.name))
+    order = sorted(configs.values(), key=lambda c: (c.venue.source.value == "simulated", c.venue.name))
     return {c.venue.venue_id: c for c in order}
 
 

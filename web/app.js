@@ -45,11 +45,14 @@
   const sourceLabel = s => (s === 'live' ? 'Live' : s.charAt(0).toUpperCase() + s.slice(1));
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  function heldFor(since) {
-    const ms = Date.now() - Date.parse(since);
-    if (!Number.isFinite(ms) || ms < 60000) return 'under a minute';
-    const m = Math.floor(ms / 60000);
-    return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+  function seatState(s) {
+    if (s.state) return s.state;
+    return ({ free: 'FREE', held: 'HELD', taken: 'OCCUPIED' })[s.status] || 'UNKNOWN';
+  }
+
+  function seatLabel(s) {
+    return ({ FREE: 'Free', OCCUPIED: 'Taken', HELD: 'Held by belongings',
+      REVIEW_REQUIRED: 'Staff review required', UNKNOWN: 'Checking', UNAVAILABLE: 'Unavailable' })[seatState(s)];
   }
 
   // Replace an element's HTML only when it changed, keeping its sideways scroll position.
@@ -269,8 +272,11 @@
 
   function row(v) {
     const { free, held, total } = v.counts;
-    const taken = Math.max(0, total - free - held);
-    const full = free === 0;
+    const unknown = v.counts.unknown || 0;
+    const taken = v.counts.taken ?? Math.max(0, total - free - held - unknown);
+    const full = free === 0 && unknown === 0;
+    const availability = free > 0 ? `${free} of ${total} free` : unknown > 0
+      ? `No seats marked free · ${unknown} checking` : 'No seats marked free';
     const seg = (cls, n) => (n > 0 ? `<i class="${cls}" style="flex:${n} 1 0"></i>` : '');
     return `
       <button class="row${full ? ' is-full' : ''}" data-act="open" data-v="${esc(v.venue_id)}">
@@ -279,10 +285,10 @@
           <span class="row-name">${esc(v.name)}</span>
           <span class="row-meta">${esc(typeLabel(v.type))} · ${esc(v.area)}${v.source === 'live' ? '' : ` <span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`}</span>
           <span class="row-free">
-            <i class="dot" style="background:${full ? COLORS.taken : COLORS.free}"></i>${full ? 'Full right now' : `${free} of ${total} free`}
+            <i class="dot" style="background:${free > 0 ? COLORS.free : full ? COLORS.taken : '#7C8190'}"></i>${availability}
             <span class="row-drive">· ${esc(driveLabel(v.drive_minutes))}</span>
           </span>
-          <span class="bar">${seg('b-free', free)}${seg('b-held', held)}${seg('b-taken', taken)}</span>
+          <span class="bar">${seg('b-free', free)}${seg('b-held', held)}${seg('b-taken', taken)}${seg('b-unknown', unknown)}</span>
         </span>
       </button>`;
   }
@@ -293,7 +299,8 @@
   let tableNames = new Map();
 
   // Changes when the floor plan or the set of seats changes, so the plan is rebuilt.
-  const layoutKey = v => JSON.stringify([v.floor_plan, v.seats.map(s => [s.seat_id, s.plan_x, s.plan_y, s.plan_rot])]);
+  const layoutKey = v => JSON.stringify([v.floor_plan || null, v.seats.map(s => [s.seat_id, s.plan_x, s.plan_y, s.plan_rot])]);
+  const hasPlanPosition = s => Number.isFinite(s.plan_x) && Number.isFinite(s.plan_y);
 
   function openPlace(id) {
     const cached = state.venue && state.venue.venue_id === id;
@@ -314,7 +321,7 @@
   function renderPlace() {
     const v = state.venue;
     const plan = v.floor_plan;
-    tableNames = new Map(plan.tables.map(t => [t.table_id, t.name]));
+    tableNames = new Map((plan?.tables || []).map(t => [t.table_id, t.name]));
     const meta = [typeLabel(v.type), v.area, driveLabel(v.drive_minutes), v.open_until].filter(Boolean).map(esc).join(' · ');
     const live = v.source === 'live';
 
@@ -341,19 +348,21 @@
           <div class="seg" id="seg" role="group" aria-label="Filter seats">
             ${SEGS.map(([k, label]) => `<button data-act="seg" data-v="${k}">${label}</button>`).join('')}
           </div>
-          <div class="plan-wrap" id="planWrap">
+          ${plan ? `<div class="plan-wrap" id="planWrap">
             <div class="plan" id="plan" style="width:${plan.width}px;height:${plan.height}px">
               ${plan.window_top ? '<div class="window-strip"></div>' : ''}
               ${(plan.fixtures || []).map(fixtureHTML).join('')}
-              ${plan.tables.map(tableHTML).join('')}
-              ${v.seats.map(chairHTML).join('')}
-              <div class="entrance">${ICON.entrance()}Entrance</div>
+              ${(plan.tables || []).map(tableHTML).join('')}
+              ${v.seats.filter(hasPlanPosition).map(chairHTML).join('')}
+              ${plan.entrance === false ? '' : `<div class="entrance">${ICON.entrance()}Entrance</div>`}
             </div>
-          </div>
+          </div>${plan.label ? `<p class="plan-caption">${esc(plan.label)}</p>` : ''}` : ''}
+          <div class="seat-status-list" id="seatStatusList" aria-label="Seat statuses"></div>
           <div class="legend">
             <span><i style="background:${COLORS.free}"></i>Free</span>
             <span><i style="background:${COLORS.taken}"></i>Taken</span>
             <span><i style="background:${COLORS.held}"></i>Held</span>
+            <span><i style="background:#8A8C98"></i>Checking</span>
           </div>
         </div>
       </main>`;
@@ -379,7 +388,7 @@
 
   const chairHTML = s =>
     `<button class="chair" data-act="chair" data-v="${esc(s.seat_id)}" style="left:${px(s.plan_x - 17)};top:${px(s.plan_y - 17)};transform:rotate(${s.plan_rot}deg)">` +
-    '<span class="chair-back"></span><span class="chair-seat"></span></button>';
+    `<span class="chair-back"></span><span class="chair-seat"></span><span class="chair-id">${esc(s.seat_id)}</span></button>`;
 
   // Scale the 362-point plan down on narrow phones.
   function fitPlan() {
@@ -396,32 +405,45 @@
   const matchesSeg = s => state.seg === 'all' || (state.seg === 'outlet' && s.has_outlet) || (state.seg === 'window' && s.has_window);
 
   function updatePlace() {
-    if (state.screen !== 'place' || !state.venue || !$('#plan')) return;
+    if (state.screen !== 'place' || !state.venue || (!$('#plan') && !$('#seatStatusList'))) return;
     const v = state.venue;
+    const plan = Boolean(v.floor_plan && $('#plan'));
     let free = 0;
     let freeMatching = 0;
 
     // Drop the selection when that seat was taken meanwhile or is hidden by the filter.
     const sel = state.sel && v.seats.find(x => x.seat_id === state.sel);
-    if (!sel || !matchesSeg(sel) || (sel.status !== 'free' && sel.status !== 'held')) state.sel = null;
+    if (!sel || !matchesSeg(sel) || !['FREE', 'HELD'].includes(seatState(sel))) state.sel = null;
 
     v.seats.forEach(s => {
       const el = chairEls.get(s.seat_id);
-      if (!el) return;
       const ok = matchesSeg(s);
-      if (s.status === 'free') { free += 1; if (ok) freeMatching += 1; }
-      const tappable = ok && (s.status === 'free' || s.status === 'held');
-      el.className = 'chair' +
-        (s.status === 'free' ? ' is-free' : s.status === 'held' ? ' is-held' : '') +
-        (ok ? '' : ' is-dim') +
-        (state.sel === s.seat_id ? ' is-sel' : '');
-      el.setAttribute('aria-label', `${s.seat_id}, ${s.status === 'held' ? 'held by a bag' : s.status}`);
-      el.setAttribute('aria-disabled', String(!tappable));
+      const status = seatState(s);
+      if (status === 'FREE') { free += 1; if (ok) freeMatching += 1; }
+      if (plan && el) {
+        el.className = 'chair' +
+          (status === 'FREE' ? ' is-free' : status === 'HELD' ? ' is-held' :
+            status === 'UNKNOWN' ? ' is-unknown' : status === 'UNAVAILABLE' ? ' is-unavailable' : '') +
+          (ok ? '' : ' is-dim') + (state.sel === s.seat_id ? ' is-sel' : '');
+        el.setAttribute('aria-label', `${s.seat_id}, ${seatLabel(s)}`);
+        el.setAttribute('aria-disabled', String(!(ok && ['FREE', 'HELD'].includes(status))));
+      }
     });
 
+    if ($('#seatStatusList')) {
+      setHTML($('#seatStatusList'), v.seats.filter(s => matchesSeg(s) && (!plan || !hasPlanPosition(s))).map(s => {
+        const status = seatState(s);
+        return `<div class="seat-status seat-${status.toLowerCase()}">
+          <span class="seat-status-id">${esc(s.seat_id)}</span>
+          <span class="seat-status-label">${esc(seatLabel(s))}</span></div>`;
+      }).join(''));
+    }
+
+    const unknown = v.counts?.unknown ?? v.seats.filter(s => seatState(s) === 'UNKNOWN').length;
     $('#headline').textContent = freeMatching > 0
       ? plural(freeMatching, 'seat free', 'seats free')
-      : free === 0 ? 'Full right now' : 'None free here';
+      : free > 0 ? 'No seats match this filter'
+        : unknown > 0 ? 'Availability is being checked' : 'No seats marked free';
 
     document.querySelectorAll('#seg button').forEach(b => {
       const on = b.dataset.v === state.seg;
@@ -434,7 +456,7 @@
 
   function onChair(id) {
     const s = state.venue && state.venue.seats.find(x => x.seat_id === id);
-    if (!s || !matchesSeg(s) || (s.status !== 'free' && s.status !== 'held')) return;
+    if (!s || !matchesSeg(s) || !['FREE', 'HELD'].includes(seatState(s))) return;
     state.sel = id;
     updatePlace();
   }
@@ -464,9 +486,9 @@
       document.body.appendChild(el);
       $('#place').classList.add('has-sheet');
     }
-    const held = s.status === 'held';
+    const held = seatState(s) === 'HELD';
     el.setAttribute('aria-label', `Seat ${s.seat_id}`);
-    const chips = [tableNames.get(s.table_id) || `Table ${s.table_id}`];
+    const chips = s.table_id ? [tableNames.get(s.table_id) || `Table ${s.table_id}`] : [];
     if (s.has_window) chips.push('Window');
     if (s.has_outlet) chips.push('Outlet');
 
@@ -476,7 +498,7 @@
         <div class="sheet-tile" style="background:${held ? COLORS.held : COLORS.free}">${esc(s.seat_id)}</div>
         <div class="sheet-text">
           <span class="sheet-title">${held ? `Seat ${esc(s.seat_id)} is held by a bag` : `Seat ${esc(s.seat_id)} is free`}</span>
-          ${held ? `<span class="sheet-sub">Nobody here · held for ${esc(heldFor(s.since))}</span>` : ''}
+          ${held ? `<span class="sheet-sub">Unavailable because belongings are present</span>` : ''}
           <div class="sheet-chips">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>
         </div>
         <button class="sheet-close" data-act="close" aria-label="Close">${ICON.close()}</button>

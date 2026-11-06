@@ -2,13 +2,13 @@
 
 > **How to use this file:** It lives in the repo root as `CLAUDE.md`, so every Claude Code session starts with the full context. Teammates can also paste it into any AI assistant and say: *"This is our hackathon project brief. Help me with [your part]."*
 
-**Birdie** gives you a bird's-eye view of every study seat in Doha before you drive there: camera-verified live seats for cafes, libraries and study spaces. See which seats are free, taken or held by a bag, before you leave home.
+**Birdie** gives you a bird's-eye view of study-seat availability in Doha. The current Nestwork demo processes uploaded recorded clips; it is not connected to a live camera feed.
 
 > **Updated Fri 6 Nov, evening.** The team dropped booking, check-in, QR codes and the Fanar assistant, and adopted the mobile app design in `design/mobile/`. Birdie is now a live view: it shows seats, it doesn't reserve them. Section 16 lists what changes in the existing code.
 
 ### Current integration status (6 Nov 2026)
 
-`web/` contains the mobile customer UI, but the read-only `/api/venues` endpoints are not implemented and `app.py` does not serve `web/` yet. The current Camera tab is an uploaded-clip object-detection preview: it shows detector boxes on the original video, with no seat-layout overlay or blur. It does not feed detections into availability. The mobile floor plan is a separate user-facing venue map and remains part of the product.
+`web/` contains the mobile customer UI and is served at `/`. FastAPI exposes the read-only `/api/venues` routes. The Camera operator tab can replay an uploaded clip through detection, camera-region association, and seat-state updates; a calibration editor saves camera polygons separately from any customer floor map. Nestwork is labelled as a recorded-clip venue; other venues are simulated.
 
 ---
 
@@ -97,10 +97,13 @@ Birdie is a **mobile app** (a mobile web app, see section 5) where students and 
 
 ### Core features (must have)
 
-1. **Three seat states from computer vision:**
-   - `FREE`: no person, no belongings. Shown green, "Free".
-   - `OCCUPIED`: a person is in the seat, or stepped away recently and left belongings. Shown red, "Taken".
-   - `HELD`: belongings (bag, laptop, cup) on the seat or table with **no person for longer than the hold time** (30 minutes in production, 30 seconds in demo mode). Shown amber, "Held".
+1. **Seat states from computer vision and backend rules:**
+   - `FREE`: stable evidence shows no person or belongings. The only state counted as available.
+   - `OCCUPIED`: a person is associated with the seat. Shown as "Taken".
+   - `HELD`: belongings remain without a person; the 30-minute production grace period starts. Shown as "Held".
+   - `REVIEW_REQUIRED`: belongings remain after the grace period; staff review is needed.
+   - `UNKNOWN`: the camera or detections are unclear. Never counted as free.
+   - `UNAVAILABLE`: staff manually disabled the seat.
 2. **Browse Doha venues** (design screen 2): live free-seat counts per venue, categories, search, sort, a "Free right now" rail and drive times.
 3. **Live floor plan per venue** (design screen 3): every chair coloured by its live state, with an Outlet / Window filter. Tapping a free or held chair shows its details.
 4. **Staff alert** when a seat has been held by belongings for too long (in the operator console).
@@ -129,13 +132,13 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 
 - **Name:** Birdie.
 - **View-only app.** No booking, no check-in or check-out, no QR codes, no seat codes, no "your seat". The camera alone decides each seat's state.
-- **Camera preview:** uploaded clips show object-detection boxes on the original video, with no seat-layout overlay or blur. The preview is detection-only and does not update availability counts.
+- **Camera preview:** uploaded clips show object-detection boxes on the original video, with no camera-region overlay or blur. The operator clip runner updates the selected venue's availability counts.
 - **No LLM assistant.** Fanar and the Arabic/English assistant are dropped. Nothing in the app needs a GPU.
 - **Languages:** Python 3.11+ for the backend. The mobile app is plain HTML, CSS and JavaScript with no build step and no framework.
 - **One Space, one process.** A single Hugging Face Space (Gradio SDK, runs `python app.py`) serves everything from one Python process on port 7860, so all live state lives in one place:
   - `/`: the **mobile web app**, static files from `web/`. This is the product users see.
   - `/api/...`: a small read-only **JSON API** (FastAPI) that the mobile app calls (section 7.2).
-  - `/operator`: the **Gradio operator console** with two tabs, **Camera** (uploaded-clip detector preview without a seat-layout overlay) and **Venue dashboard**. It is mounted into the FastAPI app with `gr.mount_gradio_app`, and `app.py` runs the combined app with uvicorn.
+  - `/operator`: the **Gradio operator console** with **Camera** (uploaded clip and seat calibration) and **Venue dashboard** tabs. It is mounted into FastAPI with `gr.mount_gradio_app`, and `app.py` runs the combined app with uvicorn.
 - **Mobile app:**
   - It is a mobile web app, not a native app. The handoff README's SwiftUI / React Native suggestion does not apply. It opens from a link with no install.
   - It is designed for phone width (the design frame is 402 × 874). On a laptop it shows as a centred phone-width column.
@@ -147,7 +150,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
   - The mobile app lives only in `web/`.
 - **Vision: one detector only:** `PekingU/rtdetr_r18vd` (COCO classes). COCO already covers people and belongings, so one model in one pass gives both `OCCUPIED` and `HELD`. `person` means occupied. Belongings: backpack, handbag, suitcase, laptop, cup, bottle, book, cell phone. **No OWLv2 or Grounding DINO** (slow, and not needed).
 - **Frame rate:** about 1 frame per second, long side resized to at most 640 px.
-- **Privacy:** frames are processed in memory and discarded, never written to disk or logged. The Camera preview shows the original uploaded clip without blurring. It draws detector boxes only, not seat regions. The clip preview does not update seat availability; Space logging and retention are unverified.
+- **Privacy:** sampled frames are processed in memory and discarded, never written to disk or logged by the app. The Camera preview shows the original uploaded clip without blurring and draws detector boxes only; the operator clip runner updates seat availability. Space logging and retention are unverified.
 - **Seat colours:** three, and only three.
   - `FREE` is green `#2FB86A` ("Free").
   - `OCCUPIED` is red `#EF4E4E` ("Taken").
@@ -158,13 +161,13 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 
   | Setting | Demo | Production |
   |---|---|---|
-  | Hold timer (OCCUPIED to HELD) | 30 s | 30 min |
+  | Belongings grace period (HELD to REVIEW_REQUIRED) | 30 s | 30 min |
   | Smoothing | 3 frames | 3 frames |
 
 - **Testability:** everything time-based takes an injectable clock, so tests never sleep.
 - **No GPU.** Vision, the simulator, analytics and the forecast all run on CPU, so the Space runs on the free CPU tier.
 - **Venues: Doha only.**
-  - One live venue (Nestwork Msheireb, camera in the room) plus simulated venues.
+  - One recorded-clip venue (Nestwork Msheireb) plus simulated venues. A live camera feed is not connected yet.
   - Simulated venues are **always labelled "Simulated"** in the app (on list rows and the place screen) and in the pitch.
   - Invented places get invented names.
   - None of the handoff's placeholder data ("Old Town", "Halden Library" and so on) is used.
@@ -228,7 +231,7 @@ tests/
 
 ### Privacy story
 
-The detector processes sampled frames in memory. The uploaded clip is temporarily held by the Space during processing and deleted after playback; hosted logging and retention are unverified. The preview is unblurred and draws detector boxes only. The app stores seat states and aggregate counts, not source frames in its database. No face recognition or identity matching is used.
+The detector processes sampled frames in memory. The uploaded clip is temporarily held by the Space during processing and deleted after playback; hosted logging and retention are unverified. The normal preview is unblurred and draws detector boxes only. Calibration frames stay in process memory, and only camera polygons are saved. The app stores seat states and aggregate counts, not source frames in its database. No face recognition or identity matching is used.
 
 ---
 
@@ -243,8 +246,8 @@ The models live in `birdie/models.py` and are documented in `docs/CONTRACT.md`. 
   - **Table:** `table_id` (a letter, for example "A"), `name` (for example "Table A", "Window bar"), `shape` (rect or round), then `x`, `y`, `w`, `h` for rect or `cx`, `cy`, `r` for round.
   - **Fixture:** `label` (for example "Books", "Counter"), `x`, `y`, `w`, `h`.
   - The prototype's `LAYOUTS` and `chairsFor()` in `design/mobile/prototype.html` show how tables and chair positions fit together.
-- **Seat:** `seat_id` (the label users see: table letter plus number, for example "A3"), `venue_id`, `table_id`, `zone`, `has_outlet`, `has_window`, `plan_x`, `plan_y` (chair centre on the floor plan), `plan_rot` (degrees: 0 above the table, 180 below, -90 left, 90 right, radial around round tables), `polygon` (normalised 0 to 1 camera coordinates; live venue only).
-- **SeatSnapshot:** `venue_id`, `seat_id`, `state` (FREE, OCCUPIED, HELD), `since`, `updated_at`.
+- **Seat:** `seat_id`, `venue_id`, `table_id`, `zone`, `has_outlet`, `has_window`, optional `plan_x`, `plan_y`, `plan_rot` (customer floor-plan coordinates), `polygon` (normalised 0 to 1 camera coordinates; kept private from the public API).
+- **SeatSnapshot:** `venue_id`, `seat_id`, `state` (UNKNOWN, FREE, OCCUPIED, HELD, REVIEW_REQUIRED, UNAVAILABLE), state and evidence timestamps, detector evidence, grace countdown, review and manual-override flags.
 - **SeatEvent:** `ts`, `venue_id`, `seat_id`, `old_state`, `new_state`.
 
 Removed: `Booking`, `Query`, `bookable`, `bookable_fraction`, `prepaid_item`, and anything to do with check-in or QR codes.
@@ -253,16 +256,17 @@ Removed: `Booking`, `Query`, `bookable`, `bookable_fraction`, `prepaid_item`, an
 
 | Method and path | Response |
 |---|---|
-| `GET /api/venues` | List of venues (no floor plan), each with `counts`: `free`, `taken`, `held`, `total` |
-| `GET /api/venues/{venue_id}` | Venue with `floor_plan` and `seats`. Each seat has `seat_id`, `table_id`, `has_outlet`, `has_window`, `plan_x`, `plan_y`, `plan_rot`, `status` (free, taken, held) and `since` (when it entered that status) |
+| `GET /api/venues` | List of venues (no camera polygons), each with `counts`: `free`, `taken`, `held`, `unknown`, `unavailable`, `review_required`, `total` |
+| `GET /api/venues/{venue_id}` | Venue with an optional customer `floor_plan` and per-seat status, timestamps, confidence, timer and review fields. Camera polygons are never returned. |
+| `PUT /api/venues/{venue_id}/seats/{seat_id}/unavailable` | Protected staff override; requires `BIRDIE_ADMIN_TOKEN` and a bearer token |
 
-Status mapping: FREE is `free`, OCCUPIED is `taken`, HELD is `held`. Times are ISO 8601 with a timezone (for example `2026-11-06T20:15:00Z`). `web/mock.js` returns exactly these shapes; the app uses it when the server has no `/api`.
+Status mapping: only `FREE` is available; `OCCUPIED`, `REVIEW_REQUIRED` and `UNAVAILABLE` map to `taken`, `HELD` maps to `held`, and `UNKNOWN` remains explicitly checking. Times are ISO 8601 with a timezone. `web/mock.js` is local demo data only.
 
 ### 7.3 Demo venues
 
 | venue_id | Name | Type | Area | Source | Drive time (approx.) |
 |---|---|---|---|---|---|
-| `nestwork-msheireb` | Nestwork Msheireb | Coworking | Msheireb Downtown | Configured live; feed not connected yet | You're here |
+| `nestwork-msheireb` | Nestwork Msheireb | Coworking | Msheireb Downtown | Uploaded recorded clips; camera regions require calibration | You're here |
 | `qnl` | Qatar National Library | Library | Education City | Simulated | ~15 min |
 | `qu-library` | Qatar University Library | Library | Qatar University | Simulated | ~25 min |
 | `qahwa-corner` | Qahwa Corner (invented) | Cafe | Lusail | Simulated | ~25 min |
@@ -275,13 +279,13 @@ Optional: add 2 to 4 more simulated venues with invented names (for example a ca
 
 ### 8.1 Seat state
 
-- Calibrated seat regions are stored in venue configuration for seat association; they are not drawn over the camera preview. The current uploaded-clip preview does not feed detections into seat availability.
+- Calibrated seat regions are stored in venue configuration for seat association; they are hidden in the normal camera preview. The operator clip runner feeds detections into seat availability. Customer floor-plan artwork and camera regions are separate.
 - Each frame:
   1. Detect people and belongings.
   2. Assign each detection to the seat whose polygon contains the box centre; if none does, to the seat with the largest overlap above 20%.
   3. Turn it into a raw observation per seat: `PERSON`, `ITEMS` or `EMPTY`.
   4. A new observation only counts after it holds for k consecutive frames (smoothing against occlusion and bad detections).
-  5. `PERSON` gives `OCCUPIED`. `ITEMS` keeps the seat `OCCUPIED` (the person stepped away) until items have been there with no person for the hold time, then `HELD`. `EMPTY` gives `FREE`.
+  5. `PERSON` gives `OCCUPIED`. Stable `ITEMS` with no person gives `HELD` and starts a timestamp-based timer; after 30 minutes (30 seconds in demo mode) it becomes `REVIEW_REQUIRED`. `EMPTY` gives `FREE`. `UNKNOWN` is never advertised as available.
 - Every state change is stored as a `SeatEvent`.
 - Simulated venues change seat states through the same state code, driven by the simulator.
 - A background scheduler ticks every 2 seconds for staff alerts and occupancy buckets.
@@ -350,8 +354,8 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 ### Priority
 
 - **Must have:**
-  - The 3 seat states from the live camera.
-  - The mobile app: browse and the live floor plan.
+  - The six seat states, conservative availability counts and recorded-clip pipeline.
+  - The mobile app: browse and per-seat availability (with a floor plan only when real map data is supplied).
   - Doha venue data.
   - The operator Camera console.
   - Deployed on an HF Space.

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -15,14 +16,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class SeatState(str, Enum):
     UNKNOWN = "UNKNOWN"  # no recent, usable camera evidence
     FREE = "FREE"  # no person, no belongings
-    OCCUPIED = "OCCUPIED"  # a person, or belongings left recently
-    HELD = "HELD"  # belongings with no person for longer than the hold time
+    OCCUPIED = "OCCUPIED"  # a person is associated with the seat
+    HELD = "HELD"  # belongings remain without a person; timer is active
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"  # belongings remained past the grace period
+    UNAVAILABLE = "UNAVAILABLE"  # staff disabled this seat
 
 
 class VenueType(str, Enum):
     cafe = "cafe"
     library = "library"
     cowork = "cowork"
+    study_room = "study_room"
 
 
 class VenueSource(str, Enum):
@@ -45,6 +49,11 @@ class Venue(_Model):
     zones: list[str] = Field(default_factory=list)
     source: VenueSource
     noise_db: float = 50.0
+    drive_minutes: int = 0
+    open_until: str | None = None
+    open_late: bool = False
+    amenities: list[str] = Field(default_factory=list)
+    floor_plan: dict[str, Any] | None = None
 
 
 class Seat(_Model):
@@ -52,6 +61,11 @@ class Seat(_Model):
     venue_id: str
     zone: str
     has_outlet: bool = False
+    has_window: bool = False
+    table_id: str | None = None
+    plan_x: float | None = None
+    plan_y: float | None = None
+    plan_rot: float = 0.0
     # Normalised (0..1) polygon corners as (x, y), so it works at any camera resolution.
     polygon: list[tuple[float, float]] = Field(default_factory=list)
 
@@ -74,6 +88,14 @@ class SeatSnapshot(_Model):
     state: SeatState
     since: datetime
     updated_at: datetime
+    state_changed_at: datetime | None = None
+    person_detected: bool | None = None
+    belongings_detected: bool | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    unattended_since: datetime | None = None
+    grace_period_remaining_seconds: int | None = Field(default=None, ge=0)
+    requires_staff_review: bool = False
+    manual_override: bool = False
 
 
 class SeatEvent(_Model):
@@ -99,3 +121,22 @@ class VenueConfig(_Model):
 
     venue: Venue
     seats: list[Seat] = Field(default_factory=list)
+    ignored_person_regions: list[list[tuple[float, float]]] = Field(default_factory=list)
+    camera_table_regions: dict[str, list[tuple[float, float]]] = Field(default_factory=dict)
+    recording_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+    @field_validator("ignored_person_regions")
+    @classmethod
+    def _check_ignored_regions(cls, regions: list[list[tuple[float, float]]]):
+        for region in regions:
+            if len(region) < 3 or any(not (0 <= x <= 1 and 0 <= y <= 1) for x, y in region):
+                raise ValueError("ignored regions need at least 3 normalised corners")
+        return regions
+
+    @field_validator("camera_table_regions")
+    @classmethod
+    def _check_table_regions(cls, regions: dict[str, list[tuple[float, float]]]):
+        for region in regions.values():
+            if len(region) < 3 or any(not (0 <= x <= 1 and 0 <= y <= 1) for x, y in region):
+                raise ValueError("table regions need at least 3 normalised corners")
+        return regions

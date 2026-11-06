@@ -1,20 +1,12 @@
-"""Seat state machine (CLAUDE.md section 8.1).
-
-Per seat, per frame:
-- UNKNOWN evidence or a stale camera feed makes the seat UNKNOWN immediately;
-- a raw observation (PERSON, ITEMS or EMPTY) only counts after it holds for k consecutive frames;
-- PERSON gives OCCUPIED;
-- ITEMS keeps the seat OCCUPIED (the person stepped away) until items have been there with
-  no person for the hold time, then HELD;
-- EMPTY gives FREE.
-Every state change becomes a SeatEvent. All timing goes through the injected clock.
-"""
+"""Per-seat state machines with temporal smoothing and timestamp-based timers."""
 
 from __future__ import annotations
 
+import math
 import threading
 from collections.abc import Callable, Iterable
-from datetime import timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
 
 from birdie.clock import Clock
@@ -29,12 +21,34 @@ class Observation(str, Enum):
     EMPTY = "EMPTY"
 
 
+@dataclass(frozen=True)
+class SeatEvidence:
+    observation: Observation
+    person_detected: bool | None = None
+    belongings_detected: bool | None = None
+    confidence: float | None = None
+
+
 _STATE_TO_OBS = {
     SeatState.UNKNOWN: None,
     SeatState.FREE: Observation.EMPTY,
     SeatState.OCCUPIED: Observation.PERSON,
     SeatState.HELD: Observation.ITEMS,
+    SeatState.REVIEW_REQUIRED: Observation.ITEMS,
+    SeatState.UNAVAILABLE: None,
 }
+
+
+def _evidence(value: Observation | SeatEvidence) -> SeatEvidence:
+    if isinstance(value, SeatEvidence):
+        return value
+    if value == Observation.UNKNOWN:
+        return SeatEvidence(value, None, None, None)
+    return SeatEvidence(
+        value,
+        person_detected=value == Observation.PERSON,
+        belongings_detected=value == Observation.ITEMS,
+    )
 
 
 class SeatStateMachine:
@@ -63,17 +77,28 @@ class SeatStateMachine:
         self._candidate: Observation | None = None
         self._count = 0
         self._candidate_since = now
-        # When belongings were first seen with no person (start of the hold timer).
-        self._items_since = now - self.hold if initial == SeatState.HELD else None
+        self.unattended_since = now if initial in (SeatState.HELD, SeatState.REVIEW_REQUIRED) else None
+        self.person_detected: bool | None = initial == SeatState.OCCUPIED if initial != SeatState.UNKNOWN else None
+        self.belongings_detected: bool | None = initial in (SeatState.HELD, SeatState.REVIEW_REQUIRED) if initial != SeatState.UNKNOWN else None
+        self.confidence: float | None = None
+        self.manual_override = initial == SeatState.UNAVAILABLE
 
-    def update(self, obs: Observation) -> SeatEvent | None:
-        """Feed one frame's raw observation. Returns a SeatEvent if the state changed."""
+    def update(self, observation: Observation | SeatEvidence) -> SeatEvent | None:
+        """Feed one camera sample; UNKNOWN is immediate and can never increase availability."""
+        evidence = _evidence(observation)
         now = self.clock.now()
+        self.person_detected = evidence.person_detected
+        self.belongings_detected = evidence.belongings_detected
+        self.confidence = evidence.confidence
+        if self.manual_override:
+            self.updated_at = now
+            return None
+        obs = evidence.observation
         if obs == Observation.UNKNOWN:
             self._stable = None
             self._candidate = None
             self._count = 0
-            self._items_since = None
+            self.unattended_since = None
             return self._apply(now)
         if obs == self._candidate:
             self._count += 1
@@ -81,59 +106,123 @@ class SeatStateMachine:
             self._candidate = obs
             self._count = 1
             self._candidate_since = now
+        if self._stable == Observation.EMPTY and obs in (Observation.PERSON, Observation.ITEMS):
+            self._stable = None
+        if self._stable == Observation.ITEMS and obs == Observation.PERSON:
+            self._stable = None
+            self.unattended_since = None
         if self._count >= self.k and obs != self._stable:
             self._stable = obs
             if obs == Observation.ITEMS:
-                # The hold timer starts when the items were first seen alone, not after smoothing.
-                self._items_since = self._candidate_since
+                if self.unattended_since is None:
+                    self.unattended_since = self._candidate_since
+            else:
+                self.unattended_since = None
         return self._apply(now)
 
     def tick(self) -> SeatEvent | None:
-        """Apply hold timers and expire states when their camera feed has gone stale."""
+        """Advance real-time timers and expire stale camera evidence."""
         now = self.clock.now()
-        if self.stale is not None and self.state != SeatState.UNKNOWN and now - self.updated_at >= self.stale:
+        if (
+            self.stale is not None
+            and self.state not in (SeatState.UNKNOWN, SeatState.UNAVAILABLE)
+            and now - self.updated_at >= self.stale
+        ):
             self._stable = None
             self._candidate = None
             self._count = 0
-            self._items_since = None
+            self.person_detected = None
+            self.belongings_detected = None
+            self.confidence = None
+            self.unattended_since = None
             return self._apply(now, touch=False)
         return self._apply(now, touch=False)
 
-    def force(self, state: SeatState) -> None:
-        """Set the state directly with no event (used to initialise simulated venues)."""
+    def set_unavailable(self, unavailable: bool) -> SeatEvent | None:
+        """Staff can disable a seat; re-enabling waits for fresh camera evidence."""
         now = self.clock.now()
-        self.state = state
-        self.since = now
-        self.updated_at = now
+        if unavailable == self.manual_override:
+            return None
+        self.manual_override = unavailable
+        self._stable = None
+        self._candidate = None
+        self._count = 0
+        self.person_detected = None
+        self.belongings_detected = None
+        self.confidence = None
+        self.unattended_since = None
+        new = SeatState.UNAVAILABLE if unavailable else SeatState.UNKNOWN
+        return self._transition(new, now)
+
+    def force(self, state: SeatState) -> SeatEvent | None:
+        """Set a known state directly, used by simulation and staff tools."""
+        now = self.clock.now()
+        self.manual_override = state == SeatState.UNAVAILABLE
         self._stable = _STATE_TO_OBS[state]
         self._candidate = None
         self._count = 0
-        self._items_since = now - self.hold if state == SeatState.HELD else None
+        self.unattended_since = now if state in (SeatState.HELD, SeatState.REVIEW_REQUIRED) else None
+        self.person_detected = state == SeatState.OCCUPIED if state != SeatState.UNKNOWN else None
+        self.belongings_detected = state in (SeatState.HELD, SeatState.REVIEW_REQUIRED) if state != SeatState.UNKNOWN else None
+        self.confidence = None
+        return self._transition(state, now)
 
-    def _apply(self, now, touch: bool = True) -> SeatEvent | None:
-        if self._stable is None:
+    def restore(self, snapshot: SeatSnapshot) -> None:
+        """Restore persisted state and timer timestamps after a process restart."""
+        self.state = snapshot.state
+        self.since = snapshot.state_changed_at or snapshot.since
+        self.updated_at = snapshot.updated_at
+        self.person_detected = snapshot.person_detected
+        self.belongings_detected = snapshot.belongings_detected
+        self.confidence = snapshot.confidence
+        self.unattended_since = snapshot.unattended_since
+        self.manual_override = snapshot.manual_override or snapshot.state == SeatState.UNAVAILABLE
+        self._stable = _STATE_TO_OBS[snapshot.state]
+        self._candidate = None
+        self._count = 0
+        self._candidate_since = snapshot.unattended_since or self.since
+
+    def _apply(self, now: datetime, touch: bool = True) -> SeatEvent | None:
+        if self.manual_override:
+            new = SeatState.UNAVAILABLE
+        elif self._stable is None:
             new = SeatState.UNKNOWN
         elif self._stable == Observation.PERSON:
+            self.unattended_since = None
             new = SeatState.OCCUPIED
-            self._items_since = None
         elif self._stable == Observation.ITEMS:
-            if self._items_since is None:
-                self._items_since = now
-            new = SeatState.HELD if now - self._items_since >= self.hold else SeatState.OCCUPIED
+            if self.unattended_since is None:
+                self.unattended_since = self._candidate_since
+            new = (
+                SeatState.REVIEW_REQUIRED
+                if now - self.unattended_since >= self.hold
+                else SeatState.HELD
+            )
         else:
+            self.unattended_since = None
             new = SeatState.FREE
-            self._items_since = None
         if touch:
             self.updated_at = now
         if new == self.state:
             return None
-        event = SeatEvent(ts=now, venue_id=self.venue_id, seat_id=self.seat_id, old_state=self.state, new_state=new)
+        return self._transition(new, now)
+
+    def _transition(self, new: SeatState, now: datetime) -> SeatEvent | None:
+        if new == self.state:
+            self.updated_at = now
+            return None
+        event = SeatEvent(ts=now, venue_id=self.venue_id, seat_id=self.seat_id,
+                          old_state=self.state, new_state=new)
         self.state = new
         self.since = now
         self.updated_at = now
         return event
 
     def snapshot(self, seat: Seat) -> SeatSnapshot:
+        now = self.clock.now()
+        remaining = None
+        if self.state == SeatState.HELD and self.unattended_since is not None:
+            remaining = max(0, math.ceil((self.unattended_since + self.hold - now).total_seconds()))
         return SeatSnapshot(
             venue_id=self.venue_id,
             seat_id=self.seat_id,
@@ -141,12 +230,20 @@ class SeatStateMachine:
             has_outlet=seat.has_outlet,
             state=self.state,
             since=self.since,
+            state_changed_at=self.since,
             updated_at=self.updated_at,
+            person_detected=self.person_detected,
+            belongings_detected=self.belongings_detected,
+            confidence=self.confidence,
+            unattended_since=self.unattended_since,
+            grace_period_remaining_seconds=remaining,
+            requires_staff_review=self.state == SeatState.REVIEW_REQUIRED,
+            manual_override=self.manual_override,
         )
 
 
 class VenueTracker:
-    """All seat state machines of one venue. Camera frames and the simulator both feed `process`."""
+    """All seat state machines of one venue; camera samples and simulation share this path."""
 
     def __init__(
         self,
@@ -173,18 +270,23 @@ class VenueTracker:
     def _machine(self, seat_id: str, initial: SeatState = SeatState.UNKNOWN) -> SeatStateMachine:
         return SeatStateMachine(
             self.venue_id, seat_id, self.clock, k=self._k, hold_seconds=self._hold,
-            initial=initial, stale_seconds=self.stale_seconds
+            initial=initial, stale_seconds=self.stale_seconds,
         )
 
     def set_seats(self, seats: Iterable[Seat]) -> None:
-        """Replace the seat layout, keeping state for seats that still exist."""
         with self._lock:
             new = {s.seat_id: s for s in seats}
             self.machines = {sid: self.machines.get(sid) or self._machine(sid) for sid in new}
             self.seats = new
 
-    def process(self, observations: dict[str, Observation]) -> list[SeatEvent]:
-        """One frame: a missing seat observation is UNKNOWN, never an empty seat."""
+    def restore(self, snapshots: Iterable[SeatSnapshot]) -> None:
+        with self._lock:
+            for snapshot in snapshots:
+                machine = self.machines.get(snapshot.seat_id)
+                if machine:
+                    machine.restore(snapshot)
+
+    def process(self, observations: dict[str, Observation | SeatEvidence]) -> list[SeatEvent]:
         events = []
         with self._lock:
             for seat_id, machine in self.machines.items():
@@ -200,16 +302,24 @@ class VenueTracker:
         self._emit(events)
         return events
 
-    def force(self, states: dict[str, SeatState]) -> None:
+    def set_unavailable(self, seat_id: str, unavailable: bool) -> SeatEvent | None:
         with self._lock:
-            for seat_id, state in states.items():
-                if seat_id in self.machines:
-                    self.machines[seat_id].force(state)
+            machine = self.machines.get(seat_id)
+            event = machine.set_unavailable(unavailable) if machine else None
+        if event:
+            self._emit([event])
+        return event
+
+    def force(self, states: dict[str, SeatState], *, emit: bool = True) -> None:
+        with self._lock:
+            events = [e for sid, state in states.items() if (m := self.machines.get(sid)) and (e := m.force(state))]
+        if emit:
+            self._emit(events)
 
     def _emit(self, events: list[SeatEvent]) -> None:
         if self.on_event:
-            for e in events:
-                self.on_event(e)
+            for event in events:
+                self.on_event(event)
 
     def snapshots(self) -> list[SeatSnapshot]:
         with self._lock:
@@ -217,12 +327,12 @@ class VenueTracker:
 
     def state_of(self, seat_id: str) -> SeatState | None:
         with self._lock:
-            m = self.machines.get(seat_id)
-            return m.state if m else None
+            machine = self.machines.get(seat_id)
+            return machine.state if machine else None
 
     def counts(self) -> dict[SeatState, int]:
-        out = {s: 0 for s in SeatState}
+        out = {state: 0 for state in SeatState}
         with self._lock:
-            for m in self.machines.values():
-                out[m.state] += 1
+            for machine in self.machines.values():
+                out[machine.state] += 1
         return out

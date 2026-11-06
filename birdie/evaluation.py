@@ -238,15 +238,19 @@ def replay_states(
 ) -> list[SeatState]:
     """Feed (t, observation) pairs through the real SeatStateMachine on a fake clock.
 
-    The machine starts in the state of the first observation (as if the camera had been running: someone
-    already sitting is OCCUPIED, not FREE), then applies smoothing and the hold timer exactly as in the app.
-    Belongings seen from the first frame start the hold timer at that frame.
+    The machine starts from the first observation: belongings without a person are already HELD and start
+    their real-time grace timer, while unclear evidence starts UNKNOWN.
     """
     if not sequence:
         return []
     first_t, first_obs = sequence[0]
     clock = FakeClock(_EPOCH + timedelta(seconds=first_t))
-    initial = SeatState.FREE if first_obs == Observation.EMPTY else SeatState.OCCUPIED
+    initial = {
+        Observation.EMPTY: SeatState.FREE,
+        Observation.PERSON: SeatState.OCCUPIED,
+        Observation.ITEMS: SeatState.HELD,
+        Observation.UNKNOWN: SeatState.UNKNOWN,
+    }[first_obs]
     machine = SeatStateMachine("eval", "seat", clock, k=k, hold_seconds=hold_seconds, initial=initial)
     states = []
     for t, obs in sequence:

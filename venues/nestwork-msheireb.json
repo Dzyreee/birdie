@@ -9,153 +9,49 @@
     "zones": [
       "open"
     ],
-    "source": "live",
-    "noise_db": 52.0
-  },
-  "seats": [
-    {
-      "seat_id": "S01",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": true,
-      "polygon": [
-        [
-          0.036,
-          0.317
-        ],
-        [
-          0.324,
-          0.317
-        ],
-        [
-          0.324,
-          0.623
-        ],
-        [
-          0.036,
-          0.623
-        ]
-      ]
-    },
-    {
-      "seat_id": "S02",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.356,
-          0.317
-        ],
-        [
-          0.644,
-          0.317
-        ],
-        [
-          0.644,
-          0.623
-        ],
-        [
-          0.356,
-          0.623
-        ]
-      ]
-    },
-    {
-      "seat_id": "S03",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": true,
-      "polygon": [
-        [
-          0.676,
-          0.317
-        ],
-        [
-          0.964,
-          0.317
-        ],
-        [
-          0.964,
-          0.623
-        ],
-        [
-          0.676,
-          0.623
-        ]
-      ]
-    },
-    {
-      "seat_id": "S04",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.036,
-          0.657
-        ],
-        [
-          0.324,
-          0.657
-        ],
-        [
-          0.324,
-          0.963
-        ],
-        [
-          0.036,
-          0.963
-        ]
-      ]
-    },
-    {
-      "seat_id": "S05",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": true,
-      "polygon": [
-        [
-          0.356,
-          0.657
-        ],
-        [
-          0.644,
-          0.657
-        ],
-        [
-          0.644,
-          0.963
-        ],
-        [
-          0.356,
-          0.963
-        ]
-      ]
-    },
-    {
-      "seat_id": "S06",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.676,
-          0.657
-        ],
-        [
-          0.964,
-          0.657
-        ],
-        [
-          0.964,
-          0.963
-        ],
-        [
-          0.676,
-          0.963
-        ]
-      ]
+    "source": "recorded",
+    "noise_db": 52.0,
+    "drive_minutes": 0,
+    "open_until": "Open till 22:00",
+    "open_late": true,
+    "amenities": [
+      "Wi-Fi",
+      "Outlets",
+      "Coffee"
+    ],
+    "floor_plan": {
+      "width": 362,
+      "height": 390,
+      "label": "Approximate recorded demo layout · seat IDs and capacity unverified",
+      "entrance": false,
+      "tables": [
+        {"table_id": "T1", "name": "Front table", "shape": "rect", "x": 28, "y": 235, "w": 142, "h": 44},
+        {"table_id": "T2", "name": "Rear table", "shape": "rect", "x": 35, "y": 50, "w": 110, "h": 38},
+        {"table_id": "T3", "name": "Right table", "shape": "rect", "x": 205, "y": 135, "w": 110, "h": 44}
+      ],
+      "fixtures": [{"label": "Bench", "x": 8, "y": 130, "w": 20, "h": 105}]
     }
+  },
+  "ignored_person_regions": [
+    [[0.39, 0.31], [0.46, 0.31], [0.46, 0.50], [0.39, 0.50]]
+  ],
+  "camera_table_regions": {
+    "T1": [[0.25, 0.65], [0.27, 0.60], [0.41, 0.60], [0.44, 0.64], [0.40, 0.70], [0.27, 0.73]],
+    "T2": [[0.405, 0.46], [0.48, 0.46], [0.50, 0.49], [0.48, 0.53], [0.41, 0.52]],
+    "T3": [[0.63, 0.53], [0.78, 0.53], [0.78, 0.63], [0.63, 0.63]]
+  },
+  "recording_sha256": "4fb1b97e86fddc3af25b0508a4f2e553d6bbf12e2df268ab0565e6bcde8dc6c8",
+  "seats": [
+    {"seat_id": "S01", "venue_id": "nestwork-msheireb", "zone": "open", "table_id": "T1", "plan_x": 45, "plan_y": 325, "polygon": [[0.08, 0.72], [0.32, 0.72], [0.33, 0.99], [0.08, 0.99]]},
+    {"seat_id": "S02", "venue_id": "nestwork-msheireb", "zone": "open", "table_id": "T1", "plan_x": 140, "plan_y": 325, "polygon": [[0.35, 0.70], [0.52, 0.67], [0.52, 0.99], [0.35, 0.99]]},
+    {"seat_id": "S03", "venue_id": "nestwork-msheireb", "zone": "open", "polygon": []},
+    {"seat_id": "S04", "venue_id": "nestwork-msheireb", "zone": "open", "table_id": "T1", "plan_x": 170, "plan_y": 215, "polygon": [[0.39, 0.51], [0.458, 0.51], [0.458, 0.69], [0.39, 0.69]]},
+    {"seat_id": "S05", "venue_id": "nestwork-msheireb", "zone": "open", "polygon": []},
+    {"seat_id": "S06", "venue_id": "nestwork-msheireb", "zone": "open", "table_id": "T2", "plan_x": 90, "plan_y": 105, "polygon": [[0.46, 0.32], [0.55, 0.32], [0.55, 0.505], [0.46, 0.505]]},
+    {"seat_id": "S07", "venue_id": "nestwork-msheireb", "zone": "open", "polygon": []},
+    {"seat_id": "S08", "venue_id": "nestwork-msheireb", "zone": "open", "table_id": "T3", "plan_x": 235, "plan_y": 220, "polygon": [[0.57, 0.38], [0.68, 0.38], [0.68, 0.71], [0.57, 0.71]]},
+    {"seat_id": "S09", "venue_id": "nestwork-msheireb", "zone": "open", "table_id": "T3", "plan_x": 315, "plan_y": 220, "polygon": [[0.685, 0.72], [0.78, 0.72], [0.78, 0.98], [0.685, 0.98]]},
+    {"seat_id": "S10", "venue_id": "nestwork-msheireb", "zone": "open", "table_id": "T3", "plan_x": 260, "plan_y": 110, "polygon": [[0.69, 0.38], [0.78, 0.38], [0.78, 0.64], [0.69, 0.64]]},
+    {"seat_id": "S11", "venue_id": "nestwork-msheireb", "zone": "open", "polygon": []}
   ]
 }

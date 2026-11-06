@@ -57,18 +57,19 @@ def test_confusion_accuracy_and_per_class():
 
 # --- state replay ---------------------------------------------------------------------
 
-def test_replay_belongings_become_held_after_hold_time():
+def test_replay_belongings_become_held_then_require_review_after_grace():
     seq = [(0, P)] + [(t, I) for t in range(2, 42, 2)]
     states = replay_states(seq, k=3, hold_seconds=30)
     assert states[0] == SeatState.OCCUPIED
-    # items first seen alone at t=2 -> HELD once t - 2 >= 30, i.e. from t=32 (index 16)
-    assert states[15] == SeatState.OCCUPIED and states[16] == SeatState.HELD
+    # Three stable items frames make HELD; 30 seconds from first evidence requires review.
+    assert states[3] == SeatState.HELD
+    assert states[15] == SeatState.HELD and states[16] == SeatState.REVIEW_REQUIRED
 
 
 def test_replay_starts_from_first_observation_and_smooths():
     assert replay_states([(0, P), (2, P)], k=3, hold_seconds=30) == [SeatState.OCCUPIED] * 2
     states = replay_states([(0, E), (2, P), (4, P), (6, P)], k=3, hold_seconds=30)
-    assert states == [SeatState.FREE, SeatState.FREE, SeatState.FREE, SeatState.OCCUPIED]
+    assert states == [SeatState.FREE, SeatState.UNKNOWN, SeatState.UNKNOWN, SeatState.OCCUPIED]
 
 
 # --- per-clip evaluation ----------------------------------------------------------------
@@ -97,7 +98,7 @@ def test_state_accuracy_catches_missed_belongings():
     r = evaluate_clip(clip(frames, labels, seats=[RIGHT]), k=3, hold_seconds=30)
     truth = [t for t, _ in r.state_pairs]
     pred = [p for _, p in r.state_pairs]
-    assert truth[0] == SeatState.OCCUPIED and truth[-1] == SeatState.HELD
+    assert truth[0] == SeatState.HELD and truth[-1] == SeatState.REVIEW_REQUIRED
     assert set(pred) == {SeatState.FREE}
     assert accuracy(confusion(r.state_pairs, [SeatState.FREE, SeatState.OCCUPIED, SeatState.HELD])) == 0.0
 

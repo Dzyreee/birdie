@@ -12,7 +12,11 @@
       "terrace"
     ],
     "source": "simulated",
-    "noise_db": 62.0
+    "noise_db": 62.0,
+    "drive_minutes": 25,
+    "open_until": "Open till 01:00",
+    "open_late": true,
+    "amenities": ["Wi-Fi", "Family section", "Food"]
   },
   "seats": [
     {

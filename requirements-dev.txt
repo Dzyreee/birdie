@@ -1,3 +1,11 @@
 -r requirements.txt
 gradio==6.31.0
 pytest
+numpy
+pydantic>=2.6
+shapely>=2.0
+pillow
+opencv-python-headless
+fastapi>=0.115,<1
+httpx
+pandas
