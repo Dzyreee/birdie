@@ -83,5 +83,15 @@ tests/
 ## Deploy
 
 ```bash
-hf upload <user>/birdie . . --repo-type space --exclude ".venv/*" "data/*" ".git/*" "**/__pycache__/*"
+scripts/deploy_space.sh <owner>/birdie              # uploads only committed files with `hf upload`
+HF_TOKEN=hf_xxx scripts/deploy_space.sh <owner>/birdie   # with a fine-grained token scoped to that Space
+```
+
+Hosting a Gradio Space on free `cpu-basic` requires a PRO account; otherwise pick paid CPU hardware
+(for example `cpu-upgrade`) on the account that holds the credits, and set a short sleep time.
+
+Forecast backtest as an HF Job (results pushed to a Hub dataset):
+
+```bash
+hf jobs uv run --flavor cpu-basic --secrets HF_TOKEN jobs/backtest.py --push-to <owner>/birdie-results
 ```
