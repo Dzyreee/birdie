@@ -11,7 +11,6 @@
       "women",
       "group"
     ],
-    "bookable_fraction": 0.25,
     "source": "simulated",
     "noise_db": 38.0
   },
@@ -21,7 +20,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0485,
@@ -46,7 +44,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.141,
@@ -71,7 +68,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2335,
@@ -96,7 +92,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.326,
@@ -121,7 +116,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0485,
@@ -146,7 +140,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.141,
@@ -171,7 +164,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2335,
@@ -196,7 +188,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.326,
@@ -221,7 +212,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0485,
@@ -246,7 +236,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.141,
@@ -271,7 +260,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2335,
@@ -296,7 +284,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.326,
@@ -321,7 +308,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0485,
@@ -346,7 +332,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.141,
@@ -371,7 +356,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2335,
@@ -396,7 +380,6 @@
       "venue_id": "qu-library",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.326,
@@ -421,7 +404,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.4612,
@@ -446,7 +428,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.5672,
@@ -471,7 +452,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.6732,
@@ -496,7 +476,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.7792,
@@ -521,7 +500,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.8852,
@@ -546,7 +524,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.4612,
@@ -571,7 +548,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.5672,
@@ -596,7 +572,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.6732,
@@ -621,7 +596,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.7792,
@@ -646,7 +620,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.8852,
@@ -671,7 +644,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.4612,
@@ -696,7 +668,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.5672,
@@ -721,7 +692,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.6732,
@@ -746,7 +716,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.7792,
@@ -771,7 +740,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.8852,
@@ -796,7 +764,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.4612,
@@ -821,7 +788,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.5672,
@@ -846,7 +812,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.6732,
@@ -871,7 +836,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.7792,
@@ -896,7 +860,6 @@
       "venue_id": "qu-library",
       "zone": "women",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.8852,
@@ -921,7 +884,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.4577,
@@ -946,7 +908,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.546,
@@ -971,7 +932,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.6343,
@@ -996,7 +956,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.7227,
@@ -1021,7 +980,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": false,
-      "bookable": true,
       "polygon": [
         [
           0.811,
@@ -1046,7 +1004,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.8993,
@@ -1071,7 +1028,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.4577,
@@ -1096,7 +1052,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.546,
@@ -1121,7 +1076,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": false,
-      "bookable": true,
       "polygon": [
         [
           0.6343,
@@ -1146,7 +1100,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.7227,
@@ -1171,7 +1124,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.811,
@@ -1196,7 +1148,6 @@
       "venue_id": "qu-library",
       "zone": "group",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.8993,

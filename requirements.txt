@@ -9,6 +9,5 @@ pillow
 numpy
 shapely>=2.0
 pydantic>=2.6
-qrcode[pil]
 opencv-python-headless
 pandas

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from birdie.models import Booking, BookingStatus, Query, Seat, SeatSnapshot, SeatState, Venue, VenueSource
+from birdie.models import Query, Seat, SeatSnapshot, SeatState, Venue, VenueSource
 
 LIVE_HALF_LIFE_MINUTES = 20.0  # live data counts half as much as the forecast at a 20-minute arrival
 
@@ -23,7 +23,6 @@ class LiveData(Protocol):
     def venue(self, venue_id: str) -> Venue: ...
     def seats(self, venue_id: str) -> list[Seat]: ...
     def snapshots(self, venue_id: str) -> list[SeatSnapshot]: ...
-    def active_bookings(self, venue_id: str) -> list[Booking]: ...
     def forecast_ratio(self, venue_id: str, ts: datetime) -> float: ...
 
 
@@ -36,7 +35,6 @@ class Availability:
     high: int
     live_free: int
     forecast_free: float
-    bookings_before: int
     total: int
     live_weight: float
 
@@ -58,19 +56,18 @@ def blend_availability(
     live_free: int,
     forecast_free_now: float,
     forecast_free_arrival: float,
-    bookings_before: int,
     arrival_minutes: int,
 ) -> Availability:
     """Pure blending: live data dominates for short arrival times, the forecast for long ones.
 
     The live count is carried forward along the forecast trend (live_free + forecast change), then
-    mixed with the plain forecast with weight w = 0.5 ** (arrival / 20 min). Bookings that start
-    before arrival are subtracted. The range widens with the arrival time.
+    mixed with the plain forecast with weight w = 0.5 ** (arrival / 20 min). The range widens
+    with the arrival time.
     """
     arrival_minutes = max(0, int(arrival_minutes))
     w = 0.5 ** (arrival_minutes / LIVE_HALF_LIFE_MINUTES)
     projected_live = live_free + (forecast_free_arrival - forecast_free_now)
-    expected = w * projected_live + (1 - w) * forecast_free_arrival - bookings_before
+    expected = w * projected_live + (1 - w) * forecast_free_arrival
     expected = float(min(total, max(0.0, expected)))
     spread = 0.5 + total * (0.03 + 0.12 * (1 - w))
     low = max(0, math.floor(expected - spread))
@@ -83,20 +80,9 @@ def blend_availability(
         high=high,
         live_free=live_free,
         forecast_free=round(forecast_free_arrival, 2),
-        bookings_before=bookings_before,
         total=total,
         live_weight=round(w, 3),
     )
-
-
-def _pending_bookings_before(data: LiveData, venue_id: str, arrival: datetime, free_ids: set[str]) -> list[Booking]:
-    return [
-        b
-        for b in data.active_bookings(venue_id)
-        if b.status in (BookingStatus.BOOKED_PENDING, BookingStatus.QR_SCANNED)
-        and b.start_time <= arrival
-        and b.seat_id in free_ids
-    ]
 
 
 def availability_at(data: LiveData, venue_id: str, arrival_minutes: int) -> Availability:
@@ -106,14 +92,12 @@ def availability_at(data: LiveData, venue_id: str, arrival_minutes: int) -> Avai
     snaps = data.snapshots(venue_id)
     total = len(snaps)
     free_ids = {s.seat_id for s in snaps if s.state == SeatState.FREE}
-    booked = _pending_bookings_before(data, venue_id, arrival, free_ids)
     return blend_availability(
         venue_id=venue_id,
         total=total,
         live_free=len(free_ids),
         forecast_free_now=total * (1 - data.forecast_ratio(venue_id, now)),
         forecast_free_arrival=total * (1 - data.forecast_ratio(venue_id, arrival)),
-        bookings_before=len(booked),
         arrival_minutes=arrival_minutes,
     )
 
@@ -160,13 +144,8 @@ class FocusScore:
         return "steady"
 
 
-def _free_unreserved(data: LiveData, venue_id: str) -> list[SeatSnapshot]:
-    reserved = {
-        b.seat_id
-        for b in data.active_bookings(venue_id)
-        if b.status in (BookingStatus.BOOKED_PENDING, BookingStatus.QR_SCANNED)
-    }
-    return [s for s in data.snapshots(venue_id) if s.state == SeatState.FREE and s.seat_id not in reserved]
+def _free_now(data: LiveData, venue_id: str) -> list[SeatSnapshot]:
+    return [s for s in data.snapshots(venue_id) if s.state == SeatState.FREE]
 
 
 def focus_score(data: LiveData, venue_id: str, arrival_minutes: int) -> FocusScore:
@@ -181,7 +160,7 @@ def focus_score(data: LiveData, venue_id: str, arrival_minutes: int) -> FocusSco
 
     p_noise = WEIGHTS["noise"] * _clamp((LOUD_DB - venue.noise_db) / (LOUD_DB - QUIET_DB))
 
-    free_now = _free_unreserved(data, venue_id)
+    free_now = _free_now(data, venue_id)
     live_outlets = sum(1 for s in free_now if s.has_outlet)
     # Scale today's free outlet seats by how the free-seat count is expected to move by arrival.
     scale = avail.expected_free / avail.live_free if avail.live_free else (1.0 if avail.expected_free else 0.0)
@@ -253,9 +232,9 @@ class Recommendation:
 
 
 def zone_free_now(data: LiveData, venue_id: str) -> dict[str, int]:
-    """Free (and not reserved) seats per zone right now."""
+    """Free seats per zone right now."""
     out = {z: 0 for z in data.venue(venue_id).zones}
-    for s in _free_unreserved(data, venue_id):
+    for s in _free_now(data, venue_id):
         out[s.zone] = out.get(s.zone, 0) + 1
     return out
 
@@ -293,7 +272,7 @@ def recommend(data: LiveData, query: Query, top: int = 3) -> list[Recommendation
             continue
         if query.zone and zones.get(query.zone, 0) < query.party_size:
             continue
-        free_outlets_now = sum(1 for s in _free_unreserved(data, v.venue_id) if s.has_outlet)
+        free_outlets_now = sum(1 for s in _free_now(data, v.venue_id) if s.has_outlet)
         if query.needs_outlet and free_outlets_now < 1:
             continue
         quiet_zone_free = zones.get("quiet", 0)

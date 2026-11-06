@@ -3,12 +3,10 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from birdie.analytics import no_show_rate, occupancy_by_hour, peak_hours, seat_intervals, venue_dashboard
+from birdie.analytics import occupancy_by_hour, peak_hours, seat_intervals, venue_dashboard
 from birdie.clock import DOHA_TZ
 from birdie.decision import WEIGHTS, focus_score, recommend
 from birdie.models import (
-    Booking,
-    BookingStatus,
     Query,
     Seat,
     SeatEvent,
@@ -37,7 +35,6 @@ class FakeData:
     states: dict[str, list[tuple[str, str, bool, SeatState]]]  # vid -> [(seat_id, zone, outlet, state)]
     ratios: dict[str, float] = field(default_factory=dict)  # vid -> forecast ratio (flat)
     trend: dict[str, float] = field(default_factory=dict)  # vid -> forecast change per 30 min
-    bookings: dict[str, list[Booking]] = field(default_factory=dict)
 
     def now(self):
         return NOW
@@ -54,9 +51,6 @@ class FakeData:
     def snapshots(self, vid):
         return [SeatSnapshot(venue_id=vid, seat_id=s, zone=z, has_outlet=o, state=st, since=NOW, updated_at=NOW)
                 for s, z, o, st in self.states[vid]]
-
-    def active_bookings(self, vid):
-        return self.bookings.get(vid, [])
 
     def forecast_ratio(self, vid, ts):
         minutes = (ts - NOW).total_seconds() / 60
@@ -97,14 +91,10 @@ def test_focus_score_prefers_quiet_emptying_venues():
     assert q.trend_label == "emptying" and loud.trend_label == "filling up"
 
 
-def test_reserved_seats_do_not_count_as_free_outlets():
+def test_free_seats_count_as_available_outlets():
     data = FakeData([venue("a")], {"a": seats(2, 0, outlet_every=1)}, ratios={"a": 0.0})
-    before = focus_score(data, "a", 0)
-    data.bookings["a"] = [Booking(booking_id="b", venue_id="a", seat_id="S0", start_time=NOW,
-                                  status=BookingStatus.BOOKED_PENDING, created_at=NOW)]
-    after = focus_score(data, "a", 0)
-    assert after.free_outlets < before.free_outlets
-    assert after.availability.bookings_before == 1
+    result = focus_score(data, "a", 0)
+    assert result.free_outlets == 2
 
 
 # --- recommend -----------------------------------------------------------------------
@@ -174,20 +164,6 @@ def test_state_before_window_is_carried_in():
     events = [ev(-30, "A", SeatState.FREE, SeatState.HELD)]
     iv = seat_intervals(events, ["A"], NOW, NOW + timedelta(minutes=20))
     assert iv["A"] == [(NOW, NOW + timedelta(minutes=20), SeatState.HELD)]
-
-
-def test_no_show_rate():
-    def be(bid, *statuses):
-        return [{"booking_id": bid, "new_status": s} for s in statuses]
-
-    events = (be("a", "BOOKED_PENDING", "QR_SCANNED", "CHECKED_IN", "COMPLETED")
-              + be("b", "BOOKED_PENDING", "NO_SHOW_RELEASED")
-              + be("c", "BOOKED_PENDING", "NO_SHOW_RELEASED")
-              + be("d", "BOOKED_PENDING", "CANCELLED")
-              + be("e", "BOOKED_PENDING"))
-    r = no_show_rate(events)
-    assert r == {"booked": 5, "showed": 1, "no_shows": 2, "rate": pytest.approx(2 / 3, abs=1e-3)}
-    assert no_show_rate([])["rate"] is None
 
 
 def test_venue_dashboard_respects_observation_start():

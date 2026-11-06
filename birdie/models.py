@@ -31,20 +31,6 @@ class VenueSource(str, Enum):
     simulated = "simulated"  # driven by birdie.simulator, always labelled as simulated
 
 
-class BookingStatus(str, Enum):
-    BOOKED_PENDING = "BOOKED_PENDING"
-    QR_SCANNED = "QR_SCANNED"
-    CHECKED_IN = "CHECKED_IN"
-    COMPLETED = "COMPLETED"
-    NO_SHOW_RELEASED = "NO_SHOW_RELEASED"
-    CANCELLED = "CANCELLED"
-
-
-ACTIVE_BOOKING_STATUSES = frozenset(
-    {BookingStatus.BOOKED_PENDING, BookingStatus.QR_SCANNED, BookingStatus.CHECKED_IN}
-)
-
-
 class _Model(BaseModel):
     model_config = ConfigDict(use_enum_values=False, extra="ignore")
 
@@ -57,7 +43,6 @@ class Venue(_Model):
     lat: float
     lon: float
     zones: list[str] = Field(default_factory=list)
-    bookable_fraction: float = Field(0.2, ge=0.0, le=1.0)
     source: VenueSource
     noise_db: float = 50.0
 
@@ -67,7 +52,6 @@ class Seat(_Model):
     venue_id: str
     zone: str
     has_outlet: bool = False
-    bookable: bool = False
     # Normalised (0..1) polygon corners as (x, y), so it works at any camera resolution.
     polygon: list[tuple[float, float]] = Field(default_factory=list)
 
@@ -98,16 +82,6 @@ class SeatEvent(_Model):
     seat_id: str
     old_state: SeatState | None
     new_state: SeatState
-
-
-class Booking(_Model):
-    booking_id: str
-    venue_id: str
-    seat_id: str
-    start_time: datetime
-    status: BookingStatus
-    created_at: datetime
-    prepaid_item: str | None = None  # cafes only, mocked
 
 
 class Query(_Model):

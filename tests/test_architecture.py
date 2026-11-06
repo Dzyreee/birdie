@@ -26,10 +26,9 @@ def test_core_never_imports_gradio():
 def test_no_frames_written_by_core():
     """No image or video writing calls in the core (frames stay in memory)."""
     banned = ("imwrite(", "VideoWriter(", ".save(")
-    allowed = {"booking.py"}  # QR code PNG saved into an in-memory BytesIO buffer
     hits = []
     for path in CORE.rglob("*.py"):
-        if path.name in allowed or "ui" in path.relative_to(CORE).parts:
+        if "ui" in path.relative_to(CORE).parts:
             continue
         text = path.read_text(encoding="utf-8")
         hits += [f"{path.name}: {b}" for b in banned if b in text]

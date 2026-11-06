@@ -3,6 +3,7 @@ import numpy as np
 from birdie.models import Seat, SeatState, Venue, VenueConfig, VenueSource, VenueType
 from birdie.service import BirdieService
 from birdie.vision import render
+from birdie.vision.detector import KEEP_LABELS
 from birdie.vision.seats import assign_detections, observe
 from birdie.vision.state import Observation, SeatStateMachine, VenueTracker
 
@@ -176,7 +177,6 @@ def test_process_frame_updates_state_and_logs_events(clock):
     assert {(ev.seat_id, ev.new_state) for ev in svc.repo.seat_events("v")} == {
         ("L", SeatState.OCCUPIED), ("R", SeatState.FREE)
     }
-    assert svc.has_frame("v")
 
 
 def test_low_score_person_does_not_change_seat_state(clock):
@@ -191,8 +191,19 @@ def test_low_score_person_does_not_change_seat_state(clock):
 def test_annotate_keeps_frame_unblurred_without_overlays():
     rng = np.random.default_rng(0)
     frame = rng.integers(0, 255, (100, 100, 3), dtype=np.uint8)
-    out = render.annotate(frame, [], {}, [])
+    out = render.annotate(frame, [])
     assert np.array_equal(out, frame)
+
+
+def test_annotate_draws_detector_boxes_without_a_seat_layout():
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    out = render.annotate(frame, [{"label": "chair", "score": 0.9, "box": [20, 20, 80, 80]}])
+    assert np.any(out[18:82, 18:82])
+    assert not np.any(out[:10, :10])
+
+
+def test_detector_keeps_chairs_people_and_belongings():
+    assert {"chair", "person", "backpack", "laptop"} <= KEEP_LABELS
 
 
 def test_data_uri_is_in_memory_jpeg():
@@ -200,7 +211,7 @@ def test_data_uri_is_in_memory_jpeg():
     assert uri.startswith("data:image/jpeg;base64,")
 
 
-def test_seat_setup_upsert_and_delete(clock):
+def test_seat_config_upsert_and_delete(clock):
     svc = _venue(clock, [])
     new = Seat(seat_id="N1", venue_id="v", zone="terrace", polygon=[(0.1, 0.1), (0.2, 0.1), (0.2, 0.2), (0.1, 0.2)])
     svc.upsert_seat(new)
@@ -214,8 +225,30 @@ def test_seat_setup_upsert_and_delete(clock):
     assert svc.delete_seat("v", "N1") is False
 
 
-def test_setup_frame_needs_a_camera_frame(clock):
+def test_video_preview_does_not_update_seat_states(clock):
     svc = _venue(clock, [])
-    assert svc.setup_frame("v") is None
-    svc.process_frame("v", np.zeros((480, 640, 3), dtype=np.uint8))
-    assert svc.setup_frame("v", [(0.1, 0.1)]).shape == (480, 640, 3)
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    svc.process_frame(None, frame, update_state=False)
+    assert all(s.state == SeatState.UNKNOWN for s in svc.snapshots("v"))
+
+
+def test_held_too_long_creates_one_alert_and_resolves(clock):
+    svc = _venue(clock, [])
+    tracker = svc.trackers["v"]
+    for _ in range(3):
+        clock.advance(1)
+        tracker.process({"L": I, "R": E})
+    clock.advance(svc.timers.hold_seconds)
+    svc.tick()
+    assert svc.state_of("v", "L") == SeatState.HELD
+    clock.advance(svc.timers.staff_alert_seconds)
+    svc.tick()
+    svc.tick()
+    alerts = svc.repo.alerts("v", unresolved_only=True)
+    assert [a["kind"] for a in alerts] == ["held_too_long"]
+    tracker.process({"L": Observation.UNKNOWN, "R": E})
+    assert len(svc.repo.alerts("v", unresolved_only=True)) == 1
+    for _ in range(3):
+        clock.advance(1)
+        tracker.process({"L": E, "R": E})
+    assert svc.repo.alerts("v", unresolved_only=True) == []

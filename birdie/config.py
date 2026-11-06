@@ -18,32 +18,23 @@ class Timers:
     """Timers in seconds. One instance for demo mode and one for production."""
 
     hold_seconds: int  # OCCUPIED -> HELD: belongings with no person for this long
-    no_show_seconds: int  # booking released if the seat is confirmed free this long after start_time
-    checkin_window_seconds: int  # after the QR scan, the camera must see OCCUPIED within this window
     smoothing_frames: int  # an observation only counts after k consecutive frames
     camera_stale_seconds: int  # live seat states expire when no usable frame arrives for this long
     staff_alert_seconds: int  # a seat HELD for this long raises a staff alert
-    booking_duration_seconds: int  # a CHECKED_IN booking is COMPLETED after this long (or when the seat goes FREE)
 
 
 DEMO_TIMERS = Timers(
     hold_seconds=30,
-    no_show_seconds=60,
-    checkin_window_seconds=60,
     smoothing_frames=3,
     camera_stale_seconds=10,
     staff_alert_seconds=30,
-    booking_duration_seconds=5 * 60,
 )
 
 PRODUCTION_TIMERS = Timers(
     hold_seconds=30 * 60,
-    no_show_seconds=15 * 60,
-    checkin_window_seconds=5 * 60,
     smoothing_frames=3,
     camera_stale_seconds=10,
     staff_alert_seconds=30 * 60,
-    booking_duration_seconds=2 * 60 * 60,
 )
 
 TIMERS: Timers = DEMO_TIMERS if DEMO_MODE else PRODUCTION_TIMERS
@@ -72,4 +63,3 @@ VENUES_DIR = Path(os.getenv("BIRDIE_VENUES_DIR", ROOT_DIR / "venues"))
 
 # --- Venues ---------------------------------------------------------------
 LIVE_VENUE_ID = "nestwork-msheireb"
-CAFE_PREPAID_ITEM = "Prepaid drink ✓"

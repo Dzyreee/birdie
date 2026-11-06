@@ -11,7 +11,6 @@
       "open",
       "family"
     ],
-    "bookable_fraction": 0.2,
     "source": "simulated",
     "noise_db": 40.0
   },
@@ -21,7 +20,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0525,
@@ -46,7 +44,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.165,
@@ -71,7 +68,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2775,
@@ -96,7 +92,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.39,
@@ -121,7 +116,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0525,
@@ -146,7 +140,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.165,
@@ -171,7 +164,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2775,
@@ -196,7 +188,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.39,
@@ -221,7 +212,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0525,
@@ -246,7 +236,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.165,
@@ -271,7 +260,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2775,
@@ -296,7 +284,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.39,
@@ -321,7 +308,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0525,
@@ -346,7 +332,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.165,
@@ -371,7 +356,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2775,
@@ -396,7 +380,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.39,
@@ -421,7 +404,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.0525,
@@ -446,7 +428,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.165,
@@ -471,7 +452,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.2775,
@@ -496,7 +476,6 @@
       "venue_id": "qnl",
       "zone": "quiet",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.39,
@@ -521,7 +500,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.5425,
@@ -546,7 +524,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.655,
@@ -571,7 +548,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.7675,
@@ -596,7 +572,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.88,
@@ -621,7 +596,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.5425,
@@ -646,7 +620,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.655,
@@ -671,7 +644,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.7675,
@@ -696,7 +668,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.88,
@@ -721,7 +692,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.5425,
@@ -746,7 +716,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.655,
@@ -771,7 +740,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.7675,
@@ -796,7 +764,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.88,
@@ -821,7 +788,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.5425,
@@ -846,7 +812,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.655,
@@ -871,7 +836,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.7675,
@@ -896,7 +860,6 @@
       "venue_id": "qnl",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.88,
@@ -921,7 +884,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.535,
@@ -946,7 +908,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.61,
@@ -971,7 +932,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.685,
@@ -996,7 +956,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.76,
@@ -1021,7 +980,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.835,
@@ -1046,7 +1004,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.91,
@@ -1071,7 +1028,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.535,
@@ -1096,7 +1052,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.61,
@@ -1121,7 +1076,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.685,
@@ -1146,7 +1100,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.76,
@@ -1171,7 +1124,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.835,
@@ -1196,7 +1148,6 @@
       "venue_id": "qnl",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.91,

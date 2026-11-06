@@ -1,7 +1,7 @@
 """BirdieService: the one object that holds all live state and that the UI talks to.
 
 It wires the repository, the clock, one VenueTracker per venue, the camera pipeline,
-bookings, the simulator, the forecaster and the decision logic. Framework-free.
+the simulator, the forecaster and the decision logic. Framework-free.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from pathlib import Path
 
 import numpy as np
 
-from birdie.booking import BookingService, held_too_long
 from birdie.clock import Clock, RealClock
 from birdie.config import (
     DETECTION_THRESHOLD,
@@ -25,7 +24,7 @@ from birdie.config import (
 )
 from birdie.decision import Availability, availability_at
 from birdie.forecast.model import ForecastEngine
-from birdie.models import Booking, Seat, SeatEvent, SeatSnapshot, SeatState, Venue, VenueConfig, VenueSource
+from birdie.models import Seat, SeatEvent, SeatSnapshot, SeatState, Venue, VenueConfig, VenueSource
 from birdie.scheduler import Scheduler
 from birdie.simulator import Simulator
 from birdie.storage import Repository
@@ -82,13 +81,9 @@ class BirdieService:
             )
             for vid, cfg in self.configs.items()
         }
-        # Last camera frame per venue, kept in memory only for the seat setup snapshot.
-        self._last_frame: dict[str, np.ndarray] = {}
-        self.bookings = BookingService(self.repo, self.clock, self.configs, self.state_of, timers)
-        self.add_listener(self.bookings.on_seat_event)
         self.forecast = forecast or ForecastEngine(self.configs, self.clock, self.repo)
         self.simulator = Simulator(
-            self.configs, self.trackers, self.forecast.ratio_at, self.clock, self.bookings, seed=seed
+            self.configs, self.trackers, self.forecast.ratio_at, self.clock, seed=seed
         )
         self.scheduler = Scheduler(self.tick, SCHEDULER_INTERVAL_SECONDS)
         self._last_refit = self.clock.now()
@@ -137,7 +132,7 @@ class BirdieService:
         return out
 
     def upsert_seat(self, seat: Seat) -> None:
-        """Add or replace a seat (seat setup tool) and save the venue JSON."""
+        """Add or replace a configured seat region and save the venue JSON."""
         with self._lock:
             cfg = self.configs[seat.venue_id]
             seats = [s for s in cfg.seats if s.seat_id != seat.seat_id] + [seat]
@@ -162,15 +157,9 @@ class BirdieService:
         if self.persist_venues:
             save_venue(cfg, self.venues_dir)
 
-    def active_booking_by_seat(self, venue_id: str) -> dict[str, Booking]:
-        return {b.seat_id: b for b in self.bookings.active_bookings(venue_id)}
-
     # --- LiveData (used by birdie.decision) ----------------------------------------
     def now(self):
         return self.clock.now()
-
-    def active_bookings(self, venue_id: str) -> list[Booking]:
-        return self.bookings.active_bookings(venue_id)
 
     def forecast_ratio(self, venue_id: str, ts) -> float:
         return self.forecast.ratio_at(venue_id, ts)
@@ -194,12 +183,11 @@ class BirdieService:
 
     # --- background tick ------------------------------------------------------
     def tick(self) -> None:
-        """Run by the scheduler every ~2 s: simulator, timers, bookings, staff alerts, occupancy buckets."""
+        """Run by the scheduler every ~2 s: simulator, timers, staff alerts and occupancy buckets."""
         now = self.clock.now()
         self.simulator.step()
         for tracker in self.trackers.values():
             tracker.tick()  # OCCUPIED -> HELD even if no new frame arrives
-        self.bookings.tick()
         self._check_held_alerts(now)
         for vid in self.configs:
             c = self.counts(vid)
@@ -213,7 +201,10 @@ class BirdieService:
     def _check_held_alerts(self, now) -> None:
         threshold = self.timers.staff_alert_seconds
         for vid in self.configs:
-            snaps = held_too_long(self.snapshots(vid), now, threshold)
+            snaps = [
+                snap for snap in self.snapshots(vid)
+                if snap.state == SeatState.HELD and (now - snap.since).total_seconds() >= threshold
+            ]
             if not snaps:
                 continue
             open_alerts = {
@@ -251,30 +242,15 @@ class BirdieService:
                 log.exception("seat event listener failed")
 
     # --- camera pipeline ------------------------------------------------------
-    def process_frame(self, venue_id: str, frame: np.ndarray, update_state: bool = True) -> np.ndarray:
-        """One camera frame: detect, assign to seats, update seat states, return the annotated frame.
-
-        The frame stays in memory. Only the most recent one is kept (for the seat setup snapshot).
-        """
+    def process_frame(self, venue_id: str | None, frame: np.ndarray, update_state: bool = True) -> np.ndarray:
+        """Detect objects and optionally update a calibrated venue's hidden seat states."""
         img = resize_long_side(frame)
         arr = np.asarray(img)
         detections = self._detect(img, threshold=DETECTION_THRESHOLD)
         counted = [d for d in detections if d["score"] >= DETECTION_THRESHOLD]
-        tracker = self.trackers[venue_id]
-        seats = list(tracker.seats.values())
-        if update_state:
+        if update_state and venue_id is not None:
+            tracker = self.trackers[venue_id]
+            seats = list(tracker.seats.values())
             assigned = assign_detections(counted, seats, img.size)
             tracker.process(observe(assigned))
-        self._last_frame[venue_id] = arr
-        return render.annotate(arr, seats, self.snapshot_map(venue_id), counted)
-
-    def setup_frame(self, venue_id: str, points: list[tuple[float, float]] | None = None) -> np.ndarray | None:
-        """The last camera frame with current seat states and setup corners drawn."""
-        arr = self._last_frame.get(venue_id)
-        if arr is None:
-            return None
-        img = render.annotate(arr, self.seats(venue_id), self.snapshot_map(venue_id), [], show_boxes=False)
-        return render.draw_setup_points(img, points or [])
-
-    def has_frame(self, venue_id: str) -> bool:
-        return venue_id in self._last_frame
+        return render.annotate(arr, counted)
