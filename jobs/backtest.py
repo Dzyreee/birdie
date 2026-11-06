@@ -47,15 +47,31 @@ ROOT = HERE.parent
 HORIZONS_MIN = (15, 30, 60)
 
 
+GITHUB_TARBALL = "https://github.com/Dzyreee/birdie/archive/refs/heads/main.tar.gz"
+
+
 def import_birdie(space_id: str) -> Path:
-    """Use the local checkout if there is one, otherwise download the birdie package from the Space."""
+    """Use the local checkout if there is one, else the Space, else the public GitHub repo."""
     if (ROOT / "birdie" / "__init__.py").exists():
         sys.path.insert(0, str(ROOT))
         return ROOT
-    from huggingface_hub import snapshot_download
+    try:
+        from huggingface_hub import snapshot_download
 
-    path = Path(snapshot_download(repo_id=space_id, repo_type="space",
-                                  allow_patterns=["birdie/**", "venues/*.json"]))
+        path = Path(snapshot_download(repo_id=space_id, repo_type="space",
+                                      allow_patterns=["birdie/**", "venues/*.json"]))
+    except Exception as exc:
+        import io
+        import tarfile
+        import tempfile
+        import urllib.request
+
+        url = os.getenv("BIRDIE_GITHUB_TARBALL", GITHUB_TARBALL)
+        print(f"[backtest] Space {space_id} unavailable ({type(exc).__name__}); using {url}", flush=True)
+        dest = Path(tempfile.mkdtemp(prefix="birdie-"))
+        with urllib.request.urlopen(url) as resp:
+            tarfile.open(fileobj=io.BytesIO(resp.read()), mode="r:gz").extractall(dest, filter="data")
+        path = next(p for p in dest.iterdir() if (p / "birdie" / "__init__.py").exists())
     sys.path.insert(0, str(path))
     return path
 
