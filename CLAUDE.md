@@ -149,7 +149,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
   - `HELD` is amber `#D08A1C` with diagonal stripes ("Held by a bag"). The stripes keep it distinct for colour-blind users.
   - The floor plan legend reads **Free / Taken / Held by a bag**.
   - There is no "Yours" colour.
-- **Logo:** the Birdie logo (a maroon bird in a ghutra and agal; source in `design/brand/`, sizes in `web/assets/`) is the **app icon**: home screen, browser tab and `web/manifest.webmanifest`. It is not shown inside the app's screens.
+- **Logo:** the Birdie logo (a maroon bird in a ghutra and agal; source in `design/brand/`, sizes in `web/assets/`) is the **app icon** (home screen, browser tab and `web/manifest.webmanifest`) and is shown on the splash. It is not shown on the other screens.
 - **Look:** the layout borrows familiar delivery-app patterns (coloured header with a wavy edge, pill search, category tiles with badges, outlined cards, floating tab bar).
   - Colours: Qatar maroon `#8A1538` as the brand colour (one CSS variable, `--brand`), white, cream `#F5EFE7` and charcoal `#1F2328`. The app does not use Talabat's orange, so it doesn't look like a copy.
   - Type: Rubik throughout (a Google Font with Arabic support).
@@ -166,7 +166,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 - **Camera input:** a clip recorded in the venue, played through the pipeline at 1 frame per second in real time (with "Loop clip"). The live webcam input is kept in the code behind `BIRDIE_ENABLE_WEBCAM`, off by default. If the live venue gets no frame for 10 seconds it is "camera offline" and its seats keep their last state.
 - **Venues: Doha only.**
   - One live venue (Nestwork Msheireb, camera in the room) plus simulated venues.
-  - Simulated venues are **always labelled "Simulated"** in the app (on list rows and the place screen) and in the pitch.
+  - The app shows **no Live or Simulated tags** on rows, cards or the place screen (team decision, 6 Nov). Which places are simulated is explained on the **About** tab, and must be said out loud in the pitch.
   - Invented places get invented names.
   - None of the handoff's placeholder data ("Old Town", "Halden Library" and so on) is used.
 - **Distance is drive time, never walk time:**
@@ -208,7 +208,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 app.py                  builds the FastAPI app: API, web/ at /, Gradio console at /operator; runs uvicorn
 web/                    mobile web app: index.html, app.css, app.js (no build step)
 design/mobile/          design handoff: README.md (screens and behaviour) and prototype.html
-design/brand/           the Birdie logo (source image; the app icon)
+design/brand/           the Birdie logo (source image; app icon and splash)
 birdie/
   config.py             DEMO_MODE, timers, thresholds
   models.py             pydantic data models (section 7)
@@ -292,19 +292,20 @@ Optional: add 2 to 4 more simulated venues with invented names (for example a ca
 
 The app keeps the browse and place screens of `design/mobile/README.md`, laid out like the delivery apps people in Doha already use (section 5). Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. `web/` is the reference; in short:
 
-- **Splash:** "Birdie" and "Live study seats in Doha" on maroon. Tap to skip. The logo is the app icon only, not on the screens.
+- **Splash:** the logo, "Birdie" and "Live study seats in Doha" on maroon. Tap to skip.
 - **Tab bar:** a floating pill at the bottom with Explore, Saved and About. It is hidden on the place screen.
 - **Explore (home):**
   - The maroon header with a wavy bottom edge reads "Seats near **Msheireb** ⌄", with a pill search below.
   - Category tiles (All, Libraries, Cafés, Coworking, Study rooms; empty categories hidden), each with a black badge showing its live free count ("24 free" or "Full"). Tap a tile to filter; tap it again for All.
   - A greeting ("Good evening, where are you studying?") and an outlined suggestion card: the place with the most free seats for the drive, with a "See seats" button.
   - The "Free right now" cards, then "All places" with the Nearest / Most seats free / Open late sort.
-  - **Seat dots:** each card and list row shows one dot per seat (green free first, then amber held, then charcoal taken). There are no place photos.
-  - Rows show the name, "Type, Area", "N of M free", the drive time with a car icon ("You're here" for Nestwork), and a "Live" or "Simulated" tag.
+  - **Photos:** Nestwork, QNL and QU Library have photos (`web/assets/places/`), shown as the list thumbnail, on the "Free right now" card and as the hero on the place screen. A venue's own `photo` URL from the API would win if the backend adds one.
+  - **Seat dots:** places without a photo show one dot per seat instead (green free first, then amber held, then charcoal taken).
+  - Rows show the name, "Type, Area", "N of M free", and the drive time with a car icon ("You're here" for Nestwork). No Live or Simulated tag.
 - **Saved:** places saved with the heart on the place screen. They are kept in this browser only; there are no accounts.
 - **About:** how Birdie works, what the colours mean, privacy, and which places are live or simulated.
 - **Place:**
-  - The maroon header shows back and save (heart) buttons, the name, "Type, Area", drive time, opening hours, a "Simulated" chip where it applies, and amenity chips (including zones such as Women's section, Family section and Quiet zone). Only the live venue shows the "Live" dot.
+  - A photo hero (when the place has one) with back and save (heart) buttons, then the maroon header with the name, "Type, Area", drive time, opening hours and amenity chips (including zones such as Women's section, Family section and Quiet zone). No Live or Simulated marks.
   - Below it: "N seats free", a line such as "16 taken and 3 held by bags, out of 36.", the All seats / Outlet / Window filter, the floor plan and the legend.
   - A chair that changes state rings once, so a change in the room is easy to spot.
   - **Seat sheet:** tapping a free or held chair opens the bottom sheet. A free seat shows "Seat A3 is free", its table, and chips for window and outlet. A held seat shows "Seat A3 is held" and "Held by a bag for N min" (from `since`). Taken chairs can't be tapped.
@@ -361,7 +362,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
   - The operator Camera console.
   - Deployed on an HF Space.
 - **Should have:** venue dashboard, staff alerts, accuracy evaluation, splash screen.
-- **Skip:** booking, check-in, QR codes, payments, user accounts and login, the LLM assistant, a native app, place photos.
+- **Skip:** booking, check-in, QR codes, payments, user accounts and login, the LLM assistant, a native app.
 
 ### Timeline (from Friday 20:00)
 
@@ -379,7 +380,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 1. **Hook (15 s):** the founder story: drove to study, no seat, wasted trip.
 2. **Data (15 s):** room survey result (section 13), plus the car-dependent Doha framing.
 3. **Live (60 s):** a phone mirrored on the screen, and the operator console on a laptop. **The Nestwork feed is a clip recorded at these tables in this room** (organizer permission needed), played through the pipeline at 1 frame per second in real time, looped. Say so: the detection, seat states and timers are live; the footage is recorded.
-   - Open Birdie: Doha venues with drive times, Nestwork live, the others marked Simulated.
+   - Open Birdie: Doha venues with drive times. Say that Nestwork is live and the others are simulated (the app itself only says so on the About tab).
    - Open Nestwork: the floor plan matches the tables in this room, one seat per chair.
    - In the clip, a teammate stands up and leaves → the chair turns green on the phone.
    - A teammate sits down → it turns taken.
@@ -404,7 +405,7 @@ Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 - **"Why only one vision model?"** COCO already includes people, bags, laptops and cups, so one small detector does both jobs in one pass. That halves the compute and lets vision run on CPU.
 - **"Why a web app and not a native app?"** You open it from a link with no install, on any phone.
 - **"How accurate is it?"** Report seat-state accuracy on our labelled frames, and be upfront about failure cases (occlusion, lighting).
-- **"Is the other venues' data real?"** No: only Nestwork is live. The others are simulated and labelled as such, to show how Birdie works across a city.
+- **"Is the other venues' data real?"** No: only Nestwork is live. The others are simulated, to show how Birdie works across a city. The About tab in the app says so.
 
 ---
 

@@ -17,6 +17,15 @@
   const SEGS = [['all', 'All seats'], ['outlet', 'Outlet'], ['window', 'Window']];
   const TABS = [['home', '#/', 'Explore'], ['saved', '#/saved', 'Saved'], ['about', '#/about', 'About']];
 
+  // Place photos shipped with the app. A venue's own `photo` URL from the API wins if it has one.
+  const PHOTOS = {
+    'nestwork-msheireb': 'assets/places/nestwork',
+    qnl: 'assets/places/qnl',
+    'qu-library': 'assets/places/qu-library',
+  };
+  const photoOf = v => (v.photo ? { full: v.photo, thumb: v.photo }
+    : PHOTOS[v.venue_id] ? { full: `${PHOTOS[v.venue_id]}.jpg`, thumb: `${PHOTOS[v.venue_id]}-thumb.jpg` } : null);
+
   const params = new URLSearchParams(location.search);
   const app = document.getElementById('app');
 
@@ -44,7 +53,6 @@
   const fold = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const typeLabel = t => TYPES[t] || t;
   const kindLabel = v => `${typeLabel(v.type)}, ${v.area}`;
-  const sourceLabel = s => s.charAt(0).toUpperCase() + s.slice(1);
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   function heldFor(since) {
@@ -120,15 +128,20 @@
     return res.json();
   }
 
+  // A small pill at the top while the API can't be reached.
   function setOnline(on) {
     state.online = on;
-    document.querySelectorAll('[data-live]').forEach(el => {
-      el.classList.toggle('is-offline', !on);
-      el.querySelector('[data-live-text]').textContent = on ? 'Live' : 'Reconnecting…';
-    });
+    let el = document.getElementById('offline');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'offline';
+      el.className = 'offline';
+      el.setAttribute('role', 'status');
+      el.textContent = 'Reconnecting…';
+      document.body.appendChild(el);
+    }
+    el.hidden = on;
   }
-
-  const liveBadge = () => '<span class="live" data-live><i class="dot"></i><span data-live-text>Live</span></span>';
 
   // ---------- Polling ----------
 
@@ -194,31 +207,29 @@
       '</span>';
   }
 
-  const thumb = c => {
-    const n = Math.min(c.total || 0, 64);
-    return `<span class="thumb">${dotsHTML(c, { max: 64, cols: Math.max(1, Math.ceil(Math.sqrt(n))) })}</span>`;
+  const thumb = v => {
+    const photo = photoOf(v);
+    if (photo) return `<span class="thumb is-photo"><img src="${esc(photo.thumb)}" alt="" loading="lazy" decoding="async"></span>`;
+    const n = Math.min(v.counts.total || 0, 64);
+    return `<span class="thumb">${dotsHTML(v.counts, { max: 64, cols: Math.max(1, Math.ceil(Math.sqrt(n))) })}</span>`;
   };
 
   const distance = (v, long = false) => (v.drive_minutes === 0
     ? `<span class="fact">${ICON.pin()}You're here</span>`
     : `<span class="fact">${ICON.car()}${v.drive_minutes} min${long ? ' drive' : ''}</span>`);
 
-  const sourceTag = v => (v.source === 'live'
-    ? '<span class="tag tag-live">Live</span>'
-    : `<span class="tag tag-sim">${esc(sourceLabel(v.source))}</span>`);
-
   function row(v) {
     const { free, total } = v.counts;
     const full = free === 0;
     return `
       <button class="row press${full ? ' is-full' : ''}" data-act="open" data-v="${esc(v.venue_id)}">
-        ${thumb(v.counts)}
+        ${thumb(v)}
         <span class="row-body">
           <span class="row-name">${esc(v.name)}</span>
           <span class="row-kind">${esc(kindLabel(v))}</span>
           <span class="row-facts">
             <span class="row-free">${full ? 'Full right now' : `${free} of ${total} free`}</span>
-            ${distance(v)}${sourceTag(v)}
+            ${distance(v)}
           </span>
         </span>
       </button>`;
@@ -263,7 +274,7 @@
           <div id="best"></div>
         </section>
         <section class="free-now" id="freeNow" hidden>
-          <div class="sec-head"><h2>Free right now</h2>${liveBadge()}</div>
+          <div class="sec-head"><h2>Free right now</h2></div>
           <div class="rail cards" id="cards"></div>
         </section>
         <section class="list">
@@ -316,10 +327,9 @@
         <div class="best-head">
           <span class="best-icon">${typeIcon(best.type, 22)}</span>
           <span class="best-name">${esc(best.name)}<small>${esc(kindLabel(best))}</small></span>
-          ${sourceTag(best)}
         </div>
         <div class="best-body">
-          ${thumb(best.counts)}
+          ${thumb(best)}
           <div class="best-text">
             <strong>${plural(best.counts.free, 'seat free', 'seats free')}</strong>
             ${distance(best, true)}
@@ -332,10 +342,10 @@
     $('#freeNow').hidden = featured.length === 0 || q !== '';
     setHTML($('#cards'), featured.map(v => `
       <button class="card press" data-act="open" data-v="${esc(v.venue_id)}" aria-label="${esc(v.name)}, ${v.counts.free} free">
-        ${dotsHTML(v.counts, { max: 36 })}
+        ${photoOf(v) ? `<span class="card-photo"><img src="${esc(photoOf(v).thumb)}" alt="" loading="lazy" decoding="async"></span>` : dotsHTML(v.counts, { max: 36 })}
         <span class="card-count">${v.counts.free}<span>free</span></span>
         <span class="card-name">${esc(v.name)}</span>
-        <span class="card-foot">${distance(v)}${sourceTag(v)}</span>
+        <span class="card-foot">${distance(v)}</span>
       </button>`).join(''));
 
     let list = pool.filter(v => !q || fold(`${v.name} ${v.area} ${typeLabel(v.type)} ${v.type}`).includes(q));
@@ -432,18 +442,18 @@
 
   function placeBand(v) {
     const saved = state.saved.has(v.venue_id);
+    const photo = photoOf(v);
     const facts = distance(v, true) + (v.open_until ? `<span class="fact">${ICON.clock()}${esc(v.open_until)}</span>` : '');
-    const chips = (v.source === 'live' ? '' : `<span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`) +
-      (v.amenities || []).map(a => `<span class="chip">${esc(a)}</span>`).join('');
-    return `
-      <header class="band">
+    const chips = (v.amenities || []).map(a => `<span class="chip">${esc(a)}</span>`).join('');
+    const buttons = `
         <div class="place-top">
           <button class="round-btn press" data-act="back" aria-label="Back">${ICON.back()}</button>
-          <div class="place-top-right">
-            ${v.source === 'live' ? liveBadge() : ''}
-            <button class="round-btn press" data-act="save" data-v="${esc(v.venue_id)}" aria-pressed="${saved}" aria-label="Save place">${ICON.heart()}</button>
-          </div>
-        </div>
+          <button class="round-btn press" data-act="save" data-v="${esc(v.venue_id)}" aria-pressed="${saved}" aria-label="Save place">${ICON.heart()}</button>
+        </div>`;
+    return `
+      ${photo ? `<div class="hero"><img src="${esc(photo.full)}" alt="">${buttons}</div>` : ''}
+      <header class="band${photo ? ' under-hero' : ''}">
+        ${photo ? '' : buttons}
         <div class="place-head">
           <h1>${esc(v.name)}</h1>
           <span class="place-kind">${esc(kindLabel(v))}</span>
@@ -666,7 +676,8 @@
     const el = document.createElement('div');
     el.className = 'splash';
     el.setAttribute('role', 'presentation');
-    el.innerHTML = '<span class="splash-word">Birdie</span><span class="splash-line">Live study seats in Doha</span>';
+    el.innerHTML = '<img src="assets/logo-512.jpg" alt="" width="120" height="120">' +
+      '<span class="splash-word">Birdie</span><span class="splash-line">Live study seats in Doha</span>';
     document.body.appendChild(el);
     const timers = [
       setTimeout(() => el.classList.add('is-in'), 40),
