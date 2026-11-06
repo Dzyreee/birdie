@@ -251,7 +251,7 @@ Removed: `Booking`, `Query`, `bookable`, `bookable_fraction`, `prepaid_item`, an
 | `GET /api/venues` | List of venues (no floor plan), each with `counts`: `free`, `taken`, `held`, `total` |
 | `GET /api/venues/{venue_id}` | Venue with `floor_plan` and `seats`. Each seat has `seat_id`, `table_id`, `has_outlet`, `has_window`, `plan_x`, `plan_y`, `plan_rot`, `status` (free, taken, held) and `since` (when it entered that status) |
 
-Status mapping: FREE is `free`, OCCUPIED is `taken`, HELD is `held`.
+Status mapping: FREE is `free`, OCCUPIED is `taken`, HELD is `held`. Times are ISO 8601 with a timezone (for example `2026-11-06T20:15:00Z`). `web/mock.js` returns exactly these shapes; the app uses it when the server has no `/api`.
 
 ### 7.3 Demo venues
 
@@ -295,7 +295,7 @@ Build **screens 1 to 3** of `design/mobile/README.md`. Screens 4 to 6 (Scan to c
   - The meta line reads "Type · Area · N min drive · Open till HH:MM", with a "Simulated" chip where it applies.
   - The amenity chips include zones such as Women's section, Family section and Quiet zone.
   - Chairs are coloured from the API status (green, red, amber), and the legend reads Free / Taken / Held.
-  - **Seat sheet:** tapping a free or held chair opens the bottom sheet, **without the "Scan to check in" button**. A free chair shows "Seat A3 is free" plus its chips (table, Window, Outlet). A held chair shows "Seat A3 is held by a bag" and "Nobody here for N min" (from `since`). Taken chairs can't be tapped.
+  - **Seat sheet:** tapping a free or held chair opens the bottom sheet, **without the "Scan to check in" button**. A free chair shows "Seat A3 is free" plus its chips (table, Window, Outlet). A held chair shows "Seat A3 is held by a bag" and "Nobody here · held for N min" (from `since`). Taken chairs can't be tapped.
   - Place photos: none are supplied. Use the mist placeholder with the venue type's icon.
 - **Live updates:** poll the API every 2 seconds instead of the prototype's random flips.
 
