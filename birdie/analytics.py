@@ -35,7 +35,7 @@ def seat_intervals(
 ) -> dict[str, list[tuple[datetime, datetime, SeatState]]]:
     """Per seat, the (from, to, state) intervals covering [start, end], reconstructed from events.
 
-    The state at `start` is the last state before it, or the first event's old state, or FREE.
+    The state at `start` is the last state before it, or the first event's old state, or UNKNOWN.
     """
     by_seat: dict[str, list[SeatEvent]] = defaultdict(list)
     for e in sorted(events, key=lambda e: e.ts):
@@ -43,7 +43,7 @@ def seat_intervals(
     out = {}
     for sid in seat_ids:
         evs = by_seat.get(sid, [])
-        state = SeatState.FREE
+        state = SeatState.UNKNOWN
         before = [e for e in evs if e.ts <= start]
         if before:
             state = before[-1].new_state
@@ -79,6 +79,8 @@ def occupancy_by_hour(intervals: dict[str, list[tuple[datetime, datetime, SeatSt
     held = defaultdict(float)
     for ivs in intervals.values():
         for a, b, state in ivs:
+            if state == SeatState.UNKNOWN:
+                continue
             for hour, secs in _split_by_hour(a, b):
                 total[hour] += secs
                 if state == SeatState.OCCUPIED:

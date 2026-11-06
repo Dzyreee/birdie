@@ -15,7 +15,7 @@ You are helping a 4-person team at the **Qai x Hugging Face Hackathon 01**, held
 - **It must genuinely run on Hugging Face infrastructure** (Spaces, Hub models, HF Jobs). Frontier models (GPT, Claude, etc.) only "around the edges", never as the core.
 - **Compute budget:** $100 for the whole team, one shared pool, no top-ups. HF Jobs stop after 30 minutes by default, so save outputs to the Hub from inside the job.
 - **Prefer small, efficient open models.** Efficiency is a judging criterion.
-- **Privacy matters:** no face recognition, no storing images, no identifying individuals.
+- **Privacy matters:** no face recognition or identity matching; do not persist raw images, and verify hosted Space logging and retention.
 - **Simple, working code over clever code.** Working end to end beats feature-rich and broken.
 - **Never commit** tokens, `.env` files, videos, frames or model weights.
 - **Section 5 (Key decisions) is final.** If anything else in this file seems to conflict with it, section 5 wins.
@@ -87,7 +87,8 @@ One of us has personally driven to a cafe or library to study, found no seat, an
 
 ### Core features (must have)
 
-1. **Three seat states from computer vision:**
+1. **Seat states from computer vision:**
+   - `UNKNOWN`: no recent usable camera evidence; never offer it as free.
    - `FREE`: no person, no belongings.
    - `OCCUPIED`: a person is in the seat, or stepped away recently and left belongings.
    - `HELD`: belongings (bag, laptop, cup) on the seat or table with **no person for longer than the hold time** (30 minutes in production, 30 seconds in demo mode).
@@ -96,7 +97,7 @@ One of us has personally driven to a cafe or library to study, found no seat, an
    - The venue chooses which seats are bookable (for example 20%), so walk-ins aren't shut out.
    - A user books a seat for an arrival time.
    - **Check-in:** the user scans a QR code on the table. The camera only confirms the seat is now occupied. The camera never identifies who is sitting there.
-   - **Automatic no-show release:** if the seat is still empty after the no-show time (15 minutes in production, 60 seconds in demo mode), it goes back to walk-ins.
+   - **Automatic no-show release:** if the camera confirms the seat is free after the no-show time (15 minutes in production, 60 seconds in demo mode), it goes back to walk-ins. If camera status is `UNKNOWN`, keep the booking pending until evidence returns.
    - A seat held by belongings for too long triggers a staff alert.
 4. **Runs on an HF Space**, with models from the HF Hub.
 
@@ -126,7 +127,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 - **Code structure:** all core logic lives in the `birdie/` package and **never imports Gradio**. UI code lives only in `app.py` and `birdie/ui/`. This keeps the core reusable and makes merging with the second backend repo easy.
 - **Vision: one detector only:** `PekingU/rtdetr_r18vd` (COCO classes). COCO already covers people and belongings, so one model in one pass gives both `OCCUPIED` and `HELD`. `person` means occupied. Belongings: backpack, handbag, suitcase, laptop, cup, bottle, book, cell phone. **No OWLv2 or Grounding DINO** (slow, and not needed).
 - **Frame rate:** about 1 frame per second, long side resized to at most 640 px.
-- **Privacy:** frames are processed in memory and discarded, never written to disk or logged. People are **blurred** in any frame shown on screen, including the operator view. Only seat states are stored.
+- **Privacy:** the hosted Space receives camera frames for inference. The app does not persist source frames; Space logging and retention remain to be verified. People are **blurred** in displayed output after inference.
 - **Timers:** all timers and thresholds live in `birdie/config.py` behind `DEMO_MODE` (on by default):
 
   | Setting | Demo | Production |
@@ -135,6 +136,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
   | No-show release | 60 s | 15 min |
   | Check-in confirmation window | 60 s | 5 min |
   | Smoothing | 3 frames | 3 frames |
+  | Camera stale timeout | 10 s | 10 s |
 
 - **Testability:** everything time-based takes an injectable clock, so tests never sleep.
 - **Assistant:** `QCRI/Fanar-1-9B-Instruct` **without tool calling** (Fanar 1 doesn't support it). The model turns the question into a `Query` object, Python computes the answer, and the model phrases the reply. Which GPU it runs on is decided later.
@@ -193,7 +195,7 @@ tests/
 
 ### Privacy story
 
-Frames are processed in memory and discarded immediately. No images are stored and only seat states are kept. Even the operator view blurs people. In production, the same model runs on a small device at the venue, so **no images ever leave the venue**. Qatar's personal data protection law (Law No. 13 of 2016, the first general data protection law in the GCC) is why this design matters.
+In this hosted prototype, camera frames are sent to the Hugging Face Space for inference and processed in memory. The app does not write source frames to its database, and people are blurred in displayed frames after inference. Space logging and retention must be verified before making a "never stored" claim or using production footage. Edge inference that keeps images on venue hardware is a future deployment option, not current behavior.
 
 ---
 
@@ -203,7 +205,7 @@ Both backend repos use these models (in `birdie/models.py`, documented in `docs/
 
 - **Venue:** `venue_id`, `name`, `area`, `type` (cafe, library, cowork), `lat`, `lon`, `zones`, `bookable_fraction`, `source` (live, recorded, simulated), `noise_db`
 - **Seat:** `seat_id`, `venue_id`, `zone`, `has_outlet`, `bookable`, `polygon` (normalised 0 to 1 coordinates, so it works at any camera resolution)
-- **SeatSnapshot:** `venue_id`, `seat_id`, `zone`, `has_outlet`, `state` (FREE, OCCUPIED, HELD), `since`, `updated_at`
+- **SeatSnapshot:** `venue_id`, `seat_id`, `zone`, `has_outlet`, `state` (UNKNOWN, FREE, OCCUPIED, HELD), `since`, `updated_at`
 - **SeatEvent:** `ts`, `venue_id`, `seat_id`, `old_state`, `new_state`
 - **Booking:** `booking_id`, `venue_id`, `seat_id`, `start_time`, `status` (BOOKED_PENDING, QR_SCANNED, CHECKED_IN, COMPLETED, NO_SHOW_RELEASED, CANCELLED), `created_at`, `prepaid_item` (cafes only, mocked)
 - **Query:** `area`, `party_size`, `needs_outlet`, `quiet`, `zone`, `venue_type`, `arrival_minutes`
@@ -227,16 +229,16 @@ Both backend repos use these models (in `birdie/models.py`, documented in `docs/
 - Each frame:
   1. Detect people and belongings.
   2. Assign each detection to the seat whose polygon contains the box centre; if none does, to the seat with the largest overlap above 20%.
-  3. Turn it into a raw observation per seat: `PERSON`, `ITEMS` or `EMPTY`.
+  3. Turn it into a raw observation per seat: `PERSON`, `ITEMS` or `EMPTY`; if the tracker receives no observation for a seat, it uses `UNKNOWN`.
   4. A new observation only counts after it holds for k consecutive frames (smoothing against occlusion and bad detections).
-  5. `PERSON` gives `OCCUPIED`. `ITEMS` keeps the seat `OCCUPIED` (the person stepped away) until items have been there with no person for the hold time, then `HELD`. `EMPTY` gives `FREE`.
+  5. `PERSON` gives `OCCUPIED`. `ITEMS` keeps the seat `OCCUPIED` (the person stepped away) until items have been there with no person for the hold time, then `HELD`. `EMPTY` gives `FREE`; `UNKNOWN` is excluded from availability. A camera feed with no usable frame for 10 seconds expires all known states to `UNKNOWN`.
 - Every state change is stored as a `SeatEvent`.
 
 ### 8.2 Booking
 
 - Only seats marked `bookable` can be booked, and at most `bookable_fraction` of a venue's seats.
 - `BOOKED_PENDING` → user scans the table's QR code (URL with `?checkin=<booking_id>`) → `QR_SCANNED` → camera (or simulator) sees the seat `OCCUPIED` within the confirmation window → `CHECKED_IN` → `COMPLETED`.
-- Still not occupied after the no-show time → `NO_SHOW_RELEASED`, and the seat goes back to walk-ins.
+- Camera confirms the seat is free after the no-show time → `NO_SHOW_RELEASED`, and the seat goes back to walk-ins. If state is `UNKNOWN`, keep the booking pending until evidence returns.
 - A background scheduler ticks every 2 seconds for releases, completions and staff alerts.
 
 ### 8.3 Forecast
@@ -300,7 +302,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 
 ### Priority
 
-- **Must have:** seat zones, 3 states, live camera, booking with QR check-in, no-show release, deployed on an HF Space.
+- **Must have:** seat zones, 4 states including `UNKNOWN`, live camera, booking with QR check-in, no-show release, deployed on an HF Space.
 - **Should have:** availability at arrival time, focus score, venue dashboard, Arabic/English assistant.
 - **Fake or skip:** payments (mocked), real cafe partnerships (simulated venues, clearly labelled), user accounts and login.
 
@@ -328,7 +330,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
    - Show a booking where nobody arrives → `NO_SHOW_RELEASED`.
    - Ask in Arabic: "Where can I study near Msheireb in 20 minutes?" → the answer gives availability at arrival and a focus score.
 4. **Venue dashboard (15 s):** occupancy by hour, no-shows, held-seat minutes.
-5. **Trust and efficiency (15 s):** models used, total dollars spent, accuracy on our labelled set, "no images ever leave the venue."
+5. **Trust and efficiency (15 s):** models used, total dollars spent, accuracy on our labelled set, and the actual frame-processing and retention behavior of the hosted Space.
 
 Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 
@@ -338,8 +340,8 @@ Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 
 - **"Isn't this just Google popular times?"** Google estimates relative busyness from phone location. We show actual seats, sections, outlets, noise, seats held by bags, verified bookings, and availability when you arrive.
 - **"UTSeat and coworking apps already do booking."** Their availability depends on bookings. Ours is verified by camera: walk-ins are counted, no-shows are released, bags are flagged.
-- **"Why would a cafe or library give you camera access?"** Many venues already have cameras. Only seat states leave the device, and the venue gets analytics and staff alerts. Cafes get prepaid bookings. Libraries (QNL, QU) are natural anchor customers because they already run booking systems.
-- **"Privacy?"** No face recognition, no stored images, no identifying individuals, people blurred on screen. Check-in uses a QR code, not a face. Designed with Qatar's data protection law in mind.
+- **"Why would a cafe or library give you camera access?"** Many venues already have cameras. In this hosted prototype, sampled frames are sent to the Space; the app database stores seat events and aggregates, not source frames. A venue deployment would need an approved retention policy, and edge inference can be evaluated if frames must stay on site.
+- **"Privacy?"** No face recognition or identity matching; people are blurred in displayed output after inference. Frames are sent to the hosted Space, and platform logging and retention need verification before production use. Check-in uses a QR code, not a face.
 - **"Why is this Qatar-specific?"** Car-dependent sprawl and heat make every wasted check a drive. Qatar-specific calendar patterns (Ramadan nights, the Friday and Saturday weekend, exam season around QNL). Arabic-first assistant using Qatar's own LLM (Fanar).
 - **"Where is Hugging Face in this?"** Models from the Hub, the app and inference on a Space, evaluation and backtests on HF Jobs, the labelled dataset published to the Hub.
 - **"Why only one vision model?"** COCO already includes people, bags, laptops and cups, so one small detector does both jobs in one pass. That halves the compute and lets vision run on CPU.
@@ -370,7 +372,7 @@ Put the real numbers on a slide: for example, "X of 20 builders here said yes, l
 | Merging two backend repos eats the night | Both repos follow the data contract (section 7); merge module by module |
 | Fanar is slow or won't fit the budget | Parse, compute, phrase pattern (no tool calling); small Qwen fallback |
 | Booking eats the schedule | Strict must/should/skip list; no payments, no accounts |
-| Privacy concerns from the audience | No faces, no storage, blurred view, QR check-in, on-device in production |
+| Privacy concerns from the audience | Explain hosted frame transmission accurately, verify Space retention, show output blur; assess edge inference for production |
 | Burning the $100 credits | CPU for everything except the LLM, short sleep time, shut down idle hardware, track spend |
 
 ---

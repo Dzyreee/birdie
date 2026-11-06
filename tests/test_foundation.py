@@ -16,6 +16,7 @@ def test_demo_mode_default_timers():
     assert config.TIMERS.no_show_seconds == 60
     assert config.TIMERS.checkin_window_seconds == 60
     assert config.TIMERS.smoothing_frames == 3
+    assert config.TIMERS.camera_stale_seconds == 10
     assert config.PRODUCTION_TIMERS.hold_seconds == 30 * 60
     assert config.PRODUCTION_TIMERS.no_show_seconds == 15 * 60
     assert config.PRODUCTION_TIMERS.checkin_window_seconds == 5 * 60

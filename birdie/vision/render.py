@@ -1,4 +1,4 @@
-"""Draw annotated frames: seat polygons coloured by state, seat ids, detection boxes, blurred people.
+"""Draw seat states and detections on camera frames.
 
 Frames are encoded to in-memory JPEG data URLs for the browser. Nothing is written to disk.
 """
@@ -16,6 +16,7 @@ from birdie.vision.detector import PERSON
 
 # RGB colours
 STATE_COLORS = {
+    SeatState.UNKNOWN: (148, 163, 184),  # slate
     SeatState.FREE: (34, 197, 94),  # green
     SeatState.OCCUPIED: (239, 68, 68),  # red
     SeatState.HELD: (245, 158, 11),  # amber
@@ -23,25 +24,6 @@ STATE_COLORS = {
 BOX_PERSON = (148, 163, 184)
 BOX_ITEM = (56, 189, 248)
 SETUP_COLOR = (217, 70, 239)
-
-
-def blur_people(frame: np.ndarray, boxes: Iterable[list[float]], pad: float = 0.12) -> np.ndarray:
-    """Pixelate then blur every person box (plus padding). Returns a new array."""
-    out = frame.copy()
-    h, w = out.shape[:2]
-    for x1, y1, x2, y2 in boxes:
-        bw, bh = x2 - x1, y2 - y1
-        x1i = int(max(0, x1 - bw * pad))
-        y1i = int(max(0, y1 - bh * pad))
-        x2i = int(min(w, x2 + bw * pad))
-        y2i = int(min(h, y2 + bh * pad))
-        if x2i - x1i < 2 or y2i - y1i < 2:
-            continue
-        roi = out[y1i:y2i, x1i:x2i]
-        small = cv2.resize(roi, (max(1, (x2i - x1i) // 16), max(1, (y2i - y1i) // 16)), interpolation=cv2.INTER_LINEAR)
-        mosaic = cv2.resize(small, (x2i - x1i, y2i - y1i), interpolation=cv2.INTER_NEAREST)
-        out[y1i:y2i, x1i:x2i] = cv2.GaussianBlur(mosaic, (0, 0), sigmaX=max(3, (x2i - x1i) / 30))
-    return out
 
 
 def _to_px(poly: list[tuple[float, float]], w: int, h: int) -> np.ndarray:
@@ -61,12 +43,10 @@ def annotate(
     seats: Iterable[Seat],
     snapshots: dict[str, SeatSnapshot],
     detections: list[dict],
-    blur_boxes: Iterable[list[float]] | None = None,
     show_boxes: bool = True,
 ) -> np.ndarray:
-    """RGB frame in, annotated RGB frame out. People are always blurred."""
-    person_boxes = [d["box"] for d in detections if d["label"] == PERSON]
-    img = blur_people(frame, list(person_boxes) + list(blur_boxes or []))
+    """RGB frame in, annotated RGB frame out."""
+    img = frame.copy()
     h, w = img.shape[:2]
     overlay = img.copy()
     seats = list(seats)
@@ -74,14 +54,14 @@ def annotate(
         if len(seat.polygon) < 3:
             continue
         snap = snapshots.get(seat.seat_id)
-        color = STATE_COLORS[snap.state if snap else SeatState.FREE]
+        color = STATE_COLORS[snap.state if snap else SeatState.UNKNOWN]
         cv2.fillPoly(overlay, [_to_px(seat.polygon, w, h)], color)
     img = cv2.addWeighted(overlay, 0.25, img, 0.75, 0)
     for seat in seats:
         if len(seat.polygon) < 3:
             continue
         snap = snapshots.get(seat.seat_id)
-        state = snap.state if snap else SeatState.FREE
+        state = snap.state if snap else SeatState.UNKNOWN
         pts = _to_px(seat.polygon, w, h)
         cv2.polylines(img, [pts], True, STATE_COLORS[state], 2, cv2.LINE_AA)
         x, y = pts[:, 0].min(), pts[:, 1].min()

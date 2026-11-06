@@ -30,13 +30,15 @@ def dashboard_outputs(svc: BirdieService, venue_id: str, window: str):
     seat_ids = [s.seat_id for s in svc.seats(venue_id)]
     d = venue_dashboard(svc.repo, venue_id, seat_ids, now, hours=hours, observed_since=svc.observed_since(venue_id))
     counts = svc.counts(venue_id)
-    total = max(1, sum(counts.values()))
-    occ_now = (counts[SeatState.OCCUPIED] + counts[SeatState.HELD]) / total
+    total = sum(counts.values())
+    known = total - counts[SeatState.UNKNOWN]
+    occ_now = (counts[SeatState.OCCUPIED] + counts[SeatState.HELD]) / known if known else None
     ns = d.no_show
     ns_value = f"{ns['rate']:.0%}" if ns["rate"] is not None else "–"
     peak = ", ".join(f"{p['hour']:02d}:00" for p in d.peak_hours) or "–"
     tiles = "<div style='display:flex;gap:10px;flex-wrap:wrap'>" + "".join([
-        _tile("Occupied now", f"{occ_now:.0%}", f"{counts[SeatState.FREE]} of {total} seats free"),
+        _tile("Observed occupancy", f"{occ_now:.0%}" if occ_now is not None else "–",
+              f"{counts[SeatState.FREE]} of {known} known seats free · {counts[SeatState.UNKNOWN]} unknown"),
         _tile("No-show rate", ns_value, f"{ns['no_shows']} no-shows · {ns['showed']} checked in"),
         _tile("Held by belongings", f"{d.held_minutes_total:.0f} min", f"{window.lower()}, all seats"),
         _tile("Peak times", peak, f"since {d.start.strftime('%a %H:%M')}"),

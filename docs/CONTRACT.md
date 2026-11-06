@@ -11,7 +11,7 @@ Rules:
 - Everything time-based takes a `clock` (`RealClock` in the app, `FakeClock` in tests). Nothing sleeps in tests.
 - Timers and thresholds come from `birdie.config.TIMERS` (demo or production, behind `DEMO_MODE`).
 - Seat polygons are normalised `(x, y)` corners in `0..1`, so they work at any camera resolution.
-- No images are ever stored. Only seat states, bookings and counts.
+- The app does not persist source frames. Hosted Space logging and retention must be checked separately. The app stores seat states, bookings and aggregate counts.
 
 ## Models (`birdie/models.py`)
 
@@ -19,7 +19,7 @@ Rules:
 |---|---|
 | `Venue` | `venue_id: str`, `name: str`, `area: str`, `type: VenueType` (`cafe`, `library`, `cowork`), `lat: float`, `lon: float`, `zones: list[str]`, `bookable_fraction: float` (0..1), `source: VenueSource` (`live`, `recorded`, `simulated`), `noise_db: float` |
 | `Seat` | `seat_id: str`, `venue_id: str`, `zone: str`, `has_outlet: bool`, `bookable: bool`, `polygon: list[tuple[float, float]]` (normalised) |
-| `SeatSnapshot` | `venue_id`, `seat_id`, `zone`, `has_outlet`, `state: SeatState` (`FREE`, `OCCUPIED`, `HELD`), `since: datetime`, `updated_at: datetime` |
+| `SeatSnapshot` | `venue_id`, `seat_id`, `zone`, `has_outlet`, `state: SeatState` (`UNKNOWN`, `FREE`, `OCCUPIED`, `HELD`), `since: datetime`, `updated_at: datetime` |
 | `SeatEvent` | `ts: datetime`, `venue_id`, `seat_id`, `old_state: SeatState \| None`, `new_state: SeatState` |
 | `Booking` | `booking_id`, `venue_id`, `seat_id`, `start_time: datetime`, `status: BookingStatus` (`BOOKED_PENDING`, `QR_SCANNED`, `CHECKED_IN`, `COMPLETED`, `NO_SHOW_RELEASED`, `CANCELLED`), `created_at: datetime`, `prepaid_item: str \| None` (cafes only, mocked) |
 | `Query` | `area: str \| None`, `party_size: int`, `needs_outlet: bool`, `quiet: bool`, `zone: str \| None`, `venue_type: VenueType \| None`, `arrival_minutes: int` |
@@ -52,9 +52,9 @@ SQLite at `data/birdie.db` (gitignored). `Repository(path)`; use `Repository(":m
 | `detector.detect(frame, threshold=0.4) -> list[{label, score, box}]` | RT-DETR r18 (`PekingU/rtdetr_r18vd`). Only `person` and the belongings `backpack, handbag, suitcase, laptop, cup, bottle, book, cell phone`. `box = [x1, y1, x2, y2]` in pixels of the frame passed in. Resizes to long side <= 640 internally |
 | `detector.resize_long_side(frame, 640) -> PIL.Image`, `detector.load()` | Helpers. `_infer` is the pure (frame in, detections out) function wrapped with `@spaces.GPU` when `spaces` is importable |
 | `seats.assign_detections(detections, seats, (w, h), min_overlap=0.2) -> {seat_id: [det]}` | Box centre inside polygon, else largest overlap above 20% |
-| `seats.observe(assigned) -> {seat_id: Observation}` | `PERSON`, `ITEMS` or `EMPTY` |
+| `seats.observe(assigned) -> {seat_id: Observation}` | `PERSON`, `ITEMS` or `EMPTY`; missing seat observations are treated as `UNKNOWN` by the tracker |
 | `state.SeatStateMachine(venue_id, seat_id, clock, k=3, hold_seconds=...)` | `.update(obs) -> SeatEvent \| None`, `.tick()`, `.snapshot(seat)` |
-| `state.VenueTracker(venue_id, seats, clock, on_event)` | `.process({seat_id: Observation}) -> [SeatEvent]` (missing seats = EMPTY), `.tick()`, `.snapshots()`, `.counts()`, `.force(states)`, `.set_seats(seats)` |
+| `state.VenueTracker(venue_id, seats, clock, on_event)` | `.process({seat_id: Observation}) -> [SeatEvent]` (missing seats = UNKNOWN), `.tick()` (hold timers and stale-feed expiry), `.snapshots()`, `.counts()`, `.force(states)`, `.set_seats(seats)` |
 | `render.annotate(frame, seats, snapshots, detections, blur_boxes)` | Annotated RGB frame; people always pixelated + blurred |
 | `render.to_data_uri(frame)` | In-memory JPEG data URL (frames never touch disk) |
 | `clip.iter_clip_frames(path, fps=1)` | Sample a recorded clip at 1 fps, in memory |
@@ -68,7 +68,7 @@ SQLite at `data/birdie.db` (gitignored). `Repository(path)`; use `Repository(":m
 | `book(venue_id, seat_id=None, arrival_minutes=0, zone=None, needs_outlet=False) -> Booking` | Only `bookable` seats, seat must be FREE, at most `int(n_seats * bookable_fraction)` active bookings per venue. Cafes get `prepaid_item = "Prepaid drink ✓"` (mocked). Raises `BookingError` (user-safe message) |
 | `scan_qr(booking_id) -> Booking` | `BOOKED_PENDING -> QR_SCANNED`; `CHECKED_IN` once the seat is OCCUPIED within the confirmation window |
 | `on_seat_event(event)` | Hook for every SeatEvent: confirms check-ins, completes bookings when the seat goes FREE |
-| `tick() -> [Booking]` | No-show release (`start_time + no_show`), window expiry, completion after the booking duration |
+| `tick() -> [Booking]` | No-show release after confirmed-free evidence, check-in window expiry (paused while state is `UNKNOWN`), completion after the booking duration |
 | `cancel(booking_id)`, `get(booking_id)`, `active_bookings(venue_id)`, `available_seats(venue_id)`, `booking_capacity(venue_id)` | Queries |
 | `checkin_url(base_url, booking_id)`, `make_qr_png(url) -> bytes`, `held_too_long(snapshots, now, seconds)` | Module helpers |
 

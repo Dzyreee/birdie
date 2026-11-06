@@ -50,4 +50,4 @@ with gr.Blocks(title="Birdie") as demo:
             build_camera_tab(svc)
 
 if __name__ == "__main__":
-    demo.launch(css=CSS)
+    demo.launch(server_name="0.0.0.0", server_port=7860, css=CSS)

@@ -1,7 +1,7 @@
 """SQLite repository for bookings, seat events, occupancy buckets and staff alerts.
 
 One connection shared across threads behind a lock (the Gradio workers and the
-background scheduler all write here). Only seat states are stored, never images.
+background scheduler all write here). Source camera frames are never stored in this database.
 Use Repository(":memory:") in tests.
 """
 

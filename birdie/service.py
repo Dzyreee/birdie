@@ -17,7 +17,6 @@ import numpy as np
 from birdie.booking import BookingService, held_too_long
 from birdie.clock import Clock, RealClock
 from birdie.config import (
-    BLUR_THRESHOLD,
     DETECTION_THRESHOLD,
     SCHEDULER_INTERVAL_SECONDS,
     TIMERS,
@@ -32,7 +31,7 @@ from birdie.simulator import Simulator
 from birdie.storage import Repository
 from birdie.venues import load_all, save_venue
 from birdie.vision import render
-from birdie.vision.detector import PERSON, resize_long_side
+from birdie.vision.detector import resize_long_side
 from birdie.vision.seats import assign_detections, observe
 from birdie.vision.state import VenueTracker
 
@@ -77,12 +76,14 @@ class BirdieService:
                 on_event=self._on_seat_event,
                 k=timers.smoothing_frames,
                 hold_seconds=timers.hold_seconds,
+                stale_seconds=(
+                    timers.camera_stale_seconds if cfg.venue.source != VenueSource.simulated else None
+                ),
             )
             for vid, cfg in self.configs.items()
         }
         # Last camera frame per venue, kept in memory only for the seat setup snapshot.
         self._last_frame: dict[str, np.ndarray] = {}
-        self._last_person_boxes: dict[str, list[list[float]]] = {}
         self.bookings = BookingService(self.repo, self.clock, self.configs, self.state_of, timers)
         self.add_listener(self.bookings.on_seat_event)
         self.forecast = forecast or ForecastEngine(self.configs, self.clock, self.repo)
@@ -125,12 +126,12 @@ class BirdieService:
         return self.trackers[venue_id].counts()
 
     def zone_counts(self, venue_id: str) -> dict[str, dict[str, int]]:
-        """zone -> {total, FREE, OCCUPIED, HELD}."""
+        """zone -> {total, UNKNOWN, FREE, OCCUPIED, HELD}."""
         out: dict[str, dict[str, int]] = {}
         for z in self.venue(venue_id).zones:
-            out[z] = {"total": 0, "FREE": 0, "OCCUPIED": 0, "HELD": 0}
+            out[z] = {"total": 0, **{state.value: 0 for state in SeatState}}
         for snap in self.snapshots(venue_id):
-            z = out.setdefault(snap.zone, {"total": 0, "FREE": 0, "OCCUPIED": 0, "HELD": 0})
+            z = out.setdefault(snap.zone, {"total": 0, **{state.value: 0 for state in SeatState}})
             z["total"] += 1
             z[snap.state.value] += 1
         return out
@@ -202,7 +203,9 @@ class BirdieService:
         self._check_held_alerts(now)
         for vid in self.configs:
             c = self.counts(vid)
-            self.repo.record_occupancy(vid, now, c[SeatState.FREE], c[SeatState.OCCUPIED], c[SeatState.HELD])
+            # Partial samples would treat unknown seats as empty in historical occupancy ratios.
+            if c[SeatState.UNKNOWN] == 0:
+                self.repo.record_occupancy(vid, now, c[SeatState.FREE], c[SeatState.OCCUPIED], c[SeatState.HELD])
         if (now - self._last_refit).total_seconds() >= 15 * 60:
             self._last_refit = now
             self.forecast.refit()  # fold live buckets into the baseline
@@ -239,7 +242,7 @@ class BirdieService:
 
     def _on_seat_event(self, event: SeatEvent) -> None:
         self.repo.add_seat_event(event)
-        if event.old_state == SeatState.HELD:
+        if event.new_state in (SeatState.FREE, SeatState.OCCUPIED):
             self.repo.resolve_alerts(event.venue_id, event.seat_id, "held_too_long")
         for fn in self._listeners:
             try:
@@ -255,27 +258,22 @@ class BirdieService:
         """
         img = resize_long_side(frame)
         arr = np.asarray(img)
-        detections = self._detect(img, threshold=BLUR_THRESHOLD)
+        detections = self._detect(img, threshold=DETECTION_THRESHOLD)
         counted = [d for d in detections if d["score"] >= DETECTION_THRESHOLD]
         tracker = self.trackers[venue_id]
         seats = list(tracker.seats.values())
         if update_state:
             assigned = assign_detections(counted, seats, img.size)
             tracker.process(observe(assigned))
-        persons = [d["box"] for d in detections if d["label"] == PERSON]
-        # Also blur where people were in the previous frame, in case the detector missed them this time.
-        blur = persons + self._last_person_boxes.get(venue_id, [])
-        self._last_person_boxes[venue_id] = persons
         self._last_frame[venue_id] = arr
-        return render.annotate(arr, seats, self.snapshot_map(venue_id), counted, blur_boxes=blur)
+        return render.annotate(arr, seats, self.snapshot_map(venue_id), counted)
 
     def setup_frame(self, venue_id: str, points: list[tuple[float, float]] | None = None) -> np.ndarray | None:
-        """The last camera frame with people blurred, current seats and the setup corners drawn."""
+        """The last camera frame with current seat states and setup corners drawn."""
         arr = self._last_frame.get(venue_id)
         if arr is None:
             return None
-        blurred = render.blur_people(arr, self._last_person_boxes.get(venue_id, []))
-        img = render.annotate(blurred, self.seats(venue_id), self.snapshot_map(venue_id), [], show_boxes=False)
+        img = render.annotate(arr, self.seats(venue_id), self.snapshot_map(venue_id), [], show_boxes=False)
         return render.draw_setup_points(img, points or [])
 
     def has_frame(self, venue_id: str) -> bool:

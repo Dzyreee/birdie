@@ -1,4 +1,4 @@
-"""Camera tab: live webcam, recorded clip, annotated view, seat setup tool, status tables."""
+"""Video test tab: recorded clips, annotated view, seat setup tool, status tables."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from birdie.vision.clip import iter_clip_frames
 OPERATOR_PIN = os.getenv("BIRDIE_OPERATOR_PIN", "")
 
 SEAT_COLUMNS = ["Seat", "Zone", "State", "For", "Outlet", "Bookable", "Booking"]
-ZONE_COLUMNS = ["Zone", "Free", "Occupied", "Held", "Total"]
+ZONE_COLUMNS = ["Zone", "Free", "Occupied", "Held", "Unknown", "Total"]
 
 
 def seat_table(svc: BirdieService, venue_id: str) -> pd.DataFrame:
@@ -46,7 +46,7 @@ def seat_table(svc: BirdieService, venue_id: str) -> pd.DataFrame:
 
 def zone_table(svc: BirdieService, venue_id: str) -> pd.DataFrame:
     rows = [
-        [zone_label(z), c["FREE"], c["OCCUPIED"], c["HELD"], c["total"]]
+        [zone_label(z), c["FREE"], c["OCCUPIED"], c["HELD"], c["UNKNOWN"], c["total"]]
         for z, c in svc.zone_counts(venue_id).items()
     ]
     return pd.DataFrame(rows, columns=ZONE_COLUMNS)
@@ -57,8 +57,8 @@ def build_camera_tab(svc: BirdieService) -> None:
     default_venue = LIVE_VENUE_ID if LIVE_VENUE_ID in svc.configs else (cam_venues[0][1] if cam_venues else None)
 
     gr.Markdown(
-        "Frames are processed **in memory** and discarded: never stored, never logged. "
-        "People are blurred in every frame shown, including this operator view. Only seat states are kept."
+        "Uploaded video is sent to this Space and shown without blurring. The clip file is deleted after playback; "
+        "seat events and counts are stored in the app database. Hugging Face logging and retention are not verified."
     )
     with gr.Row():
         venue_dd = gr.Dropdown(choices=cam_venues, value=default_venue, label="Camera venue", scale=2)
@@ -69,33 +69,17 @@ def build_camera_tab(svc: BirdieService) -> None:
 
     with gr.Row():
         with gr.Column(scale=2):
-            with gr.Tabs():
-                with gr.Tab("Live webcam"):
-                    webcam = gr.Image(
-                        sources=["webcam"],
-                        streaming=True,
-                        type="numpy",
-                        # Ask the browser for ~640x480 so frames stay small on the wire.
-                        webcam_options=gr.WebcamOptions(
-                            mirror=False,
-                            constraints={"video": {"width": {"ideal": 640}, "height": {"ideal": 480}}},
-                        ),
-                        label="Webcam (preview blurred; ~1 frame per second is analysed)",
-                        elem_id="birdie-webcam",
-                        height=260,
-                    )
-                with gr.Tab("Recorded clip"):
-                    clip = gr.File(label="Upload a clip (mp4, mov, webm)", file_types=["video"], type="filepath")
-                    loop = gr.Checkbox(value=False, label="Loop until stopped")
-                    with gr.Row():
-                        play_btn = gr.Button("▶ Play through Birdie", variant="primary")
-                        stop_btn = gr.Button("■ Stop")
-                    gr.Markdown(
-                        "<span class='birdie-muted'>The clip is sampled at 1 frame per second and played in real time, "
-                        "so the hold and no-show timers behave as live. It is deleted from the server after playback.</span>"
-                    )
+            clip = gr.File(label="Upload a clip (mp4, mov, webm)", file_types=["video"], type="filepath")
+            loop = gr.Checkbox(value=False, label="Loop until stopped")
+            with gr.Row():
+                play_btn = gr.Button("▶ Play through Birdie", variant="primary")
+                stop_btn = gr.Button("■ Stop")
+            gr.Markdown(
+                "<span class='birdie-muted'>The clip is sampled at 1 frame per second and played in real time, "
+                "so the hold and no-show timers behave as live. The uploaded file is deleted after playback.</span>"
+            )
         with gr.Column(scale=3):
-            annotated = gr.HTML(frame_html(None, text="Start the webcam or play a clip"), label="Annotated view")
+            annotated = gr.HTML(frame_html(None, text="Upload and play a clip"), label="Video analysis")
 
     with gr.Row():
         seats_df = gr.Dataframe(value=seat_table(svc, default_venue) if default_venue else None,
@@ -107,7 +91,7 @@ def build_camera_tab(svc: BirdieService) -> None:
     # --- seat setup tool ------------------------------------------------------------
     with gr.Accordion("Seat setup tool", open=False):
         gr.Markdown(
-            "1. **Take snapshot** (one frame from the camera, memory only, people blurred). "
+            "1. **Take snapshot** (one frame from the clip, kept in memory). "
             "2. Click the **4 corners** of a seat. 3. Fill in the details and **Save seat**. "
             "Saving an existing seat id replaces it."
         )
@@ -143,21 +127,6 @@ def build_camera_tab(svc: BirdieService) -> None:
     # --- handlers -----------------------------------------------------------------
     def allowed(feed: bool, pin_value: str) -> bool:
         return bool(feed) and (not OPERATOR_PIN or pin_value == OPERATOR_PIN)
-
-    def on_frame(frame, venue_id, feed, pin_value):
-        if frame is None or not venue_id:
-            return gr.skip()
-        out = svc.process_frame(venue_id, frame, update_state=allowed(feed, pin_value))
-        return frame_html(out)
-
-    webcam.stream(
-        on_frame,
-        inputs=[webcam, venue_dd, feed_state, pin],
-        outputs=[annotated],
-        stream_every=1.0 / TARGET_FPS,
-        concurrency_limit=1,
-        show_progress="hidden",
-    )
 
     def play_clip(path, venue_id, feed, pin_value, loop_value):
         if not path:
@@ -216,8 +185,8 @@ def build_camera_tab(svc: BirdieService) -> None:
     def take_snapshot(venue_id):
         frame = svc.setup_frame(venue_id, [])
         if frame is None:
-            return frame_html(None, css_class="birdie-setup", text="Start the webcam or a clip first"), [], \
-                "No camera frame yet. Start the webcam (or play a clip), then take a snapshot."
+            return frame_html(None, css_class="birdie-setup", text="Play a clip first"), [], \
+                "No video frame yet. Play a clip, then take a snapshot."
         return frame_html(frame, css_class="birdie-setup"), [], "Snapshot taken. Click the 4 corners of a seat."
 
     snap_btn.click(take_snapshot, [venue_dd], [setup_img, points, setup_msg])

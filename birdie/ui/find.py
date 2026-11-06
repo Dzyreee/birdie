@@ -9,7 +9,6 @@ from birdie.decision import AREA_COORDS, FocusScore, Recommendation, focus_score
 from birdie.models import BookingStatus, Query, SeatState, VenueType
 from birdie.service import BirdieService
 from birdie.ui.common import esc, public_base_url, qr_html, source_badge
-from birdie.ui.seatmap import seat_map_svg
 from birdie.venues import zone_label
 
 ANY = "Any"
@@ -33,6 +32,8 @@ def venue_cards(svc: BirdieService, arrival: int) -> str:
     for v in svc.venues():
         snaps = svc.snapshots(v.venue_id)
         free = sum(1 for s in snaps if s.state == SeatState.FREE)
+        unknown = sum(1 for s in snaps if s.state == SeatState.UNKNOWN)
+        known = len(snaps) - unknown
         f = focus_score(svc, v.venue_id, arrival)
         zones = zone_free_now(svc, v.venue_id)
         zone_txt = "".join(f"<span>{esc(zone_label(z))}: <b>{n}</b></span>" for z, n in zones.items())
@@ -40,7 +41,7 @@ def venue_cards(svc: BirdieService, arrival: int) -> str:
             f"""<div class="birdie-card">
   <h3>{esc(v.name)} {source_badge(v)}</h3>
   <div class="birdie-muted">{esc(v.area)} · {esc(v.type.value)} · {v.noise_db:.0f} dB</div>
-  <div style="margin:6px 0"><b style="font-size:1.4em">{free}</b> of {len(snaps)} seats free now ·
+  <div style="margin:6px 0"><b style="font-size:1.4em">{free}</b> of {known} known seats free · {unknown} status unknown ·
      {esc(f.availability.summary())}</div>
   <div class="birdie-zones birdie-muted">Free by zone: {zone_txt}</div>
   <div style="margin-top:6px">Focus score <b>{f.score}</b>/100 {_score_bar(f.score)}</div>
@@ -82,7 +83,7 @@ def booking_html(svc: BirdieService, booking_id: str | None, base_url: str) -> s
     help_txt = (
         f"Scan the QR on the table when you arrive. The camera confirms the seat is occupied within "
         f"{t.checkin_window_seconds} s. If the seat is still empty {t.no_show_seconds} s after your arrival time, "
-        "it goes back to walk-ins."
+        "it goes back to walk-ins. If camera status is unknown, the booking stays pending until the feed recovers."
     )
     return f"""<div class="birdie-card" style="display:flex;gap:16px;flex-wrap:wrap">
   {qr_html(make_qr_png(url))}
@@ -119,10 +120,11 @@ def build_find_tab(svc: BirdieService, demo: gr.Blocks) -> None:
     with gr.Row():
         with gr.Column(scale=3):
             venue_dd = gr.Dropdown(choices=venue_choices, value=first, label="Venue")
-            seat_map = gr.HTML()
         with gr.Column(scale=2):
             gr.Markdown("### Book a seat")
-            seat_dd = gr.Dropdown(choices=seat_choices(svc, first), value=ANY, label="Seat (bookable and free now)")
+            seat_dd = gr.Dropdown(
+                choices=seat_choices(svc, first), value=ANY, label="Optional seat (bookable and free now)"
+            )
             book_btn = gr.Button("Book this seat", variant="primary")
             book_msg = gr.Markdown()
             booking_card = gr.HTML()
@@ -143,24 +145,18 @@ def build_find_tab(svc: BirdieService, demo: gr.Blocks) -> None:
     results = gr.HTML()
 
     # --- handlers -------------------------------------------------------------------
-    def render_map(venue_id):
-        return seat_map_svg(
-            svc.seats(venue_id), svc.snapshot_map(venue_id), svc.active_booking_by_seat(venue_id),
-            svc.venue(venue_id).source,
-        )
-
     def refresh(arrival_min, venue_id, booking_id, base_url):
-        return venue_cards(svc, int(arrival_min)), render_map(venue_id), booking_html(svc, booking_id, base_url)
+        return venue_cards(svc, int(arrival_min)), booking_html(svc, booking_id, base_url)
 
-    gr.Timer(3.0).tick(refresh, [arrival, venue_dd, booking_state, base_url_state], [cards, seat_map, booking_card],
+    gr.Timer(3.0).tick(refresh, [arrival, venue_dd, booking_state, base_url_state], [cards, booking_card],
                        show_progress="hidden")
     arrival.change(lambda a: venue_cards(svc, int(a)), [arrival], [cards], show_progress="hidden")
 
     def on_venue(venue_id):
-        return render_map(venue_id), gr.update(choices=seat_choices(svc, venue_id), value=ANY)
+        return gr.update(choices=seat_choices(svc, venue_id), value=ANY)
 
-    venue_dd.change(on_venue, [venue_dd], [seat_map, seat_dd])
-    demo.load(lambda a, v: (venue_cards(svc, int(a)), render_map(v)), [arrival, venue_dd], [cards, seat_map])
+    venue_dd.change(on_venue, [venue_dd], [seat_dd])
+    demo.load(lambda a: venue_cards(svc, int(a)), [arrival], [cards])
     seat_dd.focus(lambda v: gr.update(choices=seat_choices(svc, v)), [venue_dd], [seat_dd])
 
     def do_recommend(area_v, party_v, vtype_v, zone_v, outlet_v, quiet_v, arrival_min):

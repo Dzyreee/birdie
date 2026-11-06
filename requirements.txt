@@ -1,9 +1,10 @@
-# Hugging Face Space dependencies. Gradio itself is installed by the Space (sdk_version in README.md).
+# Hugging Face Docker Space dependencies.
 # CPU-only torch keeps the build light: vision, forecasting and decisions all run on CPU.
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.15.0+cpu
 torchvision==0.29.2+cpu
 transformers>=5.0,<6
+gradio==6.31.0
 pillow
 numpy
 shapely>=2.0

@@ -10,10 +10,14 @@ import numpy as np
 from birdie.models import SeatState, Venue, VenueSource
 from birdie.vision import render
 
-STATE_ICON = {SeatState.FREE: "🟢", SeatState.OCCUPIED: "🔴", SeatState.HELD: "🟠"}
+STATE_ICON = {
+    SeatState.UNKNOWN: "⚪",
+    SeatState.FREE: "🟢",
+    SeatState.OCCUPIED: "🔴",
+    SeatState.HELD: "🟠",
+}
 
 CSS = """
-#birdie-webcam video { filter: blur(22px) saturate(0.6); }
 .birdie-frame img { width: 100%; height: auto; border-radius: 10px; display: block; }
 .birdie-frame { min-height: 120px; }
 .birdie-setup { cursor: crosshair; width: 100%; height: auto; border-radius: 10px; display: block; }

@@ -10,7 +10,7 @@ P, I, E = Observation.PERSON, Observation.ITEMS, Observation.EMPTY
 
 
 def machine(clock, k=3, hold=30):
-    return SeatStateMachine("v", "A", clock, k=k, hold_seconds=hold)
+    return SeatStateMachine("v", "A", clock, k=k, hold_seconds=hold, initial=SeatState.FREE, stale_seconds=None)
 
 
 def feed(m, clock, obs, n=1, step=1.0):
@@ -87,15 +87,32 @@ def test_person_return_resets_hold_timer(clock):
     assert m.state == SeatState.OCCUPIED
 
 
-def test_tracker_emits_events_and_missing_seats_are_empty(clock):
+def test_tracker_emits_events_and_missing_seats_are_unknown(clock):
     seats = [Seat(seat_id=s, venue_id="v", zone="open", polygon=[(0, 0), (1, 0), (1, 1)]) for s in ("A", "B")]
     got = []
     t = VenueTracker("v", seats, clock, on_event=got.append, k=1, hold_seconds=30)
     t.process({"A": P})
-    assert t.state_of("A") == SeatState.OCCUPIED and t.state_of("B") == SeatState.FREE
+    assert t.state_of("A") == SeatState.OCCUPIED and t.state_of("B") == SeatState.UNKNOWN
     t.process({})
-    assert t.state_of("A") == SeatState.FREE
-    assert [(e.seat_id, e.new_state) for e in got] == [("A", SeatState.OCCUPIED), ("A", SeatState.FREE)]
+    assert t.state_of("A") == SeatState.UNKNOWN
+    assert [(e.seat_id, e.new_state) for e in got] == [("A", SeatState.OCCUPIED), ("A", SeatState.UNKNOWN)]
+
+
+def test_new_seat_needs_stable_empty_evidence_before_free(clock):
+    m = SeatStateMachine("v", "A", clock, k=3, stale_seconds=None)
+    feed(m, clock, E, 2)
+    assert m.state == SeatState.UNKNOWN
+    feed(m, clock, E)
+    assert m.state == SeatState.FREE
+
+
+def test_stale_camera_feed_expires_known_state(clock):
+    m = SeatStateMachine("v", "A", clock, k=1, initial=SeatState.FREE, stale_seconds=5)
+    feed(m, clock, P)
+    clock.advance(5)
+    event = m.tick()
+    assert event and event.new_state == SeatState.UNKNOWN
+    assert m.state == SeatState.UNKNOWN
 
 
 # --- seat assignment -------------------------------------------------------------
@@ -156,12 +173,13 @@ def test_process_frame_updates_state_and_logs_events(clock):
     assert out.shape == (480, 640, 3)
     assert svc.state_of("v", "L") == SeatState.OCCUPIED
     assert svc.state_of("v", "R") == SeatState.FREE
-    [ev] = svc.repo.seat_events("v")
-    assert ev.seat_id == "L" and ev.new_state == SeatState.OCCUPIED
+    assert {(ev.seat_id, ev.new_state) for ev in svc.repo.seat_events("v")} == {
+        ("L", SeatState.OCCUPIED), ("R", SeatState.FREE)
+    }
     assert svc.has_frame("v")
 
 
-def test_low_score_person_is_blurred_but_not_counted(clock):
+def test_low_score_person_does_not_change_seat_state(clock):
     dets = [{"label": "person", "score": 0.25, "box": [100, 100, 200, 400]}]
     svc = _venue(clock, dets)
     for _ in range(3):
@@ -170,12 +188,11 @@ def test_low_score_person_is_blurred_but_not_counted(clock):
     assert svc.state_of("v", "L") == SeatState.FREE
 
 
-def test_blur_changes_person_pixels_only():
+def test_annotate_keeps_frame_unblurred_without_overlays():
     rng = np.random.default_rng(0)
     frame = rng.integers(0, 255, (100, 100, 3), dtype=np.uint8)
-    out = render.blur_people(frame, [[20, 20, 60, 60]], pad=0)
-    assert not np.array_equal(out[20:60, 20:60], frame[20:60, 20:60])
-    assert np.array_equal(out[80:, 80:], frame[80:, 80:])
+    out = render.annotate(frame, [], {}, [])
+    assert np.array_equal(out, frame)
 
 
 def test_data_uri_is_in_memory_jpeg():
@@ -189,7 +206,7 @@ def test_seat_setup_upsert_and_delete(clock):
     svc.upsert_seat(new)
     assert svc.seat("v", "N1") == new
     assert "terrace" in svc.venue("v").zones
-    assert svc.state_of("v", "N1") == SeatState.FREE
+    assert svc.state_of("v", "N1") == SeatState.UNKNOWN
     svc.upsert_seat(new.model_copy(update={"has_outlet": True}))  # same id replaces
     assert [s.seat_id for s in svc.seats("v")].count("N1") == 1 and svc.seat("v", "N1").has_outlet
     assert svc.delete_seat("v", "N1") is True

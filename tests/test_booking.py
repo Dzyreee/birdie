@@ -21,8 +21,14 @@ def make_service(clock, venue_type=VenueType.cafe, n=10, bookable=(0, 1, 2), fra
                     bookable_fraction=fraction, source=VenueSource.live),
         seats=seats,
     )
-    return BirdieService(repo=Repository(":memory:"), clock=clock, venues={"v": cfg}, timers=T,
-                         detector=lambda *a, **k: [], persist_venues=False)
+    svc = BirdieService(repo=Repository(":memory:"), clock=clock, venues={"v": cfg}, timers=T,
+                        detector=lambda *a, **k: [], persist_venues=False)
+    tracker = svc.trackers["v"]
+    tracker.stale_seconds = None
+    for machine in tracker.machines.values():
+        machine.stale = None
+    tracker.force({seat.seat_id: SeatState.FREE for seat in seats})
+    return svc
 
 
 def sit(svc, clock, seat_id, obs=Observation.PERSON):
@@ -30,8 +36,9 @@ def sit(svc, clock, seat_id, obs=Observation.PERSON):
     tracker = svc.trackers["v"]
     for _ in range(T.smoothing_frames):
         clock.advance(1)
-        current = {sid: {SeatState.FREE: Observation.EMPTY, SeatState.OCCUPIED: Observation.PERSON,
-                         SeatState.HELD: Observation.ITEMS}[m.state] for sid, m in tracker.machines.items()}
+        current = {sid: {SeatState.UNKNOWN: Observation.UNKNOWN, SeatState.FREE: Observation.EMPTY,
+                         SeatState.OCCUPIED: Observation.PERSON, SeatState.HELD: Observation.ITEMS}[m.state]
+                   for sid, m in tracker.machines.items()}
         current[seat_id] = obs
         tracker.process(current)
 
@@ -148,6 +155,16 @@ def test_qr_scanned_but_seat_never_occupied_is_released(clock):
         svc.bookings.scan_qr(b.booking_id)
 
 
+def test_unknown_camera_does_not_mark_qr_booking_as_no_show(clock):
+    svc = make_service(clock)
+    b = svc.bookings.book("v", "S0")
+    svc.bookings.scan_qr(b.booking_id)
+    svc.trackers["v"].process({"S0": Observation.UNKNOWN})
+    clock.advance(T.checkin_window_seconds + 1)
+    svc.tick()
+    assert svc.bookings.get(b.booking_id).status == BookingStatus.QR_SCANNED
+
+
 def test_checked_in_completes_when_seat_freed(clock):
     svc = make_service(clock)
     b = svc.bookings.book("v", "S0")
@@ -186,6 +203,8 @@ def test_held_too_long_raises_one_staff_alert_and_resolves(clock):
     svc.tick()
     alerts = svc.repo.alerts("v", unresolved_only=True)
     assert [a["kind"] for a in alerts] == ["held_too_long"]
+    svc.trackers["v"].process({"S3": Observation.UNKNOWN})
+    assert len(svc.repo.alerts("v", unresolved_only=True)) == 1
     sit(svc, clock, "S3", Observation.EMPTY)  # staff cleared the seat
     assert svc.repo.alerts("v", unresolved_only=True) == []
 

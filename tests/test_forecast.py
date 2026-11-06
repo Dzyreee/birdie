@@ -125,6 +125,11 @@ def svc():
     clock = FakeClock(datetime(2026, 11, 8, 16, 0, tzinfo=DOHA_TZ))  # Sunday afternoon
     s = BirdieService(repo=Repository(":memory:"), clock=clock, venues=load_all(), timers=DEMO_TIMERS,
                       detector=lambda *a, **k: [], persist_venues=False)
+    live = s.trackers["nestwork-msheireb"]
+    live.stale_seconds = None
+    for machine in live.machines.values():
+        machine.stale = None
+    live.force({seat.seat_id: SeatState.FREE for seat in live.seats.values()})
     return s
 
 

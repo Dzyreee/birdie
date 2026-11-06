@@ -3,7 +3,8 @@
 BOOKED_PENDING -> (user scans the table QR, ?checkin=<booking_id>) -> QR_SCANNED
   -> (camera or simulator sees the seat OCCUPIED within the confirmation window) -> CHECKED_IN
   -> (seat goes FREE, or the booking duration ends) -> COMPLETED
-Still not occupied after the no-show time -> NO_SHOW_RELEASED (the seat goes back to walk-ins).
+Confirmed free after the no-show time -> NO_SHOW_RELEASED (the seat goes back to walk-ins).
+If camera evidence is UNKNOWN, keep the booking pending until the feed recovers.
 
 The camera never identifies who sits down: it only confirms that the booked seat is occupied.
 """
@@ -241,7 +242,7 @@ class BookingService:
             scanned_at = self.repo.status_since(booking.booking_id, BookingStatus.QR_SCANNED) or now
             if state == SeatState.OCCUPIED and now <= scanned_at + timedelta(seconds=t.checkin_window_seconds):
                 return BookingStatus.CHECKED_IN
-            if now > scanned_at + timedelta(seconds=t.checkin_window_seconds):
+            if now > scanned_at + timedelta(seconds=t.checkin_window_seconds) and state != SeatState.UNKNOWN:
                 return BookingStatus.NO_SHOW_RELEASED
             return None
         if booking.status == BookingStatus.CHECKED_IN:
