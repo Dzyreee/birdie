@@ -214,7 +214,10 @@ birdie/
   models.py             pydantic data models (section 7)
   storage.py            SQLite repository
   clock.py              real and fake clocks
-  vision/               detector.py, seats.py, state.py, render.py
+  vision/               detector.py, chairs.py (Detect chairs), seats.py, state.py, render.py, clip.py
+  alerts.py             staff alerts for seats held too long
+  venues.py             loads and saves venues/<venue_id>.json
+  evaluation.py         seat-state accuracy maths (used by jobs/evaluate.py and tools/)
   api.py                read-only JSON API for the mobile app (the only module that imports FastAPI)
   service.py            wires everything together; the one object the API and console talk to
   scheduler.py          background ticks: staff alerts, occupancy buckets
@@ -224,6 +227,8 @@ birdie/
   ui/                   Gradio operator console (camera, seat setup, dashboard)
 venues/<venue_id>.json  venue info, floor plan, seats (floor-plan position and camera polygon)
 jobs/                   backtest.py, evaluate.py (run locally or as HF Jobs)
+tools/                  extract_frames.py, label_app.py (accuracy labelling, see docs/LABELLING.md)
+scripts/                deploy_space.sh, smoke_test.py, generate_venues.py, eval dataset and job helpers
 docs/CONTRACT.md        data models, API and public functions
 tests/
 ```
@@ -249,7 +254,7 @@ The models live in `birdie/models.py` and are documented in `docs/CONTRACT.md`. 
 - **SeatSnapshot:** `venue_id`, `seat_id`, `state` (FREE, OCCUPIED, HELD), `since`, `updated_at`.
 - **SeatEvent:** `ts`, `venue_id`, `seat_id`, `old_state`, `new_state`.
 
-Removed: `Booking`, `Query`, `bookable`, `bookable_fraction`, `prepaid_item`, and anything to do with check-in or QR codes.
+Removed: `Booking`, `bookable`, `bookable_fraction`, `prepaid_item`, and anything to do with check-in or QR codes. `Query` stays: `recommend()` uses it.
 
 ### 7.2 API (JSON, read-only)
 
@@ -268,8 +273,11 @@ Status mapping: FREE is `free`, OCCUPIED is `taken`, HELD is `held`. `camera_onl
 | `qnl` | Qatar National Library | Library | Education City | Simulated | ~15 min |
 | `qu-library` | Qatar University Library | Library | Qatar University | Simulated | ~25 min |
 | `qahwa-corner` | Qahwa Corner (invented) | Cafe | Lusail | Simulated | ~25 min |
+| `corniche-cup` | Corniche Cup (invented) | Cafe | West Bay | Simulated | ~10 min |
+| `nakheel-study` | Nakheel Study Rooms (invented) | Study room | Al Sadd | Simulated | ~12 min |
+| `waab-study-hall` | Al Waab Study Hall (invented) | Study room | Al Waab | Simulated | ~20 min |
 
-Optional: add 2 to 4 more simulated venues with invented names (for example a cafe in West Bay, a study-room venue) so the browse list looks full and every category has something. Hide a category if it has no venues. The Nestwork floor plan must match the real tables in the demo room, and its seat IDs must match the camera polygons.
+The last three venues are the extra simulated ones, so the browse list looks full and every category has something. Hide a category if it has no venues. The Nestwork floor plan must match the real tables in the demo room, and its seat IDs must match the camera polygons.
 
 ---
 
@@ -387,7 +395,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
    - A bag is left on a chair with nobody there → after the demo timer it turns amber, Held. Tapping it shows "held by a bag", and a staff alert appears in the console.
    - Back on Browse, Nestwork's free count has changed with the room.
 4. **Venue dashboard (15 s):** occupancy by hour, held-seat minutes, peak times.
-5. **Trust and efficiency (15 s):** one small model on a CPU Space at about $0.03 an hour, total dollars spent, accuracy on our labelled set, "no images ever leave the venue."
+5. **Trust and efficiency (15 s):** one small model on a CPU Space at about $0.03 an hour, total dollars spent, accuracy on our labelled set (only if measured), "frames are processed in memory, blurred on screen and never stored". Don't say "no images leave the venue": that is the production design, while in this demo the clip is processed on the Space.
 
 Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 
@@ -430,7 +438,7 @@ Put the real numbers on a slide: for example, "X of 20 builders here said yes, l
 | Frontend and backend don't fit together | The API shapes in section 7.2 are fixed; the frontend builds on mock data in exactly that shape |
 | Space latency or Wi-Fi failure in the demo | About 1 fps, 2 s polling; local fallback; backup video |
 | Privacy concerns from the audience | No faces, no storage, blurred view, no accounts, on-device in production |
-| Burning the $100 credits | One CPU Upgrade Space (about $0.03 an hour) with a sleep time; money otherwise only for short HF Jobs; track spend |
+| Burning the $100 credits | One CPU Upgrade Space (about $0.03 an hour, about $0.72 a day; no sleep time is set, so it bills while it runs); money otherwise only for short HF Jobs; track spend |
 
 ---
 
@@ -454,7 +462,7 @@ Put the real numbers on a slide: for example, "X of 20 builders here said yes, l
 
 ## 16. Changes from the previous plan (for the backend)
 
-The code was built for the earlier plan. To match this file:
+**Status: all of these are done** (booking, check-in and the assistant are gone; the one-process app, the API, the venue data and the console are in). Kept as a record. The code was built for the earlier plan; to match this file:
 
 1. **Remove booking and check-in:** `birdie/booking.py`, `birdie/ui/checkin.py`, the `Booking` model, no-show release, `bookable` seats, `bookable_fraction`, prepaid drinks, QR code generation (and the `qrcode` dependency), and the check-in timers in `config.py`. Keep the scheduler for staff alerts and occupancy buckets.
 2. **Remove the assistant:** delete `birdie/assistant/` and the `Query` model if nothing else needs it.
