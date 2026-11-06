@@ -96,11 +96,6 @@ and `forecast_ratio(id, ts)`. `BirdieService` implements it.
 `delete_seat(venue_id, seat_id)`, `availability_at(venue_id, minutes)`,
 `forecast` (ForecastEngine), `simulator`, `tick()`, `start()` (back-fill + 2 s scheduler), `stop()`.
 
-## Assistant (`birdie/assistant/`, stub)
-
-`answer(data, question) -> AssistantAnswer` = `parse_query(question) -> Query` (Fanar, JSON) ->
-`recommend()` in Python -> `phrase_reply(...)` (Fanar, user's language). No tool calling.
-
 ## Mapping a second repo onto this contract
 
 1. Convert your seat and venue objects to the models above (`Model.model_validate(dict)`).

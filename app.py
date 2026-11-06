@@ -12,7 +12,6 @@ from birdie.service import BirdieService
 from birdie.ui.camera import build_camera_tab
 from birdie.ui.common import CSS
 from birdie.ui.dashboard import build_dashboard_tab
-from birdie.ui.find import build_find_tab
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("birdie")
@@ -40,8 +39,6 @@ with gr.Blocks(title="Birdie") as demo:
         + (" &nbsp;<span class='badge badge-syn'>Demo timers</span>" if DEMO_MODE else "")
     )
     with gr.Tabs():
-        with gr.Tab("Find a seat"):
-            build_find_tab(svc, demo)
         with gr.Tab("Venue dashboard"):
             build_dashboard_tab(svc, demo)
         with gr.Tab("Camera"):

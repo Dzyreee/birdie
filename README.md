@@ -71,7 +71,6 @@ birdie/             framework-free core (never imports Gradio)
   simulator.py      drives simulated venues through the same code path
   analytics.py      dashboard numbers from the event log
   service.py        wires everything together; the one object the UI talks to
-  assistant/        Fanar assistant (stub)
   ui/               Gradio tab builders
 venues/             venue info and seat polygons
 jobs/backtest.py    forecast backtest (local or HF Job)
