@@ -121,3 +121,32 @@ def placeholder(width: int = 640, height: int = 360, text: str = "No frame yet")
     (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
     cv2.putText(img, text, ((width - tw) // 2, (height + th) // 2), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 200), 2, cv2.LINE_AA)
     return img
+
+
+NUMBERED_COLOR = (56, 132, 255)  # neutral blue: no state or detector hint for labellers
+
+
+def draw_numbered_seats(frame: np.ndarray, seats: Iterable[Seat], highlight: int | None = None) -> np.ndarray:
+    """Seat polygons with big numbers (1, 2, 3...) and seat ids, in one neutral colour.
+
+    Used by the labelling tool, so labellers see the seat areas but no detector output.
+    """
+    img = frame.copy()
+    h, w = img.shape[:2]
+    scale = max(0.6, min(1.6, max(w, h) / 900))
+    for i, seat in enumerate(seats):
+        if len(seat.polygon) < 3:
+            continue
+        pts = _to_px(seat.polygon, w, h)
+        thick = 4 if highlight == i else 2
+        color = (255, 196, 0) if highlight == i else NUMBERED_COLOR
+        cv2.polylines(img, [pts], True, color, thick, cv2.LINE_AA)
+        cx, cy = int(pts[:, 0].mean()), int(pts[:, 1].mean())
+        text = str(i + 1)
+        (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.1 * scale, 3)
+        cv2.circle(img, (cx, cy), int(max(tw, th) * 0.9), color, -1, cv2.LINE_AA)
+        cv2.putText(img, text, (cx - tw // 2, cy + th // 2), cv2.FONT_HERSHEY_SIMPLEX, 1.1 * scale,
+                    (255, 255, 255), 3, cv2.LINE_AA)
+        x, y = int(pts[:, 0].min()), int(pts[:, 1].min())
+        _label(img, seat.seat_id, (x + 2, y + int(16 * scale)), color, 0.45 * scale)
+    return img

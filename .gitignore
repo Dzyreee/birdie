@@ -44,3 +44,7 @@ jobs/results/
 .vscode/
 .gradio/
 .playwright-mcp/
+
+# Evaluation data (pixelated frames, labels) and source clips: never committed
+eval_data/
+eval_clips/

@@ -10,9 +10,9 @@ import gradio as gr
 import pandas as pd
 
 from birdie.config import LIVE_VENUE_ID, TARGET_FPS
-from birdie.models import Seat
 from birdie.service import BirdieService
-from birdie.ui.common import SETUP_CLICK_JS, STATE_ICON, ago, frame_html
+from birdie.ui.common import STATE_ICON, ago, frame_html
+from birdie.ui.seat_editor import build_seat_editor
 from birdie.venues import zone_label
 from birdie.vision.clip import iter_clip_frames
 
@@ -50,6 +50,32 @@ def zone_table(svc: BirdieService, venue_id: str) -> pd.DataFrame:
         for z, c in svc.zone_counts(venue_id).items()
     ]
     return pd.DataFrame(rows, columns=ZONE_COLUMNS)
+
+
+class _ServiceSeats:
+    """Seat editor backend for the live service (venue seats in venues/<venue_id>.json)."""
+
+    def __init__(self, svc: BirdieService) -> None:
+        self.svc = svc
+
+    def frame(self, key, points):
+        return self.svc.setup_frame(key, points)
+
+    def seats(self, key):
+        return self.svc.seats(key)
+
+    def zones(self, key):
+        return self.svc.venue(key).zones
+
+    def upsert(self, key, seat):
+        self.svc.upsert_seat(seat)
+        return f"Saved seat **{seat.seat_id}** to venues/{key}.json."
+
+    def delete(self, key, seat_id):
+        return self.svc.delete_seat(key, seat_id)
+
+    def export(self, key):
+        return json.dumps(self.svc.configs[key].model_dump(mode="json"), indent=2, ensure_ascii=False)
 
 
 def build_camera_tab(svc: BirdieService) -> None:
@@ -111,34 +137,15 @@ def build_camera_tab(svc: BirdieService) -> None:
             "2. Click the **4 corners** of a seat. 3. Fill in the details and **Save seat**. "
             "Saving an existing seat id replaces it."
         )
-        snap_btn = gr.Button("📸 Take snapshot")
-        setup_img = gr.HTML(
-            frame_html(None, css_class="birdie-setup", text="Take a snapshot first"),
-            js_on_load=SETUP_CLICK_JS,
+        build_seat_editor(
+            _ServiceSeats(svc),
+            venue_dd,
+            no_frame_message="No camera frame yet. Start the webcam (or play a clip), then take a snapshot.",
+            empty_text="Take a snapshot first",
+            json_label="Venue JSON (copy this into venues/ in the repo: the Space disk is not permanent)",
+            default_zone="open",
+            initial_key=default_venue,
         )
-        points = gr.State([])
-        with gr.Row():
-            seat_id = gr.Textbox(label="Seat id", placeholder="e.g. S07")
-            zone = gr.Dropdown(
-                choices=svc.venue(default_venue).zones if default_venue else [],
-                value=(svc.venue(default_venue).zones or [None])[0] if default_venue else None,
-                allow_custom_value=True,
-                label="Zone",
-            )
-            has_outlet = gr.Checkbox(label="Has outlet")
-            bookable = gr.Checkbox(label="Bookable")
-        with gr.Row():
-            save_btn = gr.Button("💾 Save seat", variant="primary")
-            redo_btn = gr.Button("↺ Redo corners")
-        with gr.Row():
-            del_dd = gr.Dropdown(
-                choices=[s.seat_id for s in svc.seats(default_venue)] if default_venue else [],
-                label="Seat to delete",
-            )
-            del_btn = gr.Button("🗑 Delete seat", variant="stop")
-        setup_msg = gr.Markdown()
-        with gr.Accordion("Venue JSON (copy this into venues/ in the repo: the Space disk is not permanent)", open=False):
-            venue_json = gr.Code(language="json", interactive=False)
 
     # --- handlers -----------------------------------------------------------------
     def allowed(feed: bool, pin_value: str) -> bool:
@@ -201,81 +208,3 @@ def build_camera_tab(svc: BirdieService) -> None:
 
     timer = gr.Timer(1.0)
     timer.tick(refresh, inputs=[venue_dd], outputs=[seats_df, zones_df, alerts_md], show_progress="hidden")
-
-    def on_venue_change(venue_id):
-        v = svc.venue(venue_id)
-        return (
-            gr.update(choices=v.zones, value=v.zones[0] if v.zones else None),
-            gr.update(choices=[s.seat_id for s in svc.seats(venue_id)], value=None),
-            [],
-            frame_html(svc.setup_frame(venue_id), css_class="birdie-setup", text="Take a snapshot first"),
-        )
-
-    venue_dd.change(on_venue_change, [venue_dd], [zone, del_dd, points, setup_img])
-
-    def take_snapshot(venue_id):
-        frame = svc.setup_frame(venue_id, [])
-        if frame is None:
-            return frame_html(None, css_class="birdie-setup", text="Start the webcam or a clip first"), [], \
-                "No camera frame yet. Start the webcam (or play a clip), then take a snapshot."
-        return frame_html(frame, css_class="birdie-setup"), [], "Snapshot taken. Click the 4 corners of a seat."
-
-    snap_btn.click(take_snapshot, [venue_dd], [setup_img, points, setup_msg])
-
-    def on_click(pts, venue_id, evt: gr.EventData):
-        data = getattr(evt, "_data", None) or {}
-        if "x" not in data or not svc.has_frame(venue_id):
-            return gr.skip(), pts, gr.skip()
-        pts = list(pts or [])
-        if len(pts) >= 4:
-            return gr.skip(), pts, "4 corners already set. Save the seat or redo the corners."
-        pts.append((round(float(data["x"]), 4), round(float(data["y"]), 4)))
-        frame = svc.setup_frame(venue_id, pts)
-        msg = f"Corner {len(pts)} of 4 set." + (" Now fill in the details and save." if len(pts) == 4 else "")
-        return frame_html(frame, css_class="birdie-setup"), pts, msg
-
-    setup_img.click(on_click, [points, venue_dd], [setup_img, points, setup_msg])
-
-    def redo(venue_id):
-        return frame_html(svc.setup_frame(venue_id, []), css_class="birdie-setup", text="Take a snapshot first"), [], \
-            "Corners cleared."
-
-    redo_btn.click(redo, [venue_dd], [setup_img, points, setup_msg])
-
-    def save(pts, venue_id, sid, zone_value, outlet, book):
-        sid = (sid or "").strip()
-        if len(pts or []) != 4:
-            return gr.skip(), pts, "Click exactly 4 corners first.", gr.skip(), gr.skip()
-        if not sid:
-            return gr.skip(), pts, "Give the seat an id.", gr.skip(), gr.skip()
-        if not zone_value:
-            return gr.skip(), pts, "Choose a zone.", gr.skip(), gr.skip()
-        seat = Seat(seat_id=sid, venue_id=venue_id, zone=str(zone_value).strip(), has_outlet=bool(outlet),
-                    bookable=bool(book), polygon=[tuple(p) for p in pts])
-        svc.upsert_seat(seat)
-        return (
-            frame_html(svc.setup_frame(venue_id, []), css_class="birdie-setup"),
-            [],
-            f"Saved seat **{sid}** to venues/{venue_id}.json.",
-            gr.update(choices=[s.seat_id for s in svc.seats(venue_id)]),
-            venue_json_text(venue_id),
-        )
-
-    def venue_json_text(venue_id):
-        return json.dumps(svc.configs[venue_id].model_dump(mode="json"), indent=2, ensure_ascii=False)
-
-    save_btn.click(save, [points, venue_dd, seat_id, zone, has_outlet, bookable],
-                   [setup_img, points, setup_msg, del_dd, venue_json])
-
-    def delete(venue_id, sid):
-        if not sid:
-            return gr.skip(), "Choose a seat to delete.", gr.skip(), gr.skip()
-        ok = svc.delete_seat(venue_id, sid)
-        return (
-            frame_html(svc.setup_frame(venue_id, []), css_class="birdie-setup", text="Take a snapshot first"),
-            f"Deleted seat **{sid}**." if ok else f"Seat {sid} not found.",
-            gr.update(choices=[s.seat_id for s in svc.seats(venue_id)], value=None),
-            venue_json_text(venue_id),
-        )
-
-    del_btn.click(delete, [venue_dd, del_dd], [setup_img, setup_msg, del_dd, venue_json])
