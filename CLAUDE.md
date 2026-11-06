@@ -127,10 +127,10 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 - **View-only app.** No booking, no check-in or check-out, no QR codes, no seat codes, no "your seat". The camera alone decides each seat's state.
 - **No LLM assistant.** Fanar and the Arabic/English assistant are dropped. Nothing in the app needs a GPU.
 - **Languages:** Python 3.11+ for the backend. The mobile app is plain HTML, CSS and JavaScript with no build step and no framework.
-- **One Space, one process.** A single Hugging Face Space (Gradio SDK, runs `python app.py`) serves everything from one Python process on port 7860, so all live state lives in one place:
+- **One Space, one process.** A single Hugging Face **Docker** Space (the repo's `Dockerfile` runs `python app.py`) serves everything from one Python process on port 7860, so all live state lives in one place:
   - `/`: the **mobile web app**, static files from `web/`. This is the product users see.
   - `/api/...`: a small read-only **JSON API** (FastAPI) that the mobile app calls (section 7.2).
-  - `/operator`: the **Gradio operator console** with two tabs, **Camera** (webcam feed plus the seat setup tool) and **Venue dashboard**. It is mounted into the FastAPI app with `gr.mount_gradio_app`, and `app.py` runs the combined app with uvicorn.
+  - `/operator`: the **Gradio operator console** with two tabs, **Camera** (recorded-clip playback, the "Detect chairs" seat setup, seat status and staff alerts) and **Venue dashboard**. It is mounted into the FastAPI app with `gr.mount_gradio_app`, and `app.py` runs the combined app with uvicorn.
 - **Mobile app:**
   - It is a mobile web app, not a native app. The handoff README's SwiftUI / React Native suggestion does not apply. It opens from a link with no install.
   - It is designed for phone width (the design frame is 402 × 874). On a laptop it shows as a centred phone-width column.
@@ -161,7 +161,9 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
   | Smoothing | 3 frames | 3 frames |
 
 - **Testability:** everything time-based takes an injectable clock, so tests never sleep.
-- **No GPU.** Vision, the simulator, analytics and the forecast all run on CPU, so the Space runs on the free CPU tier.
+- **No GPU.** Vision, the simulator, analytics and the forecast all run on CPU. The Space runs on **CPU Upgrade, about $0.03 an hour**: Hugging Face refused the free CPU tier for this Space type (HTTP 402, PRO needed).
+- **One seat per chair.** Every chair the detector finds becomes its own seat. "Detect chairs" in the Camera tab turns each detected chair into a seat outline on the camera frame, and the operator matches it to a seat id on the floor plan.
+- **Camera input:** a clip recorded in the venue, played through the pipeline at 1 frame per second in real time (with "Loop clip"). The live webcam input is kept in the code behind `BIRDIE_ENABLE_WEBCAM`, off by default. If the live venue gets no frame for 10 seconds it is "camera offline" and its seats keep their last state.
 - **Venues: Doha only.**
   - One live venue (Nestwork Msheireb, camera in the room) plus simulated venues.
   - Simulated venues are **always labelled "Simulated"** in the app (on list rows and the place screen) and in the pitch.
@@ -179,7 +181,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 ## 6. Architecture
 
 ```
-[Venue camera = laptop webcam in the operator console, or a recorded clip]
+[Venue camera = a clip recorded in the venue, uploaded in the operator console]
         │  frames at ~1 fps (browser to Space)
         ▼
 [HF Space: one Python process, port 7860]
@@ -253,10 +255,10 @@ Removed: `Booking`, `Query`, `bookable`, `bookable_fraction`, `prepaid_item`, an
 
 | Method and path | Response |
 |---|---|
-| `GET /api/venues` | List of venues (no floor plan), each with `counts`: `free`, `taken`, `held`, `total` |
-| `GET /api/venues/{venue_id}` | Venue with `floor_plan` and `seats`. Each seat has `seat_id`, `table_id`, `has_outlet`, `has_window`, `plan_x`, `plan_y`, `plan_rot`, `status` (free, taken, held) and `since` (when it entered that status) |
+| `GET /api/venues` | List of venues (no floor plan), each with `counts`: `free`, `taken`, `held`, `total`, and `camera_online` |
+| `GET /api/venues/{venue_id}` | Venue with `floor_plan` and `seats`. Each seat has `seat_id`, `table_id`, `has_outlet`, `has_window`, `plan_x`, `plan_y`, `plan_rot`, `status` (free, taken, held) and `since` (when it entered that status), plus `camera_online` |
 
-Status mapping: FREE is `free`, OCCUPIED is `taken`, HELD is `held`. Times are ISO 8601 with a timezone (for example `2026-11-06T20:15:00Z`). `web/mock.js` returns exactly these shapes; the app uses it when the server has no `/api`.
+Status mapping: FREE is `free`, OCCUPIED is `taken`, HELD is `held`. `camera_online` is `true` or `false` for the live venue (false after 10 s without a frame; its seats keep their last state) and `null` for simulated venues; `web/mock.js` doesn't have it. Times are ISO 8601 with a timezone (for example `2026-11-06T20:15:00Z`). `web/mock.js` returns exactly these shapes; the app uses it when the server has no `/api`.
 
 ### 7.3 Demo venues
 
@@ -275,9 +277,9 @@ Optional: add 2 to 4 more simulated venues with invented names (for example a ca
 
 ### 8.1 Seat state
 
-- Each live venue's seats are polygons on the camera frame, drawn once with the seat setup tool in the operator console.
+- Each live venue has **one seat per chair**. Its seats are polygons on the camera frame, set once with **"Detect chairs"** in the operator console: the detector finds every chair in a frame of the clip, each chair box (expanded a little) becomes a seat outline, and the operator matches each one to a seat id from the floor plan (or "auto-number left to right"). Only the camera polygon is saved into the seat; the floor-plan fields never change. A single seat can be fixed by clicking its 4 corners.
 - Each frame:
-  1. Detect people and belongings.
+  1. Detect chairs, people and belongings (chairs only matter for setup).
   2. Assign each detection to the seat whose polygon contains the box centre; if none does, to the seat with the largest overlap above 20%.
   3. Turn it into a raw observation per seat: `PERSON`, `ITEMS` or `EMPTY`.
   4. A new observation only counts after it holds for k consecutive frames (smoothing against occlusion and bad detections).
@@ -316,17 +318,16 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 
 ## 9. Accounts, compute and deploy
 
-- **Dev Space:** `birdie` on Yacine's Hugging Face account, free CPU. Deploy with `scripts/deploy_space.sh` (`hf upload` of git-tracked files only).
-- **Final Space:** `birdie` on the teammate's account that holds the $100 credit. Yacine pushes to it with a fine-grained token scoped to that one Space. The token is never written into any file in the repo.
+- **Space:** `affaad/birdie`, a Docker Space on the teammate's account that holds the $100 credit, on **CPU Upgrade (about $0.03 an hour)**. Hugging Face refused free CPU for Gradio and Docker Spaces without PRO (HTTP 402), so there is no free dev Space. Yacine deploys with `scripts/deploy_space.sh affaad/birdie` (`hf upload` of committed files only) using a fine-grained token scoped to that one Space. The token is never written into any file in the repo.
 - **The account owner handles anything that costs money:** HF Jobs, any hardware change, and Space secrets (for example an HF token for model downloads).
-- **No GPU.** The whole app runs on the free CPU tier. Money is spent only on HF Jobs (accuracy evaluation, backtest).
+- **No GPU.** The whole app runs on CPU Upgrade at about $0.03 an hour (under $1 a day). The rest of the spend is short HF Jobs (accuracy evaluation, backtest).
 - **Track every dollar** for the efficiency slide.
 
 ### Efficiency story
 
 - One detector covers people and belongings, so one model pass per frame instead of two.
 - About 1 frame per second, 640 px, on CPU.
-- No LLM and no GPU: the entire live app runs on Hugging Face's free CPU tier.
+- No LLM and no GPU: the entire live app runs on one CPU Upgrade Space at about $0.03 an hour.
 - The only spend is short HF Jobs for evaluation, with results saved to the Hub.
 
 ---
@@ -371,15 +372,15 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 
 1. **Hook (15 s):** the founder story: drove to study, no seat, wasted trip.
 2. **Data (15 s):** room survey result (section 13), plus the car-dependent Doha framing.
-3. **Live (60 s):** a phone mirrored on the screen, and the operator console on a laptop with its camera pointed at tables in this room (organizer permission needed).
+3. **Live (60 s):** a phone mirrored on the screen, and the operator console on a laptop. **The Nestwork feed is a clip recorded at these tables in this room** (organizer permission needed), played through the pipeline at 1 frame per second in real time, looped. Say so: the detection, seat states and timers are live; the footage is recorded.
    - Open Birdie: Doha venues with drive times, Nestwork live, the others marked Simulated.
-   - Open Nestwork: the floor plan matches the tables in this room.
-   - A teammate stands up and leaves → the chair turns green on the phone.
-   - A teammate sits down → it turns red.
+   - Open Nestwork: the floor plan matches the tables in this room, one seat per chair.
+   - In the clip, a teammate stands up and leaves → the chair turns green on the phone.
+   - A teammate sits down → it turns taken.
    - A bag is left on a chair with nobody there → after the demo timer it turns amber, Held. Tapping it shows "held by a bag", and a staff alert appears in the console.
    - Back on Browse, Nestwork's free count has changed with the room.
 4. **Venue dashboard (15 s):** occupancy by hour, held-seat minutes, peak times.
-5. **Trust and efficiency (15 s):** one small model on a free CPU Space, total dollars spent, accuracy on our labelled set, "no images ever leave the venue."
+5. **Trust and efficiency (15 s):** one small model on a CPU Space at about $0.03 an hour, total dollars spent, accuracy on our labelled set, "no images ever leave the venue."
 
 Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 
@@ -422,7 +423,7 @@ Put the real numbers on a slide: for example, "X of 20 builders here said yes, l
 | Frontend and backend don't fit together | The API shapes in section 7.2 are fixed; the frontend builds on mock data in exactly that shape |
 | Space latency or Wi-Fi failure in the demo | About 1 fps, 2 s polling; local fallback; backup video |
 | Privacy concerns from the audience | No faces, no storage, blurred view, no accounts, on-device in production |
-| Burning the $100 credits | Free CPU Space for the whole app; money only for short HF Jobs; track spend |
+| Burning the $100 credits | One CPU Upgrade Space (about $0.03 an hour) with a sleep time; money otherwise only for short HF Jobs; track spend |
 
 ---
 
