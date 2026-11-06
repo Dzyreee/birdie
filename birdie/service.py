@@ -23,8 +23,11 @@ from birdie.config import (
     VENUES_DIR,
     Timers,
 )
+from birdie.decision import Availability, availability_at
+from birdie.forecast.model import ForecastEngine
 from birdie.models import Booking, Seat, SeatEvent, SeatSnapshot, SeatState, Venue, VenueConfig, VenueSource
 from birdie.scheduler import Scheduler
+from birdie.simulator import Simulator
 from birdie.storage import Repository
 from birdie.venues import load_all, save_venue
 from birdie.vision import render
@@ -53,6 +56,8 @@ class BirdieService:
         timers: Timers = TIMERS,
         detector: Detector | None = None,
         persist_venues: bool = True,
+        forecast: ForecastEngine | None = None,
+        seed: int = 7,
     ) -> None:
         self.clock = clock or RealClock()
         self.repo = repo or Repository()
@@ -79,7 +84,12 @@ class BirdieService:
         self._last_person_boxes: dict[str, list[list[float]]] = {}
         self.bookings = BookingService(self.repo, self.clock, self.configs, self.state_of, timers)
         self.add_listener(self.bookings.on_seat_event)
+        self.forecast = forecast or ForecastEngine(self.configs, self.clock, self.repo)
+        self.simulator = Simulator(
+            self.configs, self.trackers, self.forecast.ratio_at, self.clock, self.bookings, seed=seed
+        )
         self.scheduler = Scheduler(self.tick, SCHEDULER_INTERVAL_SECONDS)
+        self._last_refit = self.clock.now()
 
     # --- venues and seats -------------------------------------------------------
     def venues(self) -> list[Venue]:
@@ -151,10 +161,32 @@ class BirdieService:
     def active_booking_by_seat(self, venue_id: str) -> dict[str, Booking]:
         return {b.seat_id: b for b in self.bookings.active_bookings(venue_id)}
 
+    # --- LiveData (used by birdie.decision) ----------------------------------------
+    def now(self):
+        return self.clock.now()
+
+    def active_bookings(self, venue_id: str) -> list[Booking]:
+        return self.bookings.active_bookings(venue_id)
+
+    def forecast_ratio(self, venue_id: str, ts) -> float:
+        return self.forecast.ratio_at(venue_id, ts)
+
+    def availability_at(self, venue_id: str, arrival_minutes: int) -> Availability:
+        return availability_at(self, venue_id, arrival_minutes)
+
+    # --- simulation -------------------------------------------------------------
+    def setup_simulation(self, backfill_hours: float = 24) -> None:
+        """Back-fill a synthetic event log for simulated venues, then continue live from its end state."""
+        self.repo.delete_synthetic_events()
+        for vid in self.simulator.venue_ids():
+            obs = self.simulator.backfill(self.repo, vid, hours=backfill_hours) if backfill_hours > 0 else None
+            self.simulator.start_venue(vid, obs)
+
     # --- background tick ------------------------------------------------------
     def tick(self) -> None:
-        """Run by the scheduler every ~2 s: timers, bookings, staff alerts, occupancy buckets."""
+        """Run by the scheduler every ~2 s: simulator, timers, bookings, staff alerts, occupancy buckets."""
         now = self.clock.now()
+        self.simulator.step()
         for tracker in self.trackers.values():
             tracker.tick()  # OCCUPIED -> HELD even if no new frame arrives
         self.bookings.tick()
@@ -162,6 +194,9 @@ class BirdieService:
         for vid in self.configs:
             c = self.counts(vid)
             self.repo.record_occupancy(vid, now, c[SeatState.FREE], c[SeatState.OCCUPIED], c[SeatState.HELD])
+        if (now - self._last_refit).total_seconds() >= 15 * 60:
+            self._last_refit = now
+            self.forecast.refit()  # fold live buckets into the baseline
 
     def _check_held_alerts(self, now) -> None:
         threshold = self.timers.staff_alert_seconds
@@ -181,8 +216,9 @@ class BirdieService:
                         f"for {minutes:.1f} min.",
                     )
 
-    def start(self) -> None:
-        """Start the background scheduler."""
+    def start(self, backfill_hours: float = 24) -> None:
+        """Seed the simulated venues and start the background scheduler."""
+        self.setup_simulation(backfill_hours)
         self.scheduler.start()
 
     def stop(self) -> None:

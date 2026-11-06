@@ -18,7 +18,7 @@ def make_service(clock, venue_type=VenueType.cafe, n=10, bookable=(0, 1, 2), fra
     ]
     cfg = VenueConfig(
         venue=Venue(venue_id="v", name="Cafe V", area="Lusail", type=venue_type, lat=0, lon=0, zones=["indoor"],
-                    bookable_fraction=fraction, source=VenueSource.simulated),
+                    bookable_fraction=fraction, source=VenueSource.live),
         seats=seats,
     )
     return BirdieService(repo=Repository(":memory:"), clock=clock, venues={"v": cfg}, timers=T,
