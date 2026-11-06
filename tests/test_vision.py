@@ -275,3 +275,19 @@ def test_seat_colours_follow_the_brief():
 
 def test_data_uri_is_in_memory_jpeg():
     assert render.to_data_uri(np.zeros((10, 10, 3), dtype=np.uint8)).startswith("data:image/jpeg;base64,")
+
+
+def test_alerts_module(clock, repo):
+    from birdie.alerts import held_too_long, raise_held_alerts, resolve_on_event
+    from birdie.models import SeatEvent, SeatSnapshot
+
+    now = clock.now()
+    held = SeatSnapshot(venue_id="v", seat_id="A1", zone="open", has_outlet=False, state=SeatState.HELD,
+                        since=now, updated_at=now)
+    clock.advance(31)
+    assert held_too_long([held], clock.now(), 30) == [held]
+    assert raise_held_alerts(repo, "v", [held], clock.now(), 30) == ["A1"]
+    assert raise_held_alerts(repo, "v", [held], clock.now(), 30) == []  # one alert per episode
+    resolve_on_event(repo, SeatEvent(ts=clock.now(), venue_id="v", seat_id="A1",
+                                     old_state=SeatState.HELD, new_state=SeatState.FREE))
+    assert repo.alerts("v", unresolved_only=True) == []

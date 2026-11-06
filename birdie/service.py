@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
+from birdie.alerts import raise_held_alerts, resolve_on_event
 from birdie.clock import Clock, RealClock
 from birdie.config import (
     BLUR_THRESHOLD,
@@ -244,25 +245,8 @@ class BirdieService:
             self.forecast.refit()  # fold live buckets into the baseline
 
     def _check_held_alerts(self, now) -> None:
-        threshold = self.timers.staff_alert_seconds
         for vid in self.configs:
-            snaps = [
-                snap for snap in self.snapshots(vid)
-                if snap.state == SeatState.HELD and (now - snap.since).total_seconds() >= threshold
-            ]
-            if not snaps:
-                continue
-            open_alerts = {
-                a["seat_id"] for a in self.repo.alerts(vid, unresolved_only=True, limit=500) if a["kind"] == "held_too_long"
-            }
-            for snap in snaps:
-                if snap.seat_id not in open_alerts:
-                    minutes = (now - snap.since).total_seconds() / 60
-                    self.repo.add_alert(
-                        now, vid, snap.seat_id, "held_too_long",
-                        f"Seat {snap.seat_id} has been held by belongings with nobody there "
-                        f"for {minutes:.1f} min.",
-                    )
+            raise_held_alerts(self.repo, vid, self.snapshots(vid), now, self.timers.staff_alert_seconds)
 
     def start(self, backfill_hours: float = 24) -> None:
         """Seed the simulated venues and start the background scheduler."""
@@ -278,8 +262,7 @@ class BirdieService:
 
     def _on_seat_event(self, event: SeatEvent) -> None:
         self.repo.add_seat_event(event)
-        if event.new_state in (SeatState.FREE, SeatState.OCCUPIED):
-            self.repo.resolve_alerts(event.venue_id, event.seat_id, "held_too_long")
+        resolve_on_event(self.repo, event)
         for fn in self._listeners:
             try:
                 fn(event)
