@@ -10,12 +10,14 @@ import gradio as gr
 from birdie.config import DEMO_MODE
 from birdie.service import BirdieService
 from birdie.ui.camera import build_camera_tab
+from birdie.ui.checkin import build_checkin
 from birdie.ui.common import CSS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("birdie")
 
 svc = BirdieService()
+svc.start()  # background scheduler: no-show releases, completions, staff alerts, occupancy buckets
 
 
 def _warm_up_detector() -> None:
@@ -36,6 +38,7 @@ with gr.Blocks(title="Birdie") as demo:
         "Camera-verified live seats for cafes, libraries and study spaces."
         + (" &nbsp;<span class='badge badge-syn'>Demo timers</span>" if DEMO_MODE else "")
     )
+    build_checkin(svc, demo)
     with gr.Tabs():
         with gr.Tab("Camera"):
             build_camera_tab(svc)

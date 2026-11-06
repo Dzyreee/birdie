@@ -13,9 +13,18 @@ from pathlib import Path
 
 import numpy as np
 
+from birdie.booking import BookingService, held_too_long
 from birdie.clock import Clock, RealClock
-from birdie.config import BLUR_THRESHOLD, DETECTION_THRESHOLD, TIMERS, VENUES_DIR, Timers
-from birdie.models import Seat, SeatEvent, SeatSnapshot, SeatState, Venue, VenueConfig, VenueSource
+from birdie.config import (
+    BLUR_THRESHOLD,
+    DETECTION_THRESHOLD,
+    SCHEDULER_INTERVAL_SECONDS,
+    TIMERS,
+    VENUES_DIR,
+    Timers,
+)
+from birdie.models import Booking, Seat, SeatEvent, SeatSnapshot, SeatState, Venue, VenueConfig, VenueSource
+from birdie.scheduler import Scheduler
 from birdie.storage import Repository
 from birdie.venues import load_all, save_venue
 from birdie.vision import render
@@ -68,6 +77,9 @@ class BirdieService:
         # Last camera frame per venue, kept in memory only for the seat setup snapshot.
         self._last_frame: dict[str, np.ndarray] = {}
         self._last_person_boxes: dict[str, list[list[float]]] = {}
+        self.bookings = BookingService(self.repo, self.clock, self.configs, self.state_of, timers)
+        self.add_listener(self.bookings.on_seat_event)
+        self.scheduler = Scheduler(self.tick, SCHEDULER_INTERVAL_SECONDS)
 
     # --- venues and seats -------------------------------------------------------
     def venues(self) -> list[Venue]:
@@ -135,6 +147,46 @@ class BirdieService:
         self.trackers[cfg.venue.venue_id].set_seats(cfg.seats)
         if self.persist_venues:
             save_venue(cfg, self.venues_dir)
+
+    def active_booking_by_seat(self, venue_id: str) -> dict[str, Booking]:
+        return {b.seat_id: b for b in self.bookings.active_bookings(venue_id)}
+
+    # --- background tick ------------------------------------------------------
+    def tick(self) -> None:
+        """Run by the scheduler every ~2 s: timers, bookings, staff alerts, occupancy buckets."""
+        now = self.clock.now()
+        for tracker in self.trackers.values():
+            tracker.tick()  # OCCUPIED -> HELD even if no new frame arrives
+        self.bookings.tick()
+        self._check_held_alerts(now)
+        for vid in self.configs:
+            c = self.counts(vid)
+            self.repo.record_occupancy(vid, now, c[SeatState.FREE], c[SeatState.OCCUPIED], c[SeatState.HELD])
+
+    def _check_held_alerts(self, now) -> None:
+        threshold = self.timers.staff_alert_seconds
+        for vid in self.configs:
+            snaps = held_too_long(self.snapshots(vid), now, threshold)
+            if not snaps:
+                continue
+            open_alerts = {
+                a["seat_id"] for a in self.repo.alerts(vid, unresolved_only=True, limit=500) if a["kind"] == "held_too_long"
+            }
+            for snap in snaps:
+                if snap.seat_id not in open_alerts:
+                    minutes = (now - snap.since).total_seconds() / 60
+                    self.repo.add_alert(
+                        now, vid, snap.seat_id, "held_too_long",
+                        f"Seat {snap.seat_id} ({snap.zone}) has been held by belongings with nobody there "
+                        f"for {minutes:.1f} min.",
+                    )
+
+    def start(self) -> None:
+        """Start the background scheduler."""
+        self.scheduler.start()
+
+    def stop(self) -> None:
+        self.scheduler.stop()
 
     # --- events -----------------------------------------------------------------
     def add_listener(self, fn: Callable[[SeatEvent], None]) -> None:

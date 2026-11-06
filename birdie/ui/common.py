@@ -71,3 +71,30 @@ def ago(since: datetime, now: datetime) -> str:
     if secs < 3600:
         return f"{secs // 60}m {secs % 60:02d}s"
     return f"{secs // 3600}h {(secs % 3600) // 60:02d}m"
+
+
+def public_base_url(request=None) -> str:
+    """Base URL for QR check-in links: BIRDIE_PUBLIC_URL, else the Space host, else the request host."""
+    import os
+
+    explicit = os.getenv("BIRDIE_PUBLIC_URL")
+    if explicit:
+        return explicit.rstrip("/")
+    space_host = os.getenv("SPACE_HOST")
+    if space_host:
+        return f"https://{space_host.split(',')[0].strip()}"
+    if request is not None:
+        headers = getattr(request, "headers", {}) or {}
+        host = headers.get("x-forwarded-host") or headers.get("host")
+        if host:
+            proto = headers.get("x-forwarded-proto", "http")
+            return f"{proto}://{host}"
+    return "http://127.0.0.1:7860"
+
+
+def qr_html(png_bytes: bytes, caption: str = "") -> str:
+    import base64
+
+    uri = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+    cap = f'<div class="birdie-muted" style="word-break:break-all">{html.escape(caption)}</div>' if caption else ""
+    return f'<div style="max-width:220px"><img src="{uri}" alt="QR code" style="width:100%"/>{cap}</div>'
