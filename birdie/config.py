@@ -47,7 +47,8 @@ TIMERS: Timers = DEMO_TIMERS if DEMO_MODE else PRODUCTION_TIMERS
 
 # --- Vision ---------------------------------------------------------------
 DETECTOR_MODEL_ID = "PekingU/rtdetr_r18vd"
-DETECTION_THRESHOLD = 0.4  # minimum detector score kept
+DETECTION_THRESHOLD = 0.4  # minimum detector score that counts for seat states
+BLUR_THRESHOLD = 0.2  # people are blurred from this lower score, to err on the side of privacy
 MAX_FRAME_SIDE = 640  # long side of a frame is resized to at most this many pixels
 TARGET_FPS = 1.0  # frames per second sent from the browser / sampled from clips
 MIN_OVERLAP = 0.2  # fallback seat assignment: box must overlap the seat polygon by more than this

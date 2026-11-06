@@ -43,3 +43,4 @@ jobs/results/
 .idea/
 .vscode/
 .gradio/
+.playwright-mcp/

@@ -2,6 +2,7 @@
 # CPU-only torch keeps the build light: vision, forecasting and decisions all run on CPU.
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.15.0+cpu
+torchvision==0.29.2+cpu
 transformers>=5.0,<6
 pillow
 numpy
