@@ -149,7 +149,8 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
   - `HELD` is amber `#D08A1C` with diagonal stripes ("Held by a bag"). The stripes keep it distinct for colour-blind users.
   - The floor plan legend reads **Free / Taken / Held by a bag**.
   - There is no "Yours" colour.
-- **Look:** no logo. The layout borrows familiar delivery-app patterns (coloured header with a wavy edge, pill search, category tiles with badges, outlined cards, floating tab bar).
+- **Logo:** the Birdie logo (a maroon bird in a ghutra and agal; source in `design/brand/`, sizes in `web/assets/`) is the **app icon**: home screen, browser tab and `web/manifest.webmanifest`. It is not shown inside the app's screens.
+- **Look:** the layout borrows familiar delivery-app patterns (coloured header with a wavy edge, pill search, category tiles with badges, outlined cards, floating tab bar).
   - Colours: Qatar maroon `#8A1538` as the brand colour (one CSS variable, `--brand`), white, cream `#F5EFE7` and charcoal `#1F2328`. The app does not use Talabat's orange, so it doesn't look like a copy.
   - Type: Rubik throughout (a Google Font with Arabic support).
 - **Timers:** all timers and thresholds live in `birdie/config.py` behind `DEMO_MODE` (on by default):
@@ -207,6 +208,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 app.py                  builds the FastAPI app: API, web/ at /, Gradio console at /operator; runs uvicorn
 web/                    mobile web app: index.html, app.css, app.js (no build step)
 design/mobile/          design handoff: README.md (screens and behaviour) and prototype.html
+design/brand/           the Birdie logo (source image; the app icon)
 birdie/
   config.py             DEMO_MODE, timers, thresholds
   models.py             pydantic data models (section 7)
@@ -290,7 +292,7 @@ Optional: add 2 to 4 more simulated venues with invented names (for example a ca
 
 The app keeps the browse and place screens of `design/mobile/README.md`, laid out like the delivery apps people in Doha already use (section 5). Screens 4 to 6 (Scan to check in, Enter code, Checked in), the floating activity bar and the toast are **dropped**. `web/` is the reference; in short:
 
-- **Splash:** "Birdie" and "Live study seats in Doha" on maroon. Tap to skip. There is no logo.
+- **Splash:** "Birdie" and "Live study seats in Doha" on maroon. Tap to skip. The logo is the app icon only, not on the screens.
 - **Tab bar:** a floating pill at the bottom with Explore, Saved and About. It is hidden on the place screen.
 - **Explore (home):**
   - The maroon header with a wavy bottom edge reads "Seats near **Msheireb** ⌄", with a pill search below.
