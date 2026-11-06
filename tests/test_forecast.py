@@ -136,7 +136,7 @@ def svc():
 def test_availability_at_uses_live_and_forecast_data(svc):
     vid = "nestwork-msheireb"
     result = svc.availability_at(vid, 10)
-    assert result.live_free == 6
+    assert result.live_free == len(svc.seats(vid))  # nobody seen yet: every chair is free
     assert 0 <= result.expected_free <= result.total
 
 

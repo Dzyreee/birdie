@@ -117,8 +117,6 @@ class SeatStateMachine:
         return SeatSnapshot(
             venue_id=self.venue_id,
             seat_id=self.seat_id,
-            zone=seat.zone,
-            has_outlet=seat.has_outlet,
             state=self.state,
             since=self.since,
             updated_at=self.updated_at,

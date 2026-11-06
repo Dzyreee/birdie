@@ -9,6 +9,8 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -19,9 +21,10 @@ class SeatState(str, Enum):
 
 
 class VenueType(str, Enum):
-    cafe = "cafe"
     library = "library"
+    cafe = "cafe"
     cowork = "cowork"
+    study_room = "study_room"
 
 
 class VenueSource(str, Enum):
@@ -34,6 +37,37 @@ class _Model(BaseModel):
     model_config = ConfigDict(use_enum_values=False, extra="ignore")
 
 
+class Table(_Model):
+    """A table on the floor plan, in design points on a 362-wide plan."""
+
+    table_id: str  # a letter, for example "A"
+    name: str  # for example "Table A", "Window bar"
+    shape: Literal["rect", "round"] = "rect"
+    x: float | None = None  # rect
+    y: float | None = None
+    w: float | None = None
+    h: float | None = None
+    cx: float | None = None  # round
+    cy: float | None = None
+    r: float | None = None
+
+
+class Fixture(_Model):
+    label: str  # for example "Books", "Counter"
+    x: float
+    y: float
+    w: float
+    h: float
+
+
+class FloorPlan(_Model):
+    width: float = 362
+    height: float = 430  # 360 to 490
+    window_top: bool = False
+    tables: list[Table] = Field(default_factory=list)
+    fixtures: list[Fixture] = Field(default_factory=list)
+
+
 class Venue(_Model):
     venue_id: str
     name: str
@@ -41,17 +75,27 @@ class Venue(_Model):
     type: VenueType
     lat: float
     lon: float
-    zones: list[str] = Field(default_factory=list)
     source: VenueSource
-    noise_db: float = 50.0
+    drive_minutes: int = 0  # approximate, from Nestwork Msheireb
+    open_until: str = ""  # display text, for example "Open till 23:00"
+    open_late: bool = False
+    amenities: list[str] = Field(default_factory=list)  # chip labels
+    zones: list[str] = Field(default_factory=list)
+    floor_plan: FloorPlan | None = None
+    noise_db: float = 50.0  # optional, used only by the focus score
 
 
 class Seat(_Model):
-    seat_id: str
+    seat_id: str  # the label users see: table letter plus number, for example "A3"
     venue_id: str
-    zone: str
+    table_id: str | None = None
+    zone: str = ""
     has_outlet: bool = False
-    # Normalised (0..1) polygon corners as (x, y), so it works at any camera resolution.
+    has_window: bool = False
+    plan_x: float | None = None  # chair centre on the floor plan
+    plan_y: float | None = None
+    plan_rot: float | None = None  # degrees: 0 above the table, 180 below, -90 left, 90 right
+    # Normalised (0..1) camera polygon corners as (x, y); live venue only.
     polygon: list[tuple[float, float]] = Field(default_factory=list)
 
     @field_validator("polygon")
@@ -68,8 +112,6 @@ class Seat(_Model):
 class SeatSnapshot(_Model):
     venue_id: str
     seat_id: str
-    zone: str
-    has_outlet: bool
     state: SeatState
     since: datetime
     updated_at: datetime
