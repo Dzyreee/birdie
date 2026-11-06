@@ -16,7 +16,7 @@ short_description: Camera-verified live study seats in Doha
 **A bird's-eye view of every study seat in Doha before you drive there.**
 Camera-verified live seat availability and booking for cafes, libraries and study spaces.
 
-Built at the Qai x Hugging Face Hackathon 01 (Nestwork Msheireb, Doha). Full brief: [CLAUDE.md](CLAUDE.md).
+Built at the Qai x Hugging Face Hackathon 01 (Nestwork Msheireb, Doha).
 Data models and public functions: [docs/CONTRACT.md](docs/CONTRACT.md).
 
 ## What it does
