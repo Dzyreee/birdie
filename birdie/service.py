@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
@@ -90,6 +91,8 @@ class BirdieService:
         )
         self.scheduler = Scheduler(self.tick, SCHEDULER_INTERVAL_SECONDS)
         self._last_refit = self.clock.now()
+        self.started_at = self.clock.now()
+        self._observed_since: dict[str, object] = {vid: self.started_at for vid in self.configs}
 
     # --- venues and seats -------------------------------------------------------
     def venues(self) -> list[Venue]:
@@ -178,9 +181,15 @@ class BirdieService:
     def setup_simulation(self, backfill_hours: float = 24) -> None:
         """Back-fill a synthetic event log for simulated venues, then continue live from its end state."""
         self.repo.delete_synthetic_events()
+        now = self.clock.now()
         for vid in self.simulator.venue_ids():
             obs = self.simulator.backfill(self.repo, vid, hours=backfill_hours) if backfill_hours > 0 else None
             self.simulator.start_venue(vid, obs)
+            self._observed_since[vid] = now - timedelta(hours=backfill_hours)
+
+    def observed_since(self, venue_id: str):
+        """When this process started having seat data for the venue (dashboard windows start here)."""
+        return self._observed_since.get(venue_id, self.started_at)
 
     # --- background tick ------------------------------------------------------
     def tick(self) -> None:
