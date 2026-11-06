@@ -1,8 +1,8 @@
-"""Seat setup tool shared by the Camera tab and the labelling tool.
+"""Seat-region editor used by the internal labelling tool.
 
 Take a snapshot, click the 4 corners of a seat on it, fill in the details, save. Frames are shown as
 in-memory data URLs (never cached on disk). The caller supplies a backend and a `key` component
-(the venue dropdown in the Camera tab, the clip dropdown in the labelling tool).
+    (the clip dropdown in the labelling tool).
 """
 
 from __future__ import annotations
@@ -81,7 +81,6 @@ def build_seat_editor(
         zone = gr.Dropdown(choices=init_zones, value=init_zones[0], allow_custom_value=True, label="Zone",
                            visible=show_details)
         has_outlet = gr.Checkbox(label="Has outlet", visible=show_details)
-        bookable = gr.Checkbox(label="Bookable", visible=show_details)
     with gr.Row():
         save_btn = gr.Button("💾 Save seat", variant="primary")
         redo_btn = gr.Button("↺ Redo corners")
@@ -141,7 +140,7 @@ def build_seat_editor(
 
     redo_btn.click(redo, [key], [image, points, message])
 
-    def save(pts, key_value, sid, zone_value, outlet, book):
+    def save(pts, key_value, sid, zone_value, outlet):
         sid = (sid or "").strip()
         skip = (gr.skip(),) * 4
         if not key_value:
@@ -151,7 +150,7 @@ def build_seat_editor(
         if not sid:
             return gr.skip(), pts, "Give the seat an id.", *skip
         zone_value = str(zone_value or default_zone).strip()
-        seat = Seat(seat_id=sid, venue_id=key_value, zone=zone_value, has_outlet=bool(outlet), bookable=bool(book),
+        seat = Seat(seat_id=sid, venue_id=key_value, zone=zone_value, has_outlet=bool(outlet),
                     polygon=[tuple(p) for p in pts])
         msg = backend.upsert(key_value, seat)
         return (
@@ -161,11 +160,10 @@ def build_seat_editor(
             gr.update(choices=seat_ids(key_value)),
             next_seat_id(backend.seats(key_value)),
             backend.export(key_value),
-            gr.update(value=False),
         )
 
-    save_btn.click(save, [points, key, seat_id, zone, has_outlet, bookable],
-                   [image, points, message, delete_dd, seat_id, layout_json, has_outlet])
+    save_btn.click(save, [points, key, seat_id, zone, has_outlet],
+                   [image, points, message, delete_dd, seat_id, layout_json])
 
     def delete(key_value, sid):
         if not key_value or not sid:

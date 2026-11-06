@@ -3,10 +3,8 @@ title: Birdie
 emoji: 🐦
 colorFrom: green
 colorTo: yellow
-sdk: gradio
-sdk_version: 6.31.0
-python_version: "3.12"
-app_file: app.py
+sdk: docker
+app_port: 7860
 pinned: false
 short_description: Camera-verified live study seats in Doha
 ---
@@ -14,29 +12,32 @@ short_description: Camera-verified live study seats in Doha
 # Birdie
 
 **A bird's-eye view of every study seat in Doha before you drive there.**
-Camera-verified live seat availability and booking for cafes, libraries and study spaces.
+Camera-verified live seat availability for cafes, libraries and study spaces.
 
 Built at the Qai x Hugging Face Hackathon 01 (Nestwork Msheireb, Doha).
 Data models and public functions: [docs/CONTRACT.md](docs/CONTRACT.md).
 
 ## What it does
 
-- **Three seat states from one small detector** (`PekingU/rtdetr_r18vd`, COCO): `FREE`, `OCCUPIED`, `HELD`
-  (belongings with nobody there for longer than the hold time).
+- **Four derived seat states** using the COCO-pretrained `PekingU/rtdetr_r18vd` detector: `UNKNOWN` when camera
+  evidence is missing or stale, `FREE`, `OCCUPIED`, and `HELD` when belongings remain without a person.
 - **Live venue view**: free seats per venue and per zone (quiet, family, women's section, terrace).
-- **Verified booking**: QR check-in confirmed by the camera, automatic no-show release, staff alerts for seats held by bags.
 - **Availability at your arrival time** and a **focus score** (0 to 100) with its breakdown.
-- **Venue dashboard**: occupancy by hour, no-show rate, minutes held by belongings, peak times.
+- **Venue dashboard**: occupancy by hour, minutes held by belongings, peak times.
 
-Only Nestwork Msheireb is live. Qatar National Library, Qatar University Library and Qahwa Corner are
-**simulated** venues with **synthetic** history, and are labelled as such everywhere.
+The Camera tab is an object-detection preview: it draws model boxes for COCO classes such as chairs, people, backpacks,
+and laptops over the original uploaded video. It does not draw a seat layout or decide whether an individual chair is
+free. The clip preview does not update venue availability yet. The mobile app under `web/` is also not connected to a
+JSON API; it currently falls back to mock data. Qatar National Library, Qatar University Library and Qahwa Corner are
+**simulated** venues with **synthetic** history, and are labelled as such. Nestwork is configured as live, but no camera
+feed is currently connected to the Space.
 
 ## Privacy
 
-Frames are processed in memory and discarded. They are never written to disk or logged, and people are blurred in
-every frame shown on screen (annotated frames are sent to the browser as in-memory data URLs). Only seat states are
-stored. No face recognition, no identification: check-in is a QR code, and the camera only confirms that the seat is
-occupied.
+In this prototype, uploaded video is sent to the Hugging Face Space and displayed without blurring. The uploaded file
+is deleted after playback, but remains in temporary Space storage while processing. The app stores seat states and
+aggregate counts, not source frames in its database. Hugging Face logging and retention are not verified. No face
+recognition or identity matching is used.
 
 ## Run locally
 
@@ -51,10 +52,9 @@ Environment variables:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `BIRDIE_DEMO_MODE` | `1` | Demo timers (30 s hold, 60 s no-show). `0` for production timers |
+| `BIRDIE_DEMO_MODE` | `1` | Demo timers (30 s hold). `0` for production timers |
 | `BIRDIE_DB_PATH` | `data/birdie.db` | SQLite file (gitignored) |
 | `BIRDIE_USE_CHRONOS` | `0` | Try `amazon/chronos-bolt-small` for forecasts (falls back to the baseline) |
-| `BIRDIE_PUBLIC_URL` | auto | Base URL used in QR check-in links |
 
 ## Layout
 
@@ -65,8 +65,7 @@ birdie/             framework-free core (never imports Gradio)
   models.py         pydantic data contract
   storage.py        SQLite repository
   clock.py          real and fake clocks
-  vision/           detector.py, seats.py, state.py, render.py
-  booking.py        booking lifecycle, QR codes
+  vision/           detector.py, seats.py, state.py (UNKNOWN and stale-feed handling), render.py
   forecast/         calendar.py, synthetic.py, model.py
   decision.py       availability_at, focus_score, recommend
   simulator.py      drives simulated venues through the same code path
@@ -83,12 +82,11 @@ tests/
 ## Deploy
 
 ```bash
-scripts/deploy_space.sh <owner>/birdie              # uploads only committed files with `hf upload`
-HF_TOKEN=hf_xxx scripts/deploy_space.sh <owner>/birdie   # with a fine-grained token scoped to that Space
+scripts/deploy_space.sh Affaad/birdiee               # deploys this repo to the Docker Space
 ```
 
-Hosting a Gradio Space on free `cpu-basic` requires a PRO account; otherwise pick paid CPU hardware
-(for example `cpu-upgrade`) on the account that holds the credits, and set a short sleep time.
+The deploy script includes tracked working-tree edits and the Docker files, but not untracked videos, model weights,
+or local credentials. The Docker Space must listen on port 7860.
 
 Forecast backtest as an HF Job (results pushed to a Hub dataset):
 

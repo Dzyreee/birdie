@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from birdie import config
 from birdie.clock import DOHA_TZ, FakeClock
-from birdie.models import Booking, BookingStatus, Seat, SeatEvent, SeatState, VenueSource
+from birdie.models import Seat, SeatEvent, SeatState, VenueSource
 from birdie.storage import bucket_start
 from birdie.venues import load_all
 
@@ -13,12 +13,9 @@ from birdie.venues import load_all
 def test_demo_mode_default_timers():
     assert config.DEMO_MODE is True
     assert config.TIMERS.hold_seconds == 30
-    assert config.TIMERS.no_show_seconds == 60
-    assert config.TIMERS.checkin_window_seconds == 60
     assert config.TIMERS.smoothing_frames == 3
+    assert config.TIMERS.camera_stale_seconds == 10
     assert config.PRODUCTION_TIMERS.hold_seconds == 30 * 60
-    assert config.PRODUCTION_TIMERS.no_show_seconds == 15 * 60
-    assert config.PRODUCTION_TIMERS.checkin_window_seconds == 5 * 60
 
 
 def test_fake_clock_advances_without_sleeping():
@@ -46,22 +43,6 @@ def test_seat_events_roundtrip(repo, clock):
     assert repo.seat_events("v") == [ev]
 
 
-def test_booking_roundtrip_and_status_log(repo, clock):
-    b = Booking(
-        booking_id="b1", venue_id="v", seat_id="A", start_time=clock.now(),
-        status=BookingStatus.BOOKED_PENDING, created_at=clock.now(),
-    )
-    repo.save_booking(b)
-    repo.add_booking_event(clock.now(), b, None, BookingStatus.BOOKED_PENDING)
-    b2 = b.model_copy(update={"status": BookingStatus.QR_SCANNED})
-    repo.save_booking(b2)
-    clock.advance(5)
-    repo.add_booking_event(clock.now(), b2, BookingStatus.BOOKED_PENDING, BookingStatus.QR_SCANNED)
-    assert repo.get_booking("b1") == b2
-    assert repo.bookings("v", [BookingStatus.QR_SCANNED]) == [b2]
-    assert repo.status_since("b1", BookingStatus.QR_SCANNED) == clock.now()
-
-
 def test_occupancy_buckets_average(repo, clock):
     repo.record_occupancy("v", clock.now(), free=4, occupied=2, held=0)
     repo.record_occupancy("v", clock.now() + timedelta(minutes=1), free=2, occupied=4, held=0)
@@ -79,7 +60,5 @@ def test_demo_venues_load():
     for cfg in venues.values():
         assert cfg.seats, cfg.venue.venue_id
         assert all(s.zone in cfg.venue.zones for s in cfg.seats)
-        bookable = sum(s.bookable for s in cfg.seats)
-        assert bookable <= int(len(cfg.seats) * cfg.venue.bookable_fraction)
     assert venues["nestwork-msheireb"].venue.source == VenueSource.live
     assert all(v.venue.source == VenueSource.simulated for k, v in venues.items() if k != "nestwork-msheireb")

@@ -18,8 +18,9 @@ from birdie.config import DETECTION_THRESHOLD, DETECTOR_MODEL_ID, MAX_FRAME_SIDE
 log = logging.getLogger(__name__)
 
 PERSON = "person"
+CHAIR = "chair"
 BELONGINGS = frozenset({"backpack", "handbag", "suitcase", "laptop", "cup", "bottle", "book", "cell phone"})
-KEEP_LABELS = frozenset({PERSON}) | BELONGINGS
+KEEP_LABELS = frozenset({PERSON, CHAIR}) | BELONGINGS
 
 _load_lock = threading.Lock()
 _infer_lock = threading.Lock()
@@ -106,7 +107,7 @@ def _infer(image: Image.Image, threshold: float) -> list[dict]:
 
 
 def detect(frame: np.ndarray | Image.Image, threshold: float = DETECTION_THRESHOLD) -> list[dict]:
-    """Detect people and belongings.
+    """Detect chairs, people and belongings.
 
     Returns [{label, score, box}] where box = [x1, y1, x2, y2] in pixel coordinates of the
     frame you passed in. The frame is resized internally so its long side is <= 640 px.

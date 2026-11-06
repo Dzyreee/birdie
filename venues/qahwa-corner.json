@@ -11,7 +11,6 @@
       "family",
       "terrace"
     ],
-    "bookable_fraction": 0.2,
     "source": "simulated",
     "noise_db": 62.0
   },
@@ -21,7 +20,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.049,
@@ -46,7 +44,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.144,
@@ -71,7 +68,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.239,
@@ -96,7 +92,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.334,
@@ -121,7 +116,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.429,
@@ -146,7 +140,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": false,
-      "bookable": true,
       "polygon": [
         [
           0.524,
@@ -171,7 +164,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.049,
@@ -196,7 +188,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.144,
@@ -221,7 +212,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.239,
@@ -246,7 +236,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": true,
-      "bookable": false,
       "polygon": [
         [
           0.334,
@@ -271,7 +260,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.429,
@@ -296,7 +284,6 @@
       "venue_id": "qahwa-corner",
       "zone": "indoor",
       "has_outlet": false,
-      "bookable": true,
       "polygon": [
         [
           0.524,
@@ -321,7 +308,6 @@
       "venue_id": "qahwa-corner",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.0585,
@@ -346,7 +332,6 @@
       "venue_id": "qahwa-corner",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.201,
@@ -371,7 +356,6 @@
       "venue_id": "qahwa-corner",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.3435,
@@ -396,7 +380,6 @@
       "venue_id": "qahwa-corner",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.486,
@@ -421,7 +404,6 @@
       "venue_id": "qahwa-corner",
       "zone": "family",
       "has_outlet": false,
-      "bookable": true,
       "polygon": [
         [
           0.0585,
@@ -446,7 +428,6 @@
       "venue_id": "qahwa-corner",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.201,
@@ -471,7 +452,6 @@
       "venue_id": "qahwa-corner",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.3435,
@@ -496,7 +476,6 @@
       "venue_id": "qahwa-corner",
       "zone": "family",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.486,
@@ -521,7 +500,6 @@
       "venue_id": "qahwa-corner",
       "zone": "terrace",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.691,
@@ -546,7 +524,6 @@
       "venue_id": "qahwa-corner",
       "zone": "terrace",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.846,
@@ -571,7 +548,6 @@
       "venue_id": "qahwa-corner",
       "zone": "terrace",
       "has_outlet": false,
-      "bookable": true,
       "polygon": [
         [
           0.691,
@@ -596,7 +572,6 @@
       "venue_id": "qahwa-corner",
       "zone": "terrace",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.846,
@@ -621,7 +596,6 @@
       "venue_id": "qahwa-corner",
       "zone": "terrace",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.691,
@@ -646,7 +620,6 @@
       "venue_id": "qahwa-corner",
       "zone": "terrace",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.846,
@@ -671,7 +644,6 @@
       "venue_id": "qahwa-corner",
       "zone": "terrace",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.691,
@@ -696,7 +668,6 @@
       "venue_id": "qahwa-corner",
       "zone": "terrace",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.846,

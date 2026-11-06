@@ -9,7 +9,6 @@
     "zones": [
       "open"
     ],
-    "bookable_fraction": 0.5,
     "source": "live",
     "noise_db": 52.0
   },
@@ -19,7 +18,6 @@
       "venue_id": "nestwork-msheireb",
       "zone": "open",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.036,
@@ -44,7 +42,6 @@
       "venue_id": "nestwork-msheireb",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.356,
@@ -69,7 +66,6 @@
       "venue_id": "nestwork-msheireb",
       "zone": "open",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.676,
@@ -94,7 +90,6 @@
       "venue_id": "nestwork-msheireb",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.036,
@@ -119,7 +114,6 @@
       "venue_id": "nestwork-msheireb",
       "zone": "open",
       "has_outlet": true,
-      "bookable": true,
       "polygon": [
         [
           0.356,
@@ -144,7 +138,6 @@
       "venue_id": "nestwork-msheireb",
       "zone": "open",
       "has_outlet": false,
-      "bookable": false,
       "polygon": [
         [
           0.676,

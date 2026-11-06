@@ -1,7 +1,7 @@
-"""SQLite repository for bookings, seat events, occupancy buckets and staff alerts.
+"""SQLite repository for seat events, occupancy buckets and staff alerts.
 
 One connection shared across threads behind a lock (the Gradio workers and the
-background scheduler all write here). Only seat states are stored, never images.
+background scheduler all write here). Source camera frames are never stored in this database.
 Use Repository(":memory:") in tests.
 """
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from birdie.clock import to_doha
 from birdie.config import BUCKET_MINUTES, DB_PATH
-from birdie.models import Booking, BookingStatus, SeatEvent, SeatState
+from birdie.models import SeatEvent, SeatState
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS seat_events (
@@ -28,27 +28,6 @@ CREATE TABLE IF NOT EXISTS seat_events (
     synthetic INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_seat_events_venue_ts ON seat_events (venue_id, ts);
-
-CREATE TABLE IF NOT EXISTS bookings (
-    booking_id TEXT PRIMARY KEY,
-    venue_id TEXT NOT NULL,
-    seat_id TEXT NOT NULL,
-    start_time TEXT NOT NULL,
-    status TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    prepaid_item TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_bookings_venue ON bookings (venue_id, status);
-
-CREATE TABLE IF NOT EXISTS booking_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts TEXT NOT NULL,
-    booking_id TEXT NOT NULL,
-    venue_id TEXT NOT NULL,
-    old_status TEXT,
-    new_status TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_booking_events_booking ON booking_events (booking_id);
 
 CREATE TABLE IF NOT EXISTS occupancy (
     venue_id TEXT NOT NULL,
@@ -175,97 +154,6 @@ class Repository:
 
     def delete_seat_events(self, venue_id: str, seat_id: str) -> None:
         self._execute("DELETE FROM seat_events WHERE venue_id = ? AND seat_id = ?", [venue_id, seat_id])
-
-    # --- bookings ------------------------------------------------------------
-    def save_booking(self, booking: Booking) -> None:
-        self._execute(
-            "INSERT INTO bookings (booking_id, venue_id, seat_id, start_time, status, created_at, prepaid_item)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)"
-            " ON CONFLICT(booking_id) DO UPDATE SET status = excluded.status,"
-            " start_time = excluded.start_time, seat_id = excluded.seat_id, prepaid_item = excluded.prepaid_item",
-            [
-                booking.booking_id,
-                booking.venue_id,
-                booking.seat_id,
-                _iso(booking.start_time),
-                booking.status.value,
-                _iso(booking.created_at),
-                booking.prepaid_item,
-            ],
-        )
-
-    @staticmethod
-    def _row_to_booking(r: sqlite3.Row) -> Booking:
-        return Booking(
-            booking_id=r["booking_id"],
-            venue_id=r["venue_id"],
-            seat_id=r["seat_id"],
-            start_time=_dt(r["start_time"]),
-            status=BookingStatus(r["status"]),
-            created_at=_dt(r["created_at"]),
-            prepaid_item=r["prepaid_item"],
-        )
-
-    def get_booking(self, booking_id: str) -> Booking | None:
-        rows = self._execute("SELECT * FROM bookings WHERE booking_id = ?", [booking_id])
-        return self._row_to_booking(rows[0]) if rows else None
-
-    def bookings(
-        self,
-        venue_id: str | None = None,
-        statuses: Iterable[BookingStatus] | None = None,
-    ) -> list[Booking]:
-        sql = "SELECT * FROM bookings WHERE 1=1"
-        params: list = []
-        if venue_id:
-            sql += " AND venue_id = ?"
-            params.append(venue_id)
-        if statuses is not None:
-            statuses = list(statuses)
-            if not statuses:
-                return []
-            sql += f" AND status IN ({','.join('?' * len(statuses))})"
-            params.extend(s.value for s in statuses)
-        sql += " ORDER BY created_at"
-        return [self._row_to_booking(r) for r in self._execute(sql, params)]
-
-    def add_booking_event(
-        self,
-        ts: datetime,
-        booking: Booking,
-        old_status: BookingStatus | None,
-        new_status: BookingStatus,
-    ) -> None:
-        self._execute(
-            "INSERT INTO booking_events (ts, booking_id, venue_id, old_status, new_status) VALUES (?, ?, ?, ?, ?)",
-            [_iso(ts), booking.booking_id, booking.venue_id, old_status.value if old_status else None, new_status.value],
-        )
-
-    def status_since(self, booking_id: str, status: BookingStatus) -> datetime | None:
-        """When the booking last entered `status`, from the booking event log."""
-        rows = self._execute(
-            "SELECT ts FROM booking_events WHERE booking_id = ? AND new_status = ? ORDER BY id DESC LIMIT 1",
-            [booking_id, status.value],
-        )
-        return _dt(rows[0]["ts"]) if rows else None
-
-    def booking_events(self, venue_id: str | None = None) -> list[dict]:
-        sql = "SELECT ts, booking_id, venue_id, old_status, new_status FROM booking_events"
-        params: list = []
-        if venue_id:
-            sql += " WHERE venue_id = ?"
-            params.append(venue_id)
-        sql += " ORDER BY id"
-        return [
-            {
-                "ts": _dt(r["ts"]),
-                "booking_id": r["booking_id"],
-                "venue_id": r["venue_id"],
-                "old_status": r["old_status"],
-                "new_status": r["new_status"],
-            }
-            for r in self._execute(sql, params)
-        ]
 
     # --- occupancy buckets (15 minutes) ---------------------------------------
     def record_occupancy(self, venue_id: str, ts: datetime, free: int, occupied: int, held: int) -> None:

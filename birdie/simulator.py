@@ -1,8 +1,8 @@
 """Drives the simulated venues (always labelled "Simulated" in the UI).
 
 Each step produces a raw observation per seat (PERSON / ITEMS / EMPTY) and feeds it to the venue's
-VenueTracker.process: the same code path as camera frames, so smoothing, hold timers, SeatEvents and
-booking check-ins all behave exactly like the live venue.
+VenueTracker.process: the same code path as camera frames, so smoothing, hold timers and SeatEvents
+behave exactly like the live venue.
 
 Seat dynamics are a simple birth-death process whose steady state is the forecast occupancy:
 an occupied seat empties with probability dt / mean_stay; an empty seat fills with probability
@@ -16,11 +16,10 @@ import random
 from collections.abc import Callable
 from datetime import datetime, timedelta
 
-from birdie.booking import BookingService
 from birdie.clock import Clock, FakeClock
 from birdie.config import DEMO_MODE, PRODUCTION_TIMERS, Timers
 from birdie.forecast.calendar import is_terrace_season
-from birdie.models import BookingStatus, Seat, SeatState, VenueConfig, VenueSource
+from birdie.models import Seat, SeatState, VenueConfig, VenueSource
 from birdie.storage import Repository
 from birdie.vision.state import Observation, VenueTracker
 
@@ -34,7 +33,6 @@ class Simulator:
         trackers: dict[str, VenueTracker],
         ratio_at: Callable[[str, datetime], float],
         clock: Clock,
-        bookings: BookingService | None = None,
         seed: int = 7,
         fast: bool = DEMO_MODE,
     ) -> None:
@@ -42,7 +40,6 @@ class Simulator:
         self.trackers = trackers
         self.ratio_at = ratio_at
         self.clock = clock
-        self.bookings = bookings
         self.rng = random.Random(seed)
         # Demo mode turns seats over faster so the simulated venues look alive during a 2-minute demo.
         self.mean_stay_s = 12 * 60 if fast else 75 * 60
@@ -77,8 +74,6 @@ class Simulator:
         obs: dict[str, Observation],
         now: datetime,
         dt: float,
-        reserved: set[str] = frozenset(),
-        seated: set[str] = frozenset(),
     ) -> None:
         r = min(0.97, max(0.0, self.ratio_at(venue_id, now)))
         p_leave = min(1.0, dt / self.mean_stay_s)
@@ -90,13 +85,6 @@ class Simulator:
         for seat in self.configs[venue_id].seats:
             sid = seat.seat_id
             cur = obs.get(sid, Observation.EMPTY)
-            if sid in seated:  # booked and QR scanned: the booker sits down
-                obs[sid] = Observation.PERSON
-                continue
-            if sid in reserved:  # booked, not yet arrived: walk-ins leave it free
-                obs[sid] = Observation.EMPTY if cur == Observation.EMPTY else cur
-                if cur == Observation.EMPTY:
-                    continue
             u = self.rng.random()
             if cur == Observation.PERSON:
                 if u < p_leave:
@@ -109,17 +97,6 @@ class Simulator:
             else:
                 if self._seat_open(seat, now) and u < p_arrive:
                     obs[sid] = Observation.PERSON
-
-    def _booking_sets(self, venue_id: str) -> tuple[set[str], set[str]]:
-        if self.bookings is None:
-            return set(), set()
-        reserved, seated = set(), set()
-        for b in self.bookings.active_bookings(venue_id):
-            if b.status == BookingStatus.BOOKED_PENDING:
-                reserved.add(b.seat_id)
-            else:  # QR_SCANNED or CHECKED_IN
-                seated.add(b.seat_id)
-        return reserved, seated
 
     # --- live ----------------------------------------------------------------------
     def start_venue(self, venue_id: str, obs: dict[str, Observation] | None = None) -> None:
@@ -140,8 +117,7 @@ class Simulator:
             obs = self.obs[vid]
             for seat in self.configs[vid].seats:  # seats may have been added in the setup tool
                 obs.setdefault(seat.seat_id, Observation.EMPTY)
-            reserved, seated = self._booking_sets(vid)
-            self._evolve(vid, obs, now, dt, reserved, seated)
+            self._evolve(vid, obs, now, dt)
             self.trackers[vid].process(obs)
 
     # --- synthetic event log ---------------------------------------------------------

@@ -1,7 +1,6 @@
-"""Venue dashboard numbers, all computed from the event log (seat events and booking events).
+"""Venue dashboard numbers, all computed from the seat event log.
 
 - occupancy by hour of day (time-weighted share of seats OCCUPIED or HELD)
-- no-show rate (released bookings / bookings that either checked in or were released)
 - minutes seats were HELD by belongings
 - peak times
 """
@@ -12,7 +11,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from birdie.models import BookingStatus, SeatEvent, SeatState
+from birdie.models import SeatEvent, SeatState
 
 
 @dataclass
@@ -24,7 +23,6 @@ class Dashboard:
     peak_hours: list[dict]  # top hours by occupancy
     held_minutes_total: float
     held_minutes_by_seat: dict[str, float]
-    no_show: dict  # {booked, showed, no_shows, rate}
     events_count: int
     includes_synthetic: bool = False
     notes: list[str] = field(default_factory=list)
@@ -35,7 +33,7 @@ def seat_intervals(
 ) -> dict[str, list[tuple[datetime, datetime, SeatState]]]:
     """Per seat, the (from, to, state) intervals covering [start, end], reconstructed from events.
 
-    The state at `start` is the last state before it, or the first event's old state, or FREE.
+    The state at `start` is the last state before it, or the first event's old state, or UNKNOWN.
     """
     by_seat: dict[str, list[SeatEvent]] = defaultdict(list)
     for e in sorted(events, key=lambda e: e.ts):
@@ -43,7 +41,7 @@ def seat_intervals(
     out = {}
     for sid in seat_ids:
         evs = by_seat.get(sid, [])
-        state = SeatState.FREE
+        state = SeatState.UNKNOWN
         before = [e for e in evs if e.ts <= start]
         if before:
             state = before[-1].new_state
@@ -79,6 +77,8 @@ def occupancy_by_hour(intervals: dict[str, list[tuple[datetime, datetime, SeatSt
     held = defaultdict(float)
     for ivs in intervals.values():
         for a, b, state in ivs:
+            if state == SeatState.UNKNOWN:
+                continue
             for hour, secs in _split_by_hour(a, b):
                 total[hour] += secs
                 if state == SeatState.OCCUPIED:
@@ -112,25 +112,6 @@ def held_minutes(intervals: dict[str, list[tuple[datetime, datetime, SeatState]]
     }
 
 
-def no_show_rate(booking_events: list[dict]) -> dict:
-    """Of the bookings that resolved (checked in or released), the share released as no-shows."""
-    reached: dict[str, set[str]] = defaultdict(set)
-    for e in booking_events:
-        reached[e["booking_id"]].add(e["new_status"])
-    showed = sum(1 for s in reached.values() if BookingStatus.CHECKED_IN.value in s)
-    no_shows = sum(
-        1 for s in reached.values()
-        if BookingStatus.NO_SHOW_RELEASED.value in s and BookingStatus.CHECKED_IN.value not in s
-    )
-    resolved = showed + no_shows
-    return {
-        "booked": len(reached),
-        "showed": showed,
-        "no_shows": no_shows,
-        "rate": round(no_shows / resolved, 3) if resolved else None,
-    }
-
-
 def venue_dashboard(repo, venue_id: str, seat_ids: list[str], now: datetime, hours: float = 24,
                     include_synthetic: bool = True, observed_since: datetime | None = None) -> Dashboard:
     """Dashboard numbers for the last `hours`, but never before `observed_since` (when data starts)."""
@@ -155,7 +136,6 @@ def venue_dashboard(repo, venue_id: str, seat_ids: list[str], now: datetime, hou
         peak_hours=peak_hours(by_hour),
         held_minutes_total=round(sum(held.values()), 1),
         held_minutes_by_seat=held,
-        no_show=no_show_rate(repo.booking_events(venue_id)),
         events_count=len(in_window),
         includes_synthetic=has_synthetic,
         notes=notes,

@@ -1,4 +1,4 @@
-"""Venue dashboard tab: occupancy by hour, no-show rate, minutes held by belongings, peak times."""
+"""Venue dashboard tab: occupancy by hour, minutes held by belongings and peak times."""
 
 from __future__ import annotations
 
@@ -30,14 +30,13 @@ def dashboard_outputs(svc: BirdieService, venue_id: str, window: str):
     seat_ids = [s.seat_id for s in svc.seats(venue_id)]
     d = venue_dashboard(svc.repo, venue_id, seat_ids, now, hours=hours, observed_since=svc.observed_since(venue_id))
     counts = svc.counts(venue_id)
-    total = max(1, sum(counts.values()))
-    occ_now = (counts[SeatState.OCCUPIED] + counts[SeatState.HELD]) / total
-    ns = d.no_show
-    ns_value = f"{ns['rate']:.0%}" if ns["rate"] is not None else "–"
+    total = sum(counts.values())
+    known = total - counts[SeatState.UNKNOWN]
+    occ_now = (counts[SeatState.OCCUPIED] + counts[SeatState.HELD]) / known if known else None
     peak = ", ".join(f"{p['hour']:02d}:00" for p in d.peak_hours) or "–"
     tiles = "<div style='display:flex;gap:10px;flex-wrap:wrap'>" + "".join([
-        _tile("Occupied now", f"{occ_now:.0%}", f"{counts[SeatState.FREE]} of {total} seats free"),
-        _tile("No-show rate", ns_value, f"{ns['no_shows']} no-shows · {ns['showed']} checked in"),
+        _tile("Observed occupancy", f"{occ_now:.0%}" if occ_now is not None else "–",
+              f"{counts[SeatState.FREE]} of {known} known seats free · {counts[SeatState.UNKNOWN]} unknown"),
         _tile("Held by belongings", f"{d.held_minutes_total:.0f} min", f"{window.lower()}, all seats"),
         _tile("Peak times", peak, f"since {d.start.strftime('%a %H:%M')}"),
     ]) + "</div>"
@@ -62,19 +61,13 @@ def dashboard_outputs(svc: BirdieService, venue_id: str, window: str):
             typical.append({"Hour": hour, "Occupied (%)": round(100 * ratio, 1), "Day": label})
     typical_df = pd.DataFrame(typical)
 
-    bookings = svc.repo.bookings(venue_id)[-8:]
-    bookings_df = pd.DataFrame(
-        [[b.booking_id, b.seat_id, b.start_time.strftime("%H:%M"), b.status.value, b.prepaid_item or ""]
-         for b in reversed(bookings)],
-        columns=["Booking", "Seat", "Arrival", "Status", "Prepaid"],
-    )
     alerts = svc.repo.alerts(venue_id, limit=8)
     alerts_df = pd.DataFrame(
         [[a["ts"].strftime("%H:%M:%S"), a["seat_id"], a["message"], "resolved" if a["resolved"] else "open"]
          for a in alerts],
         columns=["Time", "Seat", "Alert", "Status"],
     )
-    return header, tiles, occ, held_df, typical_df, bookings_df, alerts_df
+    return header, tiles, occ, held_df, typical_df, alerts_df
 
 
 def build_dashboard_tab(svc: BirdieService, demo: gr.Blocks) -> None:
@@ -95,11 +88,9 @@ def build_dashboard_tab(svc: BirdieService, demo: gr.Blocks) -> None:
         title="Typical day by day type (synthetic history + live buckets, baseline forecaster)",
         x_title="Hour of day", y_title="Seats occupied (%)",
     )
-    with gr.Row():
-        bookings_df = gr.Dataframe(label="Recent bookings", interactive=False)
-        alerts_df = gr.Dataframe(label="Staff alerts", interactive=False)
+    alerts_df = gr.Dataframe(label="Staff alerts", interactive=False)
 
-    outputs = [header, tiles, occ_plot, held_plot, typical_plot, bookings_df, alerts_df]
+    outputs = [header, tiles, occ_plot, held_plot, typical_plot, alerts_df]
 
     def update(venue_id, window_v):
         return dashboard_outputs(svc, venue_id, window_v)

@@ -152,8 +152,7 @@ def main() -> None:
                     "persistence": now_free,
                     "baseline": b_arr,
                     "blend": blend_availability(venue_id=vid, total=n, live_free=now_free, forecast_free_now=b_now,
-                                                forecast_free_arrival=b_arr, bookings_before=0,
-                                                arrival_minutes=h).expected_free,
+                                                forecast_free_arrival=b_arr, arrival_minutes=h).expected_free,
                 }
                 if i in chronos_preds:
                     preds["chronos"] = n * (1 - chronos_preds[i][k - 1])

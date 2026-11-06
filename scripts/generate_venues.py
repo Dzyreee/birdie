@@ -1,9 +1,9 @@
 """Generate venues/<venue_id>.json for the demo venues.
 
-Simulated venues get a plausible floor-plan layout: seats are small rectangles in
-normalised 0..1 coordinates, grouped by zone. The live venue (Nestwork) gets six
-placeholder seats that should be redrawn with the seat setup tool in the Camera tab;
-its file is only written if it does not exist yet (pass --force to overwrite).
+Simulated venues get example seat regions in normalised 0..1 coordinates, grouped by zone.
+The live venue (Nestwork) gets six placeholder seat regions; calibrate them in the venue
+configuration before relying on live availability. Its file is only written if it does not
+exist yet (pass --force to overwrite).
 
 Run: python scripts/generate_venues.py [--force]
 """
@@ -46,28 +46,11 @@ def grid(
             ]
             has_outlet = outlet_every > 0 and (n - start) % outlet_every == 0
             seats.append(
-                Seat(
-                    seat_id=f"{prefix}{n:02d}",
-                    venue_id=venue_id,
-                    zone=zone,
-                    has_outlet=has_outlet,
-                    bookable=False,
-                    polygon=poly,
-                )
+                Seat(seat_id=f"{prefix}{n:02d}", venue_id=venue_id, zone=zone,
+                     has_outlet=has_outlet, polygon=poly)
             )
             n += 1
     return seats
-
-
-def mark_bookable(seats: list[Seat], fraction: float, skip_zones: tuple[str, ...] = ()) -> list[Seat]:
-    """The venue chooses which seats are bookable: spread them evenly over eligible seats."""
-    eligible = [s for s in seats if s.zone not in skip_zones]
-    target = int(len(seats) * fraction)
-    if target <= 0 or not eligible:
-        return seats
-    step = len(eligible) / target
-    chosen = {eligible[int(i * step)].seat_id for i in range(target)}
-    return [s.model_copy(update={"bookable": s.seat_id in chosen}) for s in seats]
 
 
 def qnl() -> VenueConfig:
@@ -85,11 +68,10 @@ def qnl() -> VenueConfig:
         lat=25.3157,
         lon=51.4394,
         zones=["quiet", "open", "family"],
-        bookable_fraction=0.2,
         source=VenueSource.simulated,
         noise_db=40,
     )
-    return VenueConfig(venue=venue, seats=mark_bookable(seats, 0.2, skip_zones=("family",)))
+    return VenueConfig(venue=venue, seats=seats)
 
 
 def qu_library() -> VenueConfig:
@@ -107,11 +89,10 @@ def qu_library() -> VenueConfig:
         lat=25.3770,
         lon=51.4890,
         zones=["quiet", "women", "group"],
-        bookable_fraction=0.25,
         source=VenueSource.simulated,
         noise_db=38,
     )
-    return VenueConfig(venue=venue, seats=mark_bookable(seats, 0.25))
+    return VenueConfig(venue=venue, seats=seats)
 
 
 def qahwa_corner() -> VenueConfig:
@@ -129,11 +110,10 @@ def qahwa_corner() -> VenueConfig:
         lat=25.4196,
         lon=51.4927,
         zones=["indoor", "family", "terrace"],
-        bookable_fraction=0.2,
         source=VenueSource.simulated,
         noise_db=62,
     )
-    return VenueConfig(venue=venue, seats=mark_bookable(seats, 0.2))
+    return VenueConfig(venue=venue, seats=seats)
 
 
 def nestwork() -> VenueConfig:
@@ -159,11 +139,10 @@ def nestwork() -> VenueConfig:
         lat=25.2867,
         lon=51.5265,
         zones=["open"],
-        bookable_fraction=0.5,
         source=VenueSource.live,
         noise_db=52,
     )
-    return VenueConfig(venue=venue, seats=mark_bookable(seats, 0.5))
+    return VenueConfig(venue=venue, seats=seats)
 
 
 def _expand(poly: list[tuple[float, float]], factor: float) -> list[tuple[float, float]]:

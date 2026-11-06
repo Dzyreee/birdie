@@ -9,7 +9,7 @@ from birdie.decision import availability_at, blend_availability
 from birdie.forecast import calendar as cal
 from birdie.forecast.model import BaselineForecaster, ChronosForecaster, ForecastEngine, ForecasterUnavailable, load_chronos
 from birdie.forecast.synthetic import generate_history, profile
-from birdie.models import BookingStatus, SeatState, Venue, VenueSource, VenueType
+from birdie.models import SeatState, Venue, VenueSource, VenueType
 from birdie.service import BirdieService
 from birdie.storage import Repository
 from birdie.venues import load_all
@@ -90,31 +90,31 @@ def test_chronos_fails_gracefully(monkeypatch):
 
 def test_arrival_now_uses_live_count():
     a = blend_availability(venue_id="v", total=40, live_free=10, forecast_free_now=20, forecast_free_arrival=20,
-                           bookings_before=0, arrival_minutes=0)
+                           arrival_minutes=0)
     assert a.live_weight == 1.0 and a.expected_free == 10
     assert a.low <= 10 <= a.high
 
 
 def test_far_arrival_leans_on_forecast():
     a = blend_availability(venue_id="v", total=40, live_free=10, forecast_free_now=20, forecast_free_arrival=30,
-                           bookings_before=0, arrival_minutes=120)
+                           arrival_minutes=120)
     assert a.live_weight < 0.05
     assert abs(a.expected_free - 30) < 1.0
 
 
-def test_live_count_follows_forecast_trend_and_bookings_subtracted():
+def test_live_count_follows_forecast_trend():
     a = blend_availability(venue_id="v", total=40, live_free=10, forecast_free_now=20, forecast_free_arrival=14,
-                           bookings_before=2, arrival_minutes=20)
-    # live projected = 10 + (14 - 20) = 4; w = 0.5 -> 0.5 * 4 + 0.5 * 14 - 2 = 7
-    assert a.expected_free == pytest.approx(7.0)
+                           arrival_minutes=20)
+    # live projected = 10 + (14 - 20) = 4; w = 0.5 -> 0.5 * 4 + 0.5 * 14 = 9
+    assert a.expected_free == pytest.approx(9.0)
     narrow = blend_availability(venue_id="v", total=40, live_free=10, forecast_free_now=20, forecast_free_arrival=14,
-                                bookings_before=0, arrival_minutes=0)
+                                arrival_minutes=0)
     assert (a.high - a.low) > (narrow.high - narrow.low)  # range widens with arrival time
 
 
 def test_availability_is_clamped():
     a = blend_availability(venue_id="v", total=5, live_free=0, forecast_free_now=0, forecast_free_arrival=0,
-                           bookings_before=3, arrival_minutes=10)
+                           arrival_minutes=10)
     assert a.expected_free == 0 and a.low == 0
 
 
@@ -125,18 +125,19 @@ def svc():
     clock = FakeClock(datetime(2026, 11, 8, 16, 0, tzinfo=DOHA_TZ))  # Sunday afternoon
     s = BirdieService(repo=Repository(":memory:"), clock=clock, venues=load_all(), timers=DEMO_TIMERS,
                       detector=lambda *a, **k: [], persist_venues=False)
+    live = s.trackers["nestwork-msheireb"]
+    live.stale_seconds = None
+    for machine in live.machines.values():
+        machine.stale = None
+    live.force({seat.seat_id: SeatState.FREE for seat in live.seats.values()})
     return s
 
 
-def test_availability_at_subtracts_bookings_before_arrival(svc):
+def test_availability_at_uses_live_and_forecast_data(svc):
     vid = "nestwork-msheireb"
-    base = svc.availability_at(vid, 10)
-    assert base.live_free == 6 and base.bookings_before == 0
-    svc.bookings.book(vid, "S01", arrival_minutes=5)
-    svc.bookings.book(vid, "S03", arrival_minutes=30)
-    after = availability_at(svc, vid, 10)
-    assert after.bookings_before == 1  # only the booking that starts before arrival
-    assert after.expected_free == pytest.approx(max(0, base.expected_free - 1), abs=0.01)
+    result = svc.availability_at(vid, 10)
+    assert result.live_free == 6
+    assert 0 <= result.expected_free <= result.total
 
 
 def test_simulator_drives_seats_through_the_tracker(svc):
@@ -151,21 +152,6 @@ def test_simulator_drives_seats_through_the_tracker(svc):
         svc.tick()
     assert svc.repo.seat_events("qnl", include_synthetic=False), "live simulated events go through the same path"
     assert not svc.repo.seat_events("nestwork-msheireb"), "the live venue is never simulated"
-
-
-def test_simulated_booking_checks_in_after_qr_scan(svc):
-    svc.setup_simulation(backfill_hours=0)
-    seat = svc.bookings.available_seats("qnl")[0]
-    b = svc.bookings.book("qnl", seat.seat_id)
-    for _ in range(5):
-        svc.clock.advance(2)
-        svc.tick()
-    assert svc.state_of("qnl", seat.seat_id) == SeatState.FREE  # reserved seats stay free for the booker
-    svc.bookings.scan_qr(b.booking_id)
-    for _ in range(DEMO_TIMERS.smoothing_frames + 1):
-        svc.clock.advance(2)
-        svc.tick()
-    assert svc.bookings.get(b.booking_id).status == BookingStatus.CHECKED_IN
 
 
 def test_forecast_engine_uses_live_buckets(svc):
