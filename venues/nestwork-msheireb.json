@@ -1,0 +1,168 @@
+{
+  "venue": {
+    "venue_id": "nestwork-msheireb",
+    "name": "Nestwork Msheireb",
+    "area": "Msheireb, Doha",
+    "type": "cowork",
+    "lat": 25.2867,
+    "lon": 51.5265,
+    "zones": [
+      "open"
+    ],
+    "bookable_fraction": 0.5,
+    "source": "live",
+    "noise_db": 52.0
+  },
+  "seats": [
+    {
+      "seat_id": "S01",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.036,
+          0.317
+        ],
+        [
+          0.324,
+          0.317
+        ],
+        [
+          0.324,
+          0.623
+        ],
+        [
+          0.036,
+          0.623
+        ]
+      ]
+    },
+    {
+      "seat_id": "S02",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.356,
+          0.317
+        ],
+        [
+          0.644,
+          0.317
+        ],
+        [
+          0.644,
+          0.623
+        ],
+        [
+          0.356,
+          0.623
+        ]
+      ]
+    },
+    {
+      "seat_id": "S03",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.676,
+          0.317
+        ],
+        [
+          0.964,
+          0.317
+        ],
+        [
+          0.964,
+          0.623
+        ],
+        [
+          0.676,
+          0.623
+        ]
+      ]
+    },
+    {
+      "seat_id": "S04",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.036,
+          0.657
+        ],
+        [
+          0.324,
+          0.657
+        ],
+        [
+          0.324,
+          0.963
+        ],
+        [
+          0.036,
+          0.963
+        ]
+      ]
+    },
+    {
+      "seat_id": "S05",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.356,
+          0.657
+        ],
+        [
+          0.644,
+          0.657
+        ],
+        [
+          0.644,
+          0.963
+        ],
+        [
+          0.356,
+          0.963
+        ]
+      ]
+    },
+    {
+      "seat_id": "S06",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.676,
+          0.657
+        ],
+        [
+          0.964,
+          0.657
+        ],
+        [
+          0.964,
+          0.963
+        ],
+        [
+          0.676,
+          0.963
+        ]
+      ]
+    }
+  ]
+}

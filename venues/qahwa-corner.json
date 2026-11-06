@@ -1,0 +1,720 @@
+{
+  "venue": {
+    "venue_id": "qahwa-corner",
+    "name": "Qahwa Corner (demo cafe)",
+    "area": "Lusail",
+    "type": "cafe",
+    "lat": 25.4196,
+    "lon": 51.4927,
+    "zones": [
+      "indoor",
+      "family",
+      "terrace"
+    ],
+    "bookable_fraction": 0.2,
+    "source": "simulated",
+    "noise_db": 62.0
+  },
+  "seats": [
+    {
+      "seat_id": "I01",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.049,
+          0.09
+        ],
+        [
+          0.106,
+          0.09
+        ],
+        [
+          0.106,
+          0.21
+        ],
+        [
+          0.049,
+          0.21
+        ]
+      ]
+    },
+    {
+      "seat_id": "I02",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.144,
+          0.09
+        ],
+        [
+          0.201,
+          0.09
+        ],
+        [
+          0.201,
+          0.21
+        ],
+        [
+          0.144,
+          0.21
+        ]
+      ]
+    },
+    {
+      "seat_id": "I03",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.239,
+          0.09
+        ],
+        [
+          0.296,
+          0.09
+        ],
+        [
+          0.296,
+          0.21
+        ],
+        [
+          0.239,
+          0.21
+        ]
+      ]
+    },
+    {
+      "seat_id": "I04",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.334,
+          0.09
+        ],
+        [
+          0.391,
+          0.09
+        ],
+        [
+          0.391,
+          0.21
+        ],
+        [
+          0.334,
+          0.21
+        ]
+      ]
+    },
+    {
+      "seat_id": "I05",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.429,
+          0.09
+        ],
+        [
+          0.486,
+          0.09
+        ],
+        [
+          0.486,
+          0.21
+        ],
+        [
+          0.429,
+          0.21
+        ]
+      ]
+    },
+    {
+      "seat_id": "I06",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": false,
+      "bookable": true,
+      "polygon": [
+        [
+          0.524,
+          0.09
+        ],
+        [
+          0.581,
+          0.09
+        ],
+        [
+          0.581,
+          0.21
+        ],
+        [
+          0.524,
+          0.21
+        ]
+      ]
+    },
+    {
+      "seat_id": "I07",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.049,
+          0.29
+        ],
+        [
+          0.106,
+          0.29
+        ],
+        [
+          0.106,
+          0.41
+        ],
+        [
+          0.049,
+          0.41
+        ]
+      ]
+    },
+    {
+      "seat_id": "I08",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.144,
+          0.29
+        ],
+        [
+          0.201,
+          0.29
+        ],
+        [
+          0.201,
+          0.41
+        ],
+        [
+          0.144,
+          0.41
+        ]
+      ]
+    },
+    {
+      "seat_id": "I09",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.239,
+          0.29
+        ],
+        [
+          0.296,
+          0.29
+        ],
+        [
+          0.296,
+          0.41
+        ],
+        [
+          0.239,
+          0.41
+        ]
+      ]
+    },
+    {
+      "seat_id": "I10",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.334,
+          0.29
+        ],
+        [
+          0.391,
+          0.29
+        ],
+        [
+          0.391,
+          0.41
+        ],
+        [
+          0.334,
+          0.41
+        ]
+      ]
+    },
+    {
+      "seat_id": "I11",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.429,
+          0.29
+        ],
+        [
+          0.486,
+          0.29
+        ],
+        [
+          0.486,
+          0.41
+        ],
+        [
+          0.429,
+          0.41
+        ]
+      ]
+    },
+    {
+      "seat_id": "I12",
+      "venue_id": "qahwa-corner",
+      "zone": "indoor",
+      "has_outlet": false,
+      "bookable": true,
+      "polygon": [
+        [
+          0.524,
+          0.29
+        ],
+        [
+          0.581,
+          0.29
+        ],
+        [
+          0.581,
+          0.41
+        ],
+        [
+          0.524,
+          0.41
+        ]
+      ]
+    },
+    {
+      "seat_id": "F01",
+      "venue_id": "qahwa-corner",
+      "zone": "family",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.0585,
+          0.59
+        ],
+        [
+          0.144,
+          0.59
+        ],
+        [
+          0.144,
+          0.71
+        ],
+        [
+          0.0585,
+          0.71
+        ]
+      ]
+    },
+    {
+      "seat_id": "F02",
+      "venue_id": "qahwa-corner",
+      "zone": "family",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.201,
+          0.59
+        ],
+        [
+          0.2865,
+          0.59
+        ],
+        [
+          0.2865,
+          0.71
+        ],
+        [
+          0.201,
+          0.71
+        ]
+      ]
+    },
+    {
+      "seat_id": "F03",
+      "venue_id": "qahwa-corner",
+      "zone": "family",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.3435,
+          0.59
+        ],
+        [
+          0.429,
+          0.59
+        ],
+        [
+          0.429,
+          0.71
+        ],
+        [
+          0.3435,
+          0.71
+        ]
+      ]
+    },
+    {
+      "seat_id": "F04",
+      "venue_id": "qahwa-corner",
+      "zone": "family",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.486,
+          0.59
+        ],
+        [
+          0.5715,
+          0.59
+        ],
+        [
+          0.5715,
+          0.71
+        ],
+        [
+          0.486,
+          0.71
+        ]
+      ]
+    },
+    {
+      "seat_id": "F05",
+      "venue_id": "qahwa-corner",
+      "zone": "family",
+      "has_outlet": false,
+      "bookable": true,
+      "polygon": [
+        [
+          0.0585,
+          0.79
+        ],
+        [
+          0.144,
+          0.79
+        ],
+        [
+          0.144,
+          0.91
+        ],
+        [
+          0.0585,
+          0.91
+        ]
+      ]
+    },
+    {
+      "seat_id": "F06",
+      "venue_id": "qahwa-corner",
+      "zone": "family",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.201,
+          0.79
+        ],
+        [
+          0.2865,
+          0.79
+        ],
+        [
+          0.2865,
+          0.91
+        ],
+        [
+          0.201,
+          0.91
+        ]
+      ]
+    },
+    {
+      "seat_id": "F07",
+      "venue_id": "qahwa-corner",
+      "zone": "family",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.3435,
+          0.79
+        ],
+        [
+          0.429,
+          0.79
+        ],
+        [
+          0.429,
+          0.91
+        ],
+        [
+          0.3435,
+          0.91
+        ]
+      ]
+    },
+    {
+      "seat_id": "F08",
+      "venue_id": "qahwa-corner",
+      "zone": "family",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.486,
+          0.79
+        ],
+        [
+          0.5715,
+          0.79
+        ],
+        [
+          0.5715,
+          0.91
+        ],
+        [
+          0.486,
+          0.91
+        ]
+      ]
+    },
+    {
+      "seat_id": "T01",
+      "venue_id": "qahwa-corner",
+      "zone": "terrace",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.691,
+          0.095
+        ],
+        [
+          0.784,
+          0.095
+        ],
+        [
+          0.784,
+          0.23
+        ],
+        [
+          0.691,
+          0.23
+        ]
+      ]
+    },
+    {
+      "seat_id": "T02",
+      "venue_id": "qahwa-corner",
+      "zone": "terrace",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.846,
+          0.095
+        ],
+        [
+          0.939,
+          0.095
+        ],
+        [
+          0.939,
+          0.23
+        ],
+        [
+          0.846,
+          0.23
+        ]
+      ]
+    },
+    {
+      "seat_id": "T03",
+      "venue_id": "qahwa-corner",
+      "zone": "terrace",
+      "has_outlet": false,
+      "bookable": true,
+      "polygon": [
+        [
+          0.691,
+          0.32
+        ],
+        [
+          0.784,
+          0.32
+        ],
+        [
+          0.784,
+          0.455
+        ],
+        [
+          0.691,
+          0.455
+        ]
+      ]
+    },
+    {
+      "seat_id": "T04",
+      "venue_id": "qahwa-corner",
+      "zone": "terrace",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.846,
+          0.32
+        ],
+        [
+          0.939,
+          0.32
+        ],
+        [
+          0.939,
+          0.455
+        ],
+        [
+          0.846,
+          0.455
+        ]
+      ]
+    },
+    {
+      "seat_id": "T05",
+      "venue_id": "qahwa-corner",
+      "zone": "terrace",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.691,
+          0.545
+        ],
+        [
+          0.784,
+          0.545
+        ],
+        [
+          0.784,
+          0.68
+        ],
+        [
+          0.691,
+          0.68
+        ]
+      ]
+    },
+    {
+      "seat_id": "T06",
+      "venue_id": "qahwa-corner",
+      "zone": "terrace",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.846,
+          0.545
+        ],
+        [
+          0.939,
+          0.545
+        ],
+        [
+          0.939,
+          0.68
+        ],
+        [
+          0.846,
+          0.68
+        ]
+      ]
+    },
+    {
+      "seat_id": "T07",
+      "venue_id": "qahwa-corner",
+      "zone": "terrace",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.691,
+          0.77
+        ],
+        [
+          0.784,
+          0.77
+        ],
+        [
+          0.784,
+          0.905
+        ],
+        [
+          0.691,
+          0.905
+        ]
+      ]
+    },
+    {
+      "seat_id": "T08",
+      "venue_id": "qahwa-corner",
+      "zone": "terrace",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.846,
+          0.77
+        ],
+        [
+          0.939,
+          0.77
+        ],
+        [
+          0.939,
+          0.905
+        ],
+        [
+          0.846,
+          0.905
+        ]
+      ]
+    }
+  ]
+}

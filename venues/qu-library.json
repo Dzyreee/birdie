@@ -1,0 +1,1220 @@
+{
+  "venue": {
+    "venue_id": "qu-library",
+    "name": "Qatar University Library",
+    "area": "Qatar University, Al Tarfa",
+    "type": "library",
+    "lat": 25.377,
+    "lon": 51.489,
+    "zones": [
+      "quiet",
+      "women",
+      "group"
+    ],
+    "bookable_fraction": 0.25,
+    "source": "simulated",
+    "noise_db": 38.0
+  },
+  "seats": [
+    {
+      "seat_id": "Q01",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.0485,
+          0.095
+        ],
+        [
+          0.104,
+          0.095
+        ],
+        [
+          0.104,
+          0.23
+        ],
+        [
+          0.0485,
+          0.23
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q02",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.141,
+          0.095
+        ],
+        [
+          0.1965,
+          0.095
+        ],
+        [
+          0.1965,
+          0.23
+        ],
+        [
+          0.141,
+          0.23
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q03",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.2335,
+          0.095
+        ],
+        [
+          0.289,
+          0.095
+        ],
+        [
+          0.289,
+          0.23
+        ],
+        [
+          0.2335,
+          0.23
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q04",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.326,
+          0.095
+        ],
+        [
+          0.3815,
+          0.095
+        ],
+        [
+          0.3815,
+          0.23
+        ],
+        [
+          0.326,
+          0.23
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q05",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.0485,
+          0.32
+        ],
+        [
+          0.104,
+          0.32
+        ],
+        [
+          0.104,
+          0.455
+        ],
+        [
+          0.0485,
+          0.455
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q06",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.141,
+          0.32
+        ],
+        [
+          0.1965,
+          0.32
+        ],
+        [
+          0.1965,
+          0.455
+        ],
+        [
+          0.141,
+          0.455
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q07",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.2335,
+          0.32
+        ],
+        [
+          0.289,
+          0.32
+        ],
+        [
+          0.289,
+          0.455
+        ],
+        [
+          0.2335,
+          0.455
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q08",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.326,
+          0.32
+        ],
+        [
+          0.3815,
+          0.32
+        ],
+        [
+          0.3815,
+          0.455
+        ],
+        [
+          0.326,
+          0.455
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q09",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.0485,
+          0.545
+        ],
+        [
+          0.104,
+          0.545
+        ],
+        [
+          0.104,
+          0.68
+        ],
+        [
+          0.0485,
+          0.68
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q10",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.141,
+          0.545
+        ],
+        [
+          0.1965,
+          0.545
+        ],
+        [
+          0.1965,
+          0.68
+        ],
+        [
+          0.141,
+          0.68
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q11",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.2335,
+          0.545
+        ],
+        [
+          0.289,
+          0.545
+        ],
+        [
+          0.289,
+          0.68
+        ],
+        [
+          0.2335,
+          0.68
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q12",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.326,
+          0.545
+        ],
+        [
+          0.3815,
+          0.545
+        ],
+        [
+          0.3815,
+          0.68
+        ],
+        [
+          0.326,
+          0.68
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q13",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.0485,
+          0.77
+        ],
+        [
+          0.104,
+          0.77
+        ],
+        [
+          0.104,
+          0.905
+        ],
+        [
+          0.0485,
+          0.905
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q14",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.141,
+          0.77
+        ],
+        [
+          0.1965,
+          0.77
+        ],
+        [
+          0.1965,
+          0.905
+        ],
+        [
+          0.141,
+          0.905
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q15",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.2335,
+          0.77
+        ],
+        [
+          0.289,
+          0.77
+        ],
+        [
+          0.289,
+          0.905
+        ],
+        [
+          0.2335,
+          0.905
+        ]
+      ]
+    },
+    {
+      "seat_id": "Q16",
+      "venue_id": "qu-library",
+      "zone": "quiet",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.326,
+          0.77
+        ],
+        [
+          0.3815,
+          0.77
+        ],
+        [
+          0.3815,
+          0.905
+        ],
+        [
+          0.326,
+          0.905
+        ]
+      ]
+    },
+    {
+      "seat_id": "W01",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.4612,
+          0.0725
+        ],
+        [
+          0.5248,
+          0.0725
+        ],
+        [
+          0.5248,
+          0.14
+        ],
+        [
+          0.4612,
+          0.14
+        ]
+      ]
+    },
+    {
+      "seat_id": "W02",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.5672,
+          0.0725
+        ],
+        [
+          0.6308,
+          0.0725
+        ],
+        [
+          0.6308,
+          0.14
+        ],
+        [
+          0.5672,
+          0.14
+        ]
+      ]
+    },
+    {
+      "seat_id": "W03",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.6732,
+          0.0725
+        ],
+        [
+          0.7368,
+          0.0725
+        ],
+        [
+          0.7368,
+          0.14
+        ],
+        [
+          0.6732,
+          0.14
+        ]
+      ]
+    },
+    {
+      "seat_id": "W04",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.7792,
+          0.0725
+        ],
+        [
+          0.8428,
+          0.0725
+        ],
+        [
+          0.8428,
+          0.14
+        ],
+        [
+          0.7792,
+          0.14
+        ]
+      ]
+    },
+    {
+      "seat_id": "W05",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.8852,
+          0.0725
+        ],
+        [
+          0.9488,
+          0.0725
+        ],
+        [
+          0.9488,
+          0.14
+        ],
+        [
+          0.8852,
+          0.14
+        ]
+      ]
+    },
+    {
+      "seat_id": "W06",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.4612,
+          0.185
+        ],
+        [
+          0.5248,
+          0.185
+        ],
+        [
+          0.5248,
+          0.2525
+        ],
+        [
+          0.4612,
+          0.2525
+        ]
+      ]
+    },
+    {
+      "seat_id": "W07",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.5672,
+          0.185
+        ],
+        [
+          0.6308,
+          0.185
+        ],
+        [
+          0.6308,
+          0.2525
+        ],
+        [
+          0.5672,
+          0.2525
+        ]
+      ]
+    },
+    {
+      "seat_id": "W08",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.6732,
+          0.185
+        ],
+        [
+          0.7368,
+          0.185
+        ],
+        [
+          0.7368,
+          0.2525
+        ],
+        [
+          0.6732,
+          0.2525
+        ]
+      ]
+    },
+    {
+      "seat_id": "W09",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.7792,
+          0.185
+        ],
+        [
+          0.8428,
+          0.185
+        ],
+        [
+          0.8428,
+          0.2525
+        ],
+        [
+          0.7792,
+          0.2525
+        ]
+      ]
+    },
+    {
+      "seat_id": "W10",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.8852,
+          0.185
+        ],
+        [
+          0.9488,
+          0.185
+        ],
+        [
+          0.9488,
+          0.2525
+        ],
+        [
+          0.8852,
+          0.2525
+        ]
+      ]
+    },
+    {
+      "seat_id": "W11",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.4612,
+          0.2975
+        ],
+        [
+          0.5248,
+          0.2975
+        ],
+        [
+          0.5248,
+          0.365
+        ],
+        [
+          0.4612,
+          0.365
+        ]
+      ]
+    },
+    {
+      "seat_id": "W12",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.5672,
+          0.2975
+        ],
+        [
+          0.6308,
+          0.2975
+        ],
+        [
+          0.6308,
+          0.365
+        ],
+        [
+          0.5672,
+          0.365
+        ]
+      ]
+    },
+    {
+      "seat_id": "W13",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.6732,
+          0.2975
+        ],
+        [
+          0.7368,
+          0.2975
+        ],
+        [
+          0.7368,
+          0.365
+        ],
+        [
+          0.6732,
+          0.365
+        ]
+      ]
+    },
+    {
+      "seat_id": "W14",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.7792,
+          0.2975
+        ],
+        [
+          0.8428,
+          0.2975
+        ],
+        [
+          0.8428,
+          0.365
+        ],
+        [
+          0.7792,
+          0.365
+        ]
+      ]
+    },
+    {
+      "seat_id": "W15",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.8852,
+          0.2975
+        ],
+        [
+          0.9488,
+          0.2975
+        ],
+        [
+          0.9488,
+          0.365
+        ],
+        [
+          0.8852,
+          0.365
+        ]
+      ]
+    },
+    {
+      "seat_id": "W16",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.4612,
+          0.41
+        ],
+        [
+          0.5248,
+          0.41
+        ],
+        [
+          0.5248,
+          0.4775
+        ],
+        [
+          0.4612,
+          0.4775
+        ]
+      ]
+    },
+    {
+      "seat_id": "W17",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.5672,
+          0.41
+        ],
+        [
+          0.6308,
+          0.41
+        ],
+        [
+          0.6308,
+          0.4775
+        ],
+        [
+          0.5672,
+          0.4775
+        ]
+      ]
+    },
+    {
+      "seat_id": "W18",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.6732,
+          0.41
+        ],
+        [
+          0.7368,
+          0.41
+        ],
+        [
+          0.7368,
+          0.4775
+        ],
+        [
+          0.6732,
+          0.4775
+        ]
+      ]
+    },
+    {
+      "seat_id": "W19",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.7792,
+          0.41
+        ],
+        [
+          0.8428,
+          0.41
+        ],
+        [
+          0.8428,
+          0.4775
+        ],
+        [
+          0.7792,
+          0.4775
+        ]
+      ]
+    },
+    {
+      "seat_id": "W20",
+      "venue_id": "qu-library",
+      "zone": "women",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.8852,
+          0.41
+        ],
+        [
+          0.9488,
+          0.41
+        ],
+        [
+          0.9488,
+          0.4775
+        ],
+        [
+          0.8852,
+          0.4775
+        ]
+      ]
+    },
+    {
+      "seat_id": "G01",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": true,
+      "bookable": true,
+      "polygon": [
+        [
+          0.4577,
+          0.599
+        ],
+        [
+          0.5107,
+          0.599
+        ],
+        [
+          0.5107,
+          0.716
+        ],
+        [
+          0.4577,
+          0.716
+        ]
+      ]
+    },
+    {
+      "seat_id": "G02",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.546,
+          0.599
+        ],
+        [
+          0.599,
+          0.599
+        ],
+        [
+          0.599,
+          0.716
+        ],
+        [
+          0.546,
+          0.716
+        ]
+      ]
+    },
+    {
+      "seat_id": "G03",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.6343,
+          0.599
+        ],
+        [
+          0.6873,
+          0.599
+        ],
+        [
+          0.6873,
+          0.716
+        ],
+        [
+          0.6343,
+          0.716
+        ]
+      ]
+    },
+    {
+      "seat_id": "G04",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.7227,
+          0.599
+        ],
+        [
+          0.7757,
+          0.599
+        ],
+        [
+          0.7757,
+          0.716
+        ],
+        [
+          0.7227,
+          0.716
+        ]
+      ]
+    },
+    {
+      "seat_id": "G05",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": false,
+      "bookable": true,
+      "polygon": [
+        [
+          0.811,
+          0.599
+        ],
+        [
+          0.864,
+          0.599
+        ],
+        [
+          0.864,
+          0.716
+        ],
+        [
+          0.811,
+          0.716
+        ]
+      ]
+    },
+    {
+      "seat_id": "G06",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.8993,
+          0.599
+        ],
+        [
+          0.9523,
+          0.599
+        ],
+        [
+          0.9523,
+          0.716
+        ],
+        [
+          0.8993,
+          0.716
+        ]
+      ]
+    },
+    {
+      "seat_id": "G07",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.4577,
+          0.794
+        ],
+        [
+          0.5107,
+          0.794
+        ],
+        [
+          0.5107,
+          0.911
+        ],
+        [
+          0.4577,
+          0.911
+        ]
+      ]
+    },
+    {
+      "seat_id": "G08",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.546,
+          0.794
+        ],
+        [
+          0.599,
+          0.794
+        ],
+        [
+          0.599,
+          0.911
+        ],
+        [
+          0.546,
+          0.911
+        ]
+      ]
+    },
+    {
+      "seat_id": "G09",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": false,
+      "bookable": true,
+      "polygon": [
+        [
+          0.6343,
+          0.794
+        ],
+        [
+          0.6873,
+          0.794
+        ],
+        [
+          0.6873,
+          0.911
+        ],
+        [
+          0.6343,
+          0.911
+        ]
+      ]
+    },
+    {
+      "seat_id": "G10",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": true,
+      "bookable": false,
+      "polygon": [
+        [
+          0.7227,
+          0.794
+        ],
+        [
+          0.7757,
+          0.794
+        ],
+        [
+          0.7757,
+          0.911
+        ],
+        [
+          0.7227,
+          0.911
+        ]
+      ]
+    },
+    {
+      "seat_id": "G11",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.811,
+          0.794
+        ],
+        [
+          0.864,
+          0.794
+        ],
+        [
+          0.864,
+          0.911
+        ],
+        [
+          0.811,
+          0.911
+        ]
+      ]
+    },
+    {
+      "seat_id": "G12",
+      "venue_id": "qu-library",
+      "zone": "group",
+      "has_outlet": false,
+      "bookable": false,
+      "polygon": [
+        [
+          0.8993,
+          0.794
+        ],
+        [
+          0.9523,
+          0.794
+        ],
+        [
+          0.9523,
+          0.911
+        ],
+        [
+          0.8993,
+          0.911
+        ]
+      ]
+    }
+  ]
+}

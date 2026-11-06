@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Secrets
+.env
+.env.*
+*.token
+
+# Local data (SQLite, caches)
+data/
+*.db
+*.sqlite
+
+# Media: never commit videos or frames
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+frames/
+videos/
+clips/
+
+# Model weights
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.ckpt
+checkpoints/
+
+# Job outputs
+jobs/results/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+.gradio/
