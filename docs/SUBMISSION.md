@@ -12,7 +12,7 @@ venue footage.
 | Team members | Daffa, Yacine, Omair, Khalid (confirm spelling/registration) |
 | Project | Birdie |
 | One-line description | Birdie shows study-space availability in Doha before you make the drive. |
-| Hugging Face Space | [Affaad/birdiee](https://huggingface.co/spaces/Affaad/birdiee) |
+| Hugging Face Space | [Affaad/birdie](https://huggingface.co/spaces/Affaad/birdie) |
 | Detector | [`PekingU/rtdetr_r18vd`](https://huggingface.co/PekingU/rtdetr_r18vd), used as a pretrained detector; no fine-tuning is claimed. |
 | Dataset | No project dataset is published yet. |
 | Demo video | `[add link if/when recorded]` |

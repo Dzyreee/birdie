@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy Birdie to an existing Hugging Face Docker Space with `hf upload` (not git push).
 #
-# Usage: scripts/deploy_space.sh Affaad/birdiee
+# Usage: scripts/deploy_space.sh Affaad/birdie
 # Tracked edits and the explicitly listed integration files are included; media stays excluded.
 set -euo pipefail
 

@@ -36,20 +36,17 @@ Qatar University Library and Qahwa Corner remain **simulated** venues with **syn
 
 ## Privacy
 
-The hosted customer app reads seat states; it does not receive the private source clip. The hosted Space disables
-operator uploads while its private recorded demo is mounted. For testing another upload, run the operator locally
-as described below: its temporary upload is processed without blurring, then deleted after playback. The app itself
-does not store source frames. Venue polygons, seat states, alerts, and aggregate counts are persisted. Hugging Face
-logging and retention are not verified. No face recognition or identity matching is used.
+The customer app reads seat states from the API and does not receive the source clip. The operator console at
+`/operator/` accepts video uploads and processes the original frames without blurring, as requested. The upload is
+removed after analysis; Hugging Face logging and retention are not verified. The app stores venue polygons, seat
+states, alerts, and aggregate counts, not source frames in its database. No face recognition or identity matching is
+used.
 
 ## Test the video-to-availability path
 
-1. Open the hosted Space customer app at `/`. It automatically replays the private clip and labels the venue
-   **Recorded**; the browser receives API statuses, not video.
-2. To show computer-vision boxes, run the local operator below, open `http://localhost:7862/operator/`, select
-   **Camera**, upload `WhatsApp Video 2026-11-06 at 21.13.46.mp4`, and click **Test video → seat availability**.
-   The preview shows person/chair/item detections and updates local table/seat statuses. This local instance is
-   separate from the hosted Space.
+1. Open the hosted Space customer app at `/` to see verified usable-space counts and per-seat availability.
+2. Open `/operator/`, select **Camera**, upload a recorded clip, and click **Test video → seat availability**. The
+   preview shows object detections, and the same service updates seat/table availability returned by the API.
 
 The supplied clips are only a few seconds long and show people at several seats. Repeating them tests the pipeline and
 timer mechanics, but cannot establish detection accuracy or prove the real 30-minute rule. Seat polygons must be
@@ -136,7 +133,7 @@ tests/
 ## Deploy
 
 ```bash
-scripts/deploy_space.sh Affaad/birdiee               # deploys this repo to the Docker Space
+scripts/deploy_space.sh Affaad/birdie                # deploys this repo to the Docker Space
 ```
 
 The deploy script includes tracked working-tree edits and explicitly listed integration files, but not videos, model

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Smoke test for the live Birdie Space. GET requests only, standard library only.
 
-    python scripts/smoke_test.py                                  # https://affaad-birdiee.hf.space
-    python scripts/smoke_test.py https://affaad-birdiee.hf.space --slow 3.0
+    python scripts/smoke_test.py                                  # https://affaad-birdie.hf.space
+    python scripts/smoke_test.py https://affaad-birdie.hf.space --slow 3.0
 
 Checks (CLAUDE.md section 7.2): the mobile app loads, /api/venues lists the 7 venues in the contract shape,
 every /api/venues/{id} has a floor plan and seats with valid statuses, the operator console loads.
@@ -19,7 +19,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 
-DEFAULT_URL = "https://affaad-birdiee.hf.space"
+DEFAULT_URL = "https://affaad-birdie.hf.space"
 EXPECTED_VENUES = {"nestwork-msheireb", "qnl", "qu-library", "qahwa-corner", "corniche-cup", "nakheel-study",
                    "waab-study-hall"}
 VENUE_KEYS = {"venue_id", "name", "area", "type", "lat", "lon", "source", "drive_minutes", "open_until", "open_late",

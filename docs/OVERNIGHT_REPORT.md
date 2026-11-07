@@ -3,7 +3,7 @@
 This report describes an earlier `overnight` branch snapshot, before the current mobile/video/table integration. Its
 Space checks, counts, claims, cost figures, file paths, and deployment commands are historical and have **not** been
 revalidated for the current branch. Do not use the old deployment commands below; verify the target Space and current
-branch first. The current customer Space discussed by the team is `Affaad/birdiee`.
+branch first. The intended customer Space is `Affaad/birdie`.
 
 Branch: `overnight` (from `origin/main` at `0a4a320`, "Add place photos…"). Nothing was merged to `main`, nothing was
 deployed, the Space and its settings were not touched (reads only: plain GETs and `hf spaces info`). No token was
@@ -68,7 +68,7 @@ us to say "no images ever leave the venue".
 
 1. **The Space has no sleep time** (`hf spaces info`: `sleep_time` None). It bills $0.03/h around the clock (about
    $0.72/day). Earlier I said it sleeps after 15 minutes: that was wrong for the Docker Space. That is good for the demo
-   (no cold start) but it costs money until someone pauses it. `Affaad/birdiee` (Daffa's test Space) should be checked the same way.
+   (no cold start) but it costs money until someone pauses it. The current intended Space is `Affaad/birdie`.
 2. **The live Space is behind `main`.** It runs the code from `995f287`. Omair's later commit `0a4a320` (place photos,
    no Live/Simulated tags, logo on splash) is on `main` but **not deployed**.
 3. **The app's About text says "Nestwork Msheireb is live from a camera in the room"** (`web/app.js`, line 427).
