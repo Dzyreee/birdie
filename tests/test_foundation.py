@@ -61,7 +61,7 @@ def test_demo_venues_load():
         assert cfg.seats and cfg.recording_sha256 and len(cfg.recording_sha256) == 64
         assert all(s.zone in cfg.venue.zones for s in cfg.seats)
         assert len({s.seat_id for s in cfg.seats}) == len(cfg.seats)
-    assert len(venues["nestwork-msheireb"].seats) == 7
+    assert len(venues["nestwork-msheireb"].seats) == 10  # 7 chairs and 3 sofa seats
     assert venues["nestwork-msheireb"].recording_sha256 != venues["corniche-cup"].recording_sha256
 
 
@@ -71,7 +71,8 @@ def test_corniche_cup_is_a_recorded_venue_in_the_same_format_as_nestwork():
     assert cup.recording_sha256 and len(cup.recording_sha256) == 64  # the clip is pinned, like Nestwork's
     assert cup.stabilize_camera and cup.belongings_threshold == 0.15  # tuned for its hand-held clip
     assert nest.stabilize_camera and nest.belongings_threshold == 0.3  # its clip is hand-held too
-    assert len(cup.seats) == 8 and all(len(s.seat_polygon) >= 3 and s.table_id for s in cup.seats)
+    assert sum(seat.no_chair for seat in nest.seats) == 3  # the sofa can be sat on without a detected chair
+    assert len(cup.seats) == 11 and all(len(s.seat_polygon) >= 3 and s.table_id for s in cup.seats)
     plan_tables = {t["table_id"] for t in cup.venue.floor_plan["tables"]}
     assert {s.table_id for s in cup.seats} == plan_tables == {t.table_id for t in cup.tables}
     assert all(s.plan_x is not None and s.plan_y is not None for s in cup.seats)

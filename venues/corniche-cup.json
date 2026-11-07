@@ -21,42 +21,51 @@
     "floor_plan": {
       "width": 362,
       "height": 400,
-      "label": "Approximate layout of the recorded clip: 8 chairs on 4 tables",
+      "label": "Approximate layout of the recorded clip",
       "entrance": false,
       "tables": [
         {
           "table_id": "T1",
           "name": "Left table",
           "shape": "round",
-          "cx": 90,
-          "cy": 210,
+          "cx": 70,
+          "cy": 215,
           "r": 30
         },
         {
           "table_id": "T2",
           "name": "Middle table",
           "shape": "round",
-          "cx": 190,
-          "cy": 210,
+          "cx": 150,
+          "cy": 215,
           "r": 30
         },
         {
           "table_id": "T3",
           "name": "Far table",
           "shape": "rect",
-          "x": 250,
-          "y": 60,
-          "w": 70,
-          "h": 36
+          "x": 215,
+          "y": 120,
+          "w": 90,
+          "h": 34
+        },
+        {
+          "table_id": "T5",
+          "name": "Back table",
+          "shape": "rect",
+          "x": 290,
+          "y": 20,
+          "w": 60,
+          "h": 26
         },
         {
           "table_id": "T4",
-          "name": "Right tables",
+          "name": "Front table",
           "shape": "rect",
-          "x": 214,
-          "y": 300,
-          "w": 120,
-          "h": 44
+          "x": 230,
+          "y": 290,
+          "w": 110,
+          "h": 40
         }
       ],
       "fixtures": []
@@ -74,8 +83,8 @@
       "has_outlet": false,
       "has_window": false,
       "table_id": "T1",
-      "plan_x": 90,
-      "plan_y": 257,
+      "plan_x": 70,
+      "plan_y": 262,
       "plan_rot": 180,
       "seat_polygon": [
         [
@@ -115,14 +124,61 @@
       ]
     },
     {
+      "seat_id": "S04",
+      "venue_id": "corniche-cup",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
+      "table_id": "T1",
+      "plan_x": 70,
+      "plan_y": 168,
+      "plan_rot": 0,
+      "seat_polygon": [
+        [
+          0.14,
+          0.4
+        ],
+        [
+          0.28,
+          0.4
+        ],
+        [
+          0.28,
+          0.57
+        ],
+        [
+          0.14,
+          0.57
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.14,
+          0.4
+        ],
+        [
+          0.28,
+          0.4
+        ],
+        [
+          0.28,
+          0.57
+        ],
+        [
+          0.14,
+          0.57
+        ]
+      ]
+    },
+    {
       "seat_id": "S02",
       "venue_id": "corniche-cup",
       "zone": "open",
       "has_outlet": false,
       "has_window": false,
       "table_id": "T2",
-      "plan_x": 190,
-      "plan_y": 257,
+      "plan_x": 150,
+      "plan_y": 262,
       "plan_rot": 180,
       "seat_polygon": [
         [
@@ -168,8 +224,8 @@
       "has_outlet": false,
       "has_window": false,
       "table_id": "T2",
-      "plan_x": 190,
-      "plan_y": 163,
+      "plan_x": 150,
+      "plan_y": 168,
       "plan_rot": 0,
       "seat_polygon": [
         [
@@ -205,53 +261,6 @@
         [
           0.32,
           0.55
-        ]
-      ]
-    },
-    {
-      "seat_id": "S04",
-      "venue_id": "corniche-cup",
-      "zone": "open",
-      "has_outlet": false,
-      "has_window": false,
-      "table_id": "T1",
-      "plan_x": 90,
-      "plan_y": 163,
-      "plan_rot": 0,
-      "seat_polygon": [
-        [
-          0.14,
-          0.4
-        ],
-        [
-          0.28,
-          0.4
-        ],
-        [
-          0.28,
-          0.57
-        ],
-        [
-          0.14,
-          0.57
-        ]
-      ],
-      "workspace_polygon": [
-        [
-          0.14,
-          0.4
-        ],
-        [
-          0.28,
-          0.4
-        ],
-        [
-          0.28,
-          0.57
-        ],
-        [
-          0.14,
-          0.57
         ]
       ]
     },
@@ -262,8 +271,8 @@
       "has_outlet": false,
       "has_window": false,
       "table_id": "T3",
-      "plan_x": 285,
-      "plan_y": 113,
+      "plan_x": 260,
+      "plan_y": 171,
       "plan_rot": 180,
       "seat_polygon": [
         [
@@ -303,14 +312,108 @@
       ]
     },
     {
+      "seat_id": "S10",
+      "venue_id": "corniche-cup",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
+      "table_id": "T5",
+      "plan_x": 335,
+      "plan_y": 63,
+      "plan_rot": 180,
+      "seat_polygon": [
+        [
+          0.67,
+          0.31
+        ],
+        [
+          0.72,
+          0.31
+        ],
+        [
+          0.72,
+          0.45
+        ],
+        [
+          0.67,
+          0.45
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.67,
+          0.31
+        ],
+        [
+          0.72,
+          0.31
+        ],
+        [
+          0.72,
+          0.45
+        ],
+        [
+          0.67,
+          0.45
+        ]
+      ]
+    },
+    {
+      "seat_id": "S09",
+      "venue_id": "corniche-cup",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
+      "table_id": "T5",
+      "plan_x": 300,
+      "plan_y": 63,
+      "plan_rot": 180,
+      "seat_polygon": [
+        [
+          0.72,
+          0.34
+        ],
+        [
+          0.8,
+          0.34
+        ],
+        [
+          0.8,
+          0.5
+        ],
+        [
+          0.72,
+          0.5
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.72,
+          0.34
+        ],
+        [
+          0.8,
+          0.34
+        ],
+        [
+          0.8,
+          0.5
+        ],
+        [
+          0.72,
+          0.5
+        ]
+      ]
+    },
+    {
       "seat_id": "S06",
       "venue_id": "corniche-cup",
       "zone": "open",
       "has_outlet": false,
       "has_window": false,
       "table_id": "T4",
-      "plan_x": 244,
-      "plan_y": 283,
+      "plan_x": 255,
+      "plan_y": 273,
       "plan_rot": 0,
       "seat_polygon": [
         [
@@ -323,11 +426,11 @@
         ],
         [
           0.82,
-          0.88
+          0.76
         ],
         [
           0.69,
-          0.88
+          0.76
         ]
       ],
       "workspace_polygon": [
@@ -341,11 +444,11 @@
         ],
         [
           0.82,
-          0.88
+          0.76
         ],
         [
           0.69,
-          0.88
+          0.76
         ]
       ]
     },
@@ -356,8 +459,8 @@
       "has_outlet": false,
       "has_window": false,
       "table_id": "T4",
-      "plan_x": 304,
-      "plan_y": 283,
+      "plan_x": 315,
+      "plan_y": 273,
       "plan_rot": 0,
       "seat_polygon": [
         [
@@ -403,9 +506,9 @@
       "has_outlet": false,
       "has_window": false,
       "table_id": "T4",
-      "plan_x": 274,
-      "plan_y": 361,
-      "plan_rot": 180,
+      "plan_x": 285,
+      "plan_y": 273,
+      "plan_rot": 0,
       "seat_polygon": [
         [
           0.87,
@@ -440,6 +543,53 @@
         [
           0.87,
           0.68
+        ]
+      ]
+    },
+    {
+      "seat_id": "S11",
+      "venue_id": "corniche-cup",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
+      "table_id": "T4",
+      "plan_x": 285,
+      "plan_y": 347,
+      "plan_rot": 180,
+      "seat_polygon": [
+        [
+          0.7,
+          0.78
+        ],
+        [
+          0.88,
+          0.78
+        ],
+        [
+          0.88,
+          1.0
+        ],
+        [
+          0.7,
+          1.0
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.7,
+          0.78
+        ],
+        [
+          0.88,
+          0.78
+        ],
+        [
+          0.88,
+          1.0
+        ],
+        [
+          0.7,
+          1.0
         ]
       ]
     }
@@ -534,11 +684,12 @@
     {
       "table_id": "T4",
       "table_type": "shared",
-      "capacity": 3,
+      "capacity": 4,
       "seat_ids": [
         "S06",
         "S07",
-        "S08"
+        "S08",
+        "S11"
       ],
       "table_polygon": [
         [
@@ -551,11 +702,40 @@
         ],
         [
           1.0,
-          0.88
+          1.0
         ],
         [
           0.69,
-          0.88
+          1.0
+        ]
+      ],
+      "is_shareable": true,
+      "is_available_for_studying": true
+    },
+    {
+      "table_id": "T5",
+      "table_type": "shared",
+      "capacity": 2,
+      "seat_ids": [
+        "S10",
+        "S09"
+      ],
+      "table_polygon": [
+        [
+          0.67,
+          0.31
+        ],
+        [
+          0.8,
+          0.31
+        ],
+        [
+          0.8,
+          0.5
+        ],
+        [
+          0.67,
+          0.5
         ]
       ],
       "is_shareable": true,

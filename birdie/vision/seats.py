@@ -190,8 +190,8 @@ def workspace_evidence(
             result[seat.seat_id] = WorkspaceEvidence(False, max(blocked[seat.seat_id]), chair is not None)
         elif uncertain[seat.seat_id]:
             result[seat.seat_id] = WorkspaceEvidence(None, max(uncertain[seat.seat_id]), chair is not None)
-        elif chair is not None:
-            result[seat.seat_id] = WorkspaceEvidence(True, chair, True)
+        elif chair is not None or seat.no_chair:
+            result[seat.seat_id] = WorkspaceEvidence(True, chair if chair is not None else 1.0, True)
         else:
             result[seat.seat_id] = WorkspaceEvidence(None, None, False)
     return result

@@ -21,64 +21,65 @@
     ],
     "floor_plan": {
       "width": 362,
-      "height": 380,
-      "label": "Approximate layout of the recorded clip: 7 chairs on 5 tables",
+      "height": 390,
+      "label": "Approximate layout of the recorded clip",
       "entrance": false,
       "tables": [
+        {
+          "table_id": "T6",
+          "name": "Sofa",
+          "shape": "rect",
+          "x": 14,
+          "y": 130,
+          "w": 34,
+          "h": 120
+        },
         {
           "table_id": "T1",
           "name": "Lounge table",
           "shape": "round",
-          "cx": 70,
+          "cx": 150,
           "cy": 300,
-          "r": 28
+          "r": 30
         },
         {
           "table_id": "T2",
           "name": "Red chair table",
           "shape": "rect",
-          "x": 130,
-          "y": 240,
+          "x": 125,
+          "y": 225,
           "w": 50,
-          "h": 30
-        },
-        {
-          "table_id": "T3",
-          "name": "Window table",
-          "shape": "rect",
-          "x": 180,
-          "y": 140,
-          "w": 90,
-          "h": 40
+          "h": 26
         },
         {
           "table_id": "T4",
           "name": "Back table",
           "shape": "rect",
-          "x": 130,
+          "x": 150,
           "y": 60,
           "w": 80,
-          "h": 30
+          "h": 26
+        },
+        {
+          "table_id": "T3",
+          "name": "Window table",
+          "shape": "rect",
+          "x": 235,
+          "y": 170,
+          "w": 100,
+          "h": 40
         },
         {
           "table_id": "T5",
           "name": "Front table",
           "shape": "rect",
-          "x": 250,
-          "y": 250,
-          "w": 80,
+          "x": 245,
+          "y": 290,
+          "w": 90,
           "h": 34
         }
       ],
-      "fixtures": [
-        {
-          "label": "Sofa",
-          "x": 8,
-          "y": 120,
-          "w": 22,
-          "h": 110
-        }
-      ]
+      "fixtures": []
     }
   },
   "ignored_person_regions": [],
@@ -91,8 +92,152 @@
       "zone": "open",
       "has_outlet": false,
       "has_window": false,
+      "table_id": "T6",
+      "plan_x": 65,
+      "plan_y": 155,
+      "plan_rot": 90,
+      "seat_polygon": [
+        [
+          0.1,
+          0.56
+        ],
+        [
+          0.18,
+          0.56
+        ],
+        [
+          0.18,
+          0.72
+        ],
+        [
+          0.1,
+          0.72
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.1,
+          0.56
+        ],
+        [
+          0.18,
+          0.56
+        ],
+        [
+          0.18,
+          0.72
+        ],
+        [
+          0.1,
+          0.72
+        ]
+      ],
+      "no_chair": true
+    },
+    {
+      "seat_id": "S02",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
+      "table_id": "T6",
+      "plan_x": 65,
+      "plan_y": 190,
+      "plan_rot": 90,
+      "seat_polygon": [
+        [
+          0.18,
+          0.54
+        ],
+        [
+          0.25,
+          0.54
+        ],
+        [
+          0.25,
+          0.66
+        ],
+        [
+          0.18,
+          0.66
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.18,
+          0.54
+        ],
+        [
+          0.25,
+          0.54
+        ],
+        [
+          0.25,
+          0.66
+        ],
+        [
+          0.18,
+          0.66
+        ]
+      ],
+      "no_chair": true
+    },
+    {
+      "seat_id": "S03",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
+      "table_id": "T6",
+      "plan_x": 65,
+      "plan_y": 225,
+      "plan_rot": 90,
+      "seat_polygon": [
+        [
+          0.25,
+          0.52
+        ],
+        [
+          0.31,
+          0.52
+        ],
+        [
+          0.31,
+          0.62
+        ],
+        [
+          0.25,
+          0.62
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.25,
+          0.52
+        ],
+        [
+          0.31,
+          0.52
+        ],
+        [
+          0.31,
+          0.62
+        ],
+        [
+          0.25,
+          0.62
+        ]
+      ],
+      "no_chair": true
+    },
+    {
+      "seat_id": "S04",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
       "table_id": "T1",
-      "plan_x": 25,
+      "plan_x": 103,
       "plan_y": 300,
       "plan_rot": -90,
       "seat_polygon": [
@@ -133,190 +278,49 @@
       ]
     },
     {
-      "seat_id": "S02",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": false,
-      "has_window": false,
-      "table_id": "T1",
-      "plan_x": 70,
-      "plan_y": 345,
-      "plan_rot": 180,
-      "seat_polygon": [
-        [
-          0.28,
-          0.66
-        ],
-        [
-          0.46,
-          0.66
-        ],
-        [
-          0.46,
-          1.0
-        ],
-        [
-          0.28,
-          1.0
-        ]
-      ],
-      "workspace_polygon": [
-        [
-          0.28,
-          0.66
-        ],
-        [
-          0.46,
-          0.66
-        ],
-        [
-          0.46,
-          1.0
-        ],
-        [
-          0.28,
-          1.0
-        ]
-      ]
-    },
-    {
-      "seat_id": "S03",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": false,
-      "has_window": false,
-      "table_id": "T2",
-      "plan_x": 155,
-      "plan_y": 287,
-      "plan_rot": 180,
-      "seat_polygon": [
-        [
-          0.33,
-          0.58
-        ],
-        [
-          0.46,
-          0.58
-        ],
-        [
-          0.46,
-          0.74
-        ],
-        [
-          0.33,
-          0.74
-        ]
-      ],
-      "workspace_polygon": [
-        [
-          0.33,
-          0.58
-        ],
-        [
-          0.46,
-          0.58
-        ],
-        [
-          0.46,
-          0.74
-        ],
-        [
-          0.33,
-          0.74
-        ]
-      ]
-    },
-    {
-      "seat_id": "S04",
-      "venue_id": "nestwork-msheireb",
-      "zone": "open",
-      "has_outlet": false,
-      "has_window": false,
-      "table_id": "T3",
-      "plan_x": 225,
-      "plan_y": 197,
-      "plan_rot": 180,
-      "seat_polygon": [
-        [
-          0.5,
-          0.5
-        ],
-        [
-          0.62,
-          0.5
-        ],
-        [
-          0.62,
-          0.9
-        ],
-        [
-          0.5,
-          0.9
-        ]
-      ],
-      "workspace_polygon": [
-        [
-          0.5,
-          0.5
-        ],
-        [
-          0.62,
-          0.5
-        ],
-        [
-          0.62,
-          0.9
-        ],
-        [
-          0.5,
-          0.9
-        ]
-      ]
-    },
-    {
       "seat_id": "S05",
       "venue_id": "nestwork-msheireb",
       "zone": "open",
       "has_outlet": false,
       "has_window": false,
-      "table_id": "T5",
-      "plan_x": 290,
-      "plan_y": 301,
+      "table_id": "T1",
+      "plan_x": 150,
+      "plan_y": 347,
       "plan_rot": 180,
       "seat_polygon": [
         [
-          0.65,
-          0.68
+          0.28,
+          0.66
         ],
         [
-          0.72,
-          0.68
+          0.46,
+          0.66
         ],
         [
-          0.72,
-          0.98
+          0.46,
+          1.0
         ],
         [
-          0.65,
-          0.98
+          0.28,
+          1.0
         ]
       ],
       "workspace_polygon": [
         [
-          0.65,
-          0.68
+          0.28,
+          0.66
         ],
         [
-          0.72,
-          0.68
+          0.46,
+          0.66
         ],
         [
-          0.72,
-          0.98
+          0.46,
+          1.0
         ],
         [
-          0.65,
-          0.98
+          0.28,
+          1.0
         ]
       ]
     },
@@ -326,9 +330,150 @@
       "zone": "open",
       "has_outlet": false,
       "has_window": false,
+      "table_id": "T2",
+      "plan_x": 150,
+      "plan_y": 208,
+      "plan_rot": 0,
+      "seat_polygon": [
+        [
+          0.33,
+          0.58
+        ],
+        [
+          0.46,
+          0.58
+        ],
+        [
+          0.46,
+          0.74
+        ],
+        [
+          0.33,
+          0.74
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.33,
+          0.58
+        ],
+        [
+          0.46,
+          0.58
+        ],
+        [
+          0.46,
+          0.74
+        ],
+        [
+          0.33,
+          0.74
+        ]
+      ]
+    },
+    {
+      "seat_id": "S07",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
+      "table_id": "T4",
+      "plan_x": 190,
+      "plan_y": 43,
+      "plan_rot": 0,
+      "seat_polygon": [
+        [
+          0.38,
+          0.38
+        ],
+        [
+          0.5,
+          0.38
+        ],
+        [
+          0.5,
+          0.54
+        ],
+        [
+          0.38,
+          0.54
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.38,
+          0.38
+        ],
+        [
+          0.5,
+          0.38
+        ],
+        [
+          0.5,
+          0.54
+        ],
+        [
+          0.38,
+          0.54
+        ]
+      ]
+    },
+    {
+      "seat_id": "S08",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
       "table_id": "T3",
-      "plan_x": 255,
-      "plan_y": 123,
+      "plan_x": 265,
+      "plan_y": 227,
+      "plan_rot": 180,
+      "seat_polygon": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.62,
+          0.5
+        ],
+        [
+          0.62,
+          0.9
+        ],
+        [
+          0.5,
+          0.9
+        ]
+      ],
+      "workspace_polygon": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.62,
+          0.5
+        ],
+        [
+          0.62,
+          0.9
+        ],
+        [
+          0.5,
+          0.9
+        ]
+      ]
+    },
+    {
+      "seat_id": "S09",
+      "venue_id": "nestwork-msheireb",
+      "zone": "open",
+      "has_outlet": false,
+      "has_window": false,
+      "table_id": "T3",
+      "plan_x": 310,
+      "plan_y": 153,
       "plan_rot": 0,
       "seat_polygon": [
         [
@@ -368,61 +513,91 @@
       ]
     },
     {
-      "seat_id": "S07",
+      "seat_id": "S10",
       "venue_id": "nestwork-msheireb",
       "zone": "open",
       "has_outlet": false,
       "has_window": false,
-      "table_id": "T4",
-      "plan_x": 170,
-      "plan_y": 107,
+      "table_id": "T5",
+      "plan_x": 290,
+      "plan_y": 341,
       "plan_rot": 180,
       "seat_polygon": [
         [
-          0.38,
-          0.38
+          0.65,
+          0.68
         ],
         [
-          0.5,
-          0.38
+          0.72,
+          0.68
         ],
         [
-          0.5,
-          0.54
+          0.72,
+          0.98
         ],
         [
-          0.38,
-          0.54
+          0.65,
+          0.98
         ]
       ],
       "workspace_polygon": [
         [
-          0.38,
-          0.38
+          0.65,
+          0.68
         ],
         [
-          0.5,
-          0.38
+          0.72,
+          0.68
         ],
         [
-          0.5,
-          0.54
+          0.72,
+          0.98
         ],
         [
-          0.38,
-          0.54
+          0.65,
+          0.98
         ]
       ]
     }
   ],
   "tables": [
     {
+      "table_id": "T6",
+      "table_type": "shared",
+      "capacity": 3,
+      "seat_ids": [
+        "S01",
+        "S02",
+        "S03"
+      ],
+      "table_polygon": [
+        [
+          0.1,
+          0.52
+        ],
+        [
+          0.31,
+          0.52
+        ],
+        [
+          0.31,
+          0.72
+        ],
+        [
+          0.1,
+          0.72
+        ]
+      ],
+      "is_shareable": true,
+      "is_available_for_studying": true
+    },
+    {
       "table_id": "T1",
       "table_type": "shared",
       "capacity": 2,
       "seat_ids": [
-        "S01",
-        "S02"
+        "S04",
+        "S05"
       ],
       "table_polygon": [
         [
@@ -450,7 +625,7 @@
       "table_type": "shared",
       "capacity": 1,
       "seat_ids": [
-        "S03"
+        "S06"
       ],
       "table_polygon": [
         [
@@ -478,8 +653,8 @@
       "table_type": "shared",
       "capacity": 2,
       "seat_ids": [
-        "S04",
-        "S06"
+        "S08",
+        "S09"
       ],
       "table_polygon": [
         [
@@ -535,7 +710,7 @@
       "table_type": "shared",
       "capacity": 1,
       "seat_ids": [
-        "S05"
+        "S10"
       ],
       "table_polygon": [
         [
@@ -560,5 +735,6 @@
     }
   ],
   "stabilize_camera": true,
-  "belongings_threshold": 0.3
+  "belongings_threshold": 0.3,
+  "weak_detection_floor": 0.3
 }

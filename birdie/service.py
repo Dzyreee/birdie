@@ -416,6 +416,10 @@ class BirdieService:
                     if d["label"] in BELONGINGS and d["score"] >= config.belongings_threshold else d
                     for d in detections
                 ]
+            if config is not None and config.weak_detection_floor:
+                # Very faint people/items (a pattern on a sofa) are noise for this clip, not "uncertain" evidence.
+                detections = [d for d in detections
+                              if d["label"] == "chair" or d["score"] >= config.weak_detection_floor]
             if config is not None:
                 regions = [Polygon(points) for points in config.ignored_person_regions]
                 w, h = img.size

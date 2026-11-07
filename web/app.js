@@ -574,8 +574,8 @@
             <span><i class="sw-checking"></i>Checking</span>
           </div>
           <section class="fc" id="fc" hidden aria-labelledby="fcTitle">
-            <div class="fc-head"><h3 id="fcTitle">Next 3 hours</h3><span>Forecast</span></div>
-            <p class="fc-cap" id="fcCap" aria-live="polite"></p>
+            <div class="fc-head"><h3 id="fcTitle">Next 3 hours</h3><span class="fc-trend" id="fcTrend"></span></div>
+            <div class="fc-hero" id="fcHero" aria-live="polite"></div>
             <div class="fc-chart" id="fcChart" role="group" aria-label="Likely free study spaces, every 30 minutes"></div>
           </section>
         </div>
@@ -698,15 +698,25 @@
     const max = Math.max(1, ...steps.map(p => p.expected_free));
     const label = (q, i) => (i === 0 ? 'Now' : q.minutes < 60 ? `${q.minutes}m` : `${Math.floor(q.minutes / 60)}h${q.minutes % 60 ? '30' : ''}`);
     const p = steps[sel];
-    $('#fcCap').innerHTML = `<b>${sel === 0 ? 'Now' : clock(p.at)}</b> · ${sel === 0
-      ? plural(p.expected_free, 'verified study space', 'verified study spaces')
-      : p.expected_free > 0 ? `about ${p.expected_free} likely free (${p.low} to ${p.high})` : 'likely full'}`;
+    const total = v.counts?.total || 0;
+    const change = (steps[Math.min(2, steps.length - 1)].expected_free) - steps[0].expected_free;
+    const big = Math.max(2, Math.round(total * 0.1));
+    const trend = change <= -big ? ['down', 'Filling up'] : change >= big ? ['up', 'Freeing up'] : ['flat', 'Holding steady'];
+    const trendEl = $('#fcTrend');
+    trendEl.className = `fc-trend is-${trend[0]}`;
+    trendEl.textContent = trend[1];
+    const when = sel === 0 ? 'Right now' : sel === near && v.drive_minutes ? `When you arrive · ${clock(p.at)}` : clock(p.at);
+    const note = sel === 0 ? 'verified free by camera'
+      : p.expected_free > 0 ? `likely free · range ${p.low}–${p.high}` : 'likely full';
+    setHTML($('#fcHero'), `
+      <span class="fc-big">${p.expected_free}</span>
+      <span class="fc-hero-txt"><b>${esc(when)}</b><span>${esc(note)}</span></span>`);
     setHTML($('#fcChart'), steps.map((q, i) => `
-      <button class="fc-bar${i === sel ? ' is-sel' : ''}${i === 0 ? ' is-now' : ''}" data-act="fc" data-v="${i}"
+      <button class="fc-bar${i === sel ? ' is-sel' : ''}${i === 0 ? ' is-now' : ''}${i === near && i !== 0 ? ' is-arrive' : ''}" data-act="fc" data-v="${i}"
         aria-pressed="${i === sel}" aria-label="${i === 0 ? 'Now' : `At ${clock(q.at)}`}: about ${q.expected_free} free">
         <span class="fc-val">${q.expected_free}</span>
-        <span class="fc-track"><span class="fc-col" style="height:${Math.max(3, (q.expected_free / max) * 100)}%"></span></span>
-        <span class="fc-t">${esc(label(q, i))}</span>
+        <span class="fc-track"><span class="fc-col" style="height:${Math.max(4, (q.expected_free / max) * 100)}%"></span></span>
+        <span class="fc-t">${esc(i === near && i !== 0 ? 'You' : label(q, i))}</span>
       </button>`).join(''));
   }
 

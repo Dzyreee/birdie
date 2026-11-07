@@ -69,6 +69,7 @@ class Seat(_Model):
     zone: str
     has_outlet: bool = False
     has_window: bool = False
+    no_chair: bool = False  # a sofa or bench: can be sat on without a detected chair
     table_id: str | None = None
     plan_x: float | None = None
     plan_y: float | None = None
@@ -167,6 +168,7 @@ class VenueConfig(_Model):
     recording_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     # Per-clip tuning, off by default so existing venues behave exactly as before.
     stabilize_camera: bool = False  # hand-held clip: move the seat outlines with the picture (vision/motion.py)
+    weak_detection_floor: float | None = Field(default=None, ge=0.05, le=0.95)  # drop people/items scored below this
     belongings_threshold: float | None = Field(default=None, ge=0.05, le=0.95)  # score from which bags and cups count
 
     @model_validator(mode="after")
