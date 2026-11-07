@@ -6,7 +6,9 @@ import logging
 import threading
 import time
 
-from birdie.config import TARGET_FPS
+from pathlib import Path
+
+from birdie.config import ROOT_DIR, TARGET_FPS
 from birdie.models import VenueSource
 from birdie.service import BirdieService
 from birdie.vision.clip import iter_clip_frames
@@ -47,3 +49,24 @@ def start_recorded_demo(svc: BirdieService, venue_id: str, path: str) -> threadi
         daemon=True, name="recorded-demo",
     ).start()
     return stop
+
+
+def demo_clip_path(venue_id: str) -> Path:
+    return ROOT_DIR / "demo_clips" / f"{venue_id}.mp4"
+
+
+def start_for_venue(svc: BirdieService, venue_id: str) -> bool:
+    """Replay demo_clips/<venue_id>.mp4 for a recorded venue if that file is on the Space."""
+    path = demo_clip_path(venue_id)
+    if venue_id not in svc.configs or svc.venue(venue_id).source != VenueSource.recorded or not path.is_file():
+        return False
+    pause_for_venue(svc, venue_id)
+    svc.demo_stops[venue_id] = start_recorded_demo(svc, venue_id, str(path))
+    return True
+
+
+def pause_for_venue(svc: BirdieService, venue_id: str) -> None:
+    """Stop a venue's replay (for example while the console plays an uploaded clip into it)."""
+    stop = svc.demo_stops.pop(venue_id, None)
+    if stop is not None:
+        stop.set()

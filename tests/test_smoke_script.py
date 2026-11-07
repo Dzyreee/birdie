@@ -45,12 +45,12 @@ def test_smoke_checks_accept_the_real_api(api):
 
 def test_smoke_checks_catch_a_broken_response(api):
     smoke = _load_smoke()
-    detail = api.get("/api/venues/qnl").json()
+    detail = api.get("/api/venues/corniche-cup").json()
     detail["seats"][0]["status"] = "mystery"
     assert any("status" in p for p in smoke.check_seats(detail))
-    detail = api.get("/api/venues/qnl").json()
+    detail = api.get("/api/venues/corniche-cup").json()
     detail["floor_plan"] = None
     assert smoke.check_seats(detail)
-    summary = next(v for v in api.get("/api/venues").json() if v["source"] == "simulated")
-    summary["camera_online"] = True  # a simulated venue must have null
+    summary = api.get("/api/venues").json()[0]
+    summary["counts"]["total"] += 1  # counts that don't add up must be caught
     assert smoke.check_venue_summary(summary)

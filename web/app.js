@@ -475,11 +475,11 @@
           </section>
           <section class="panel">
             <h2>Your privacy</h2>
-            <p>Birdie detects people and belongings at configured seats; it does not identify people. This demo shows seat states from a recorded clip or simulated venue data.</p>
+            <p>Birdie detects people and belongings at configured seats; it does not identify people. This demo shows seat states from two recorded camera clips.</p>
           </section>
           <section>
             <h2>Where does this demo data come from?</h2>
-            <p>Nestwork Msheireb and Corniche Cup use recorded camera clips in this demo. The other listed venues are simulated and are not live availability feeds.</p>
+            <p>Nestwork Msheireb and Corniche Cup are each shown from a recorded camera clip played through the detection pipeline. They are not live camera feeds.</p>
           </section>
         </div>
       </main>

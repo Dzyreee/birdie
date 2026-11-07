@@ -167,8 +167,7 @@ The same occupancy data can turn down the AC in empty zones. Kahramaa's Tarsheed
 - **Testability:** everything time-based takes an injectable clock, so tests never sleep.
 - **No GPU.** Vision, the simulator, analytics and the forecast all run on CPU, so the Space runs on the free CPU tier.
 - **Venues: Doha only.**
-  - One recorded-clip venue (Nestwork Msheireb) plus simulated venues. A live camera feed is not connected yet.
-  - Simulated venues are **always labelled "Simulated"** in the app (on list rows and the place screen) and in the pitch.
+  - Exactly two venues, both recorded clips: Nestwork Msheireb (the Msheireb clip) and Corniche Cup (invented name). There are no simulated venues. A live camera feed is not connected yet.
   - Invented places get invented names.
   - None of the handoff's placeholder data ("Old Town", "Halden Library" and so on) is used.
 - **Distance is drive time, never walk time:**
@@ -270,11 +269,8 @@ Status mapping: only `FREE` is available; `OCCUPIED` and `UNAVAILABLE` map to `t
 |---|---|---|---|---|---|
 | `nestwork-msheireb` | Nestwork Msheireb | Coworking | Msheireb Downtown | Recorded clip; camera regions require calibration | You're here |
 | `corniche-cup` | Corniche Cup (invented) | Cafe | West Bay | Recorded clip (hand-held; drift-aligned) | ~10 min |
-| `qnl` | Qatar National Library | Library | Education City | Simulated | ~15 min |
-| `qu-library` | Qatar University Library | Library | Qatar University | Simulated | ~25 min |
-| `qahwa-corner` | Qahwa Corner (invented) | Cafe | Lusail | Simulated | ~25 min |
 
-Optional: add 2 to 4 more simulated venues with invented names (for example a cafe in West Bay, a study-room venue) so the browse list looks full and every category has something. Hide a category if it has no venues. The Nestwork floor plan must match the real tables in the demo room, and its seat IDs must match the camera polygons.
+Only these two venues exist. Hide a category if it has no venues. The Nestwork floor plan is an approximate schematic of the recorded clip, and its seat IDs match the camera polygons.
 
 ---
 
@@ -382,7 +378,7 @@ Label about 150 to 300 frames from our own footage (seat → free / occupied / h
 1. **Hook (15 s):** the founder story: drove to study, no seat, wasted trip.
 2. **Data (15 s):** room survey result (section 13), plus the car-dependent Doha framing.
 3. **Live (60 s):** a phone mirrored on the screen, and the operator console on a laptop with its camera pointed at tables in this room (organizer permission needed).
-   - Open Birdie: Doha venues with drive times, Nestwork live, the others marked Simulated.
+   - Open Birdie: the two venues, each marked Recorded demo.
    - Open Nestwork: the floor plan matches the tables in this room.
    - A teammate stands up and leaves → the chair turns green on the phone.
    - A teammate sits down → it turns red.
@@ -407,7 +403,7 @@ Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 - **"Why only one vision model?"** The MVP uses one pretrained detector for people and common objects. It does not reliably identify every kind of belonging; uncertain desk evidence must remain unknown.
 - **"Why a web app and not a native app?"** You open it from a link with no install, on any phone.
 - **"How accurate is it?"** Report seat-state accuracy on our labelled frames, and be upfront about failure cases (occlusion, lighting).
-- **"Is the other venues' data real?"** Nestwork and Corniche Cup replay recorded footage through the pipeline. The others are simulated listings to show the product across the city.
+- **"Is the data real?"** It is real footage, not a live feed: Nestwork Msheireb and Corniche Cup are recorded clips played through the pipeline. There are no simulated venues.
 
 ---
 

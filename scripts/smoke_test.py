@@ -4,7 +4,7 @@
     python scripts/smoke_test.py                                  # https://affaad-birdie.hf.space
     python scripts/smoke_test.py https://affaad-birdie.hf.space --slow 3.0
 
-Checks (CLAUDE.md section 7.2): the mobile app loads, /api/venues lists the 7 venues in the contract shape,
+Checks (CLAUDE.md section 7.2): the mobile app loads, /api/venues lists the 2 venues in the contract shape,
 every /api/venues/{id} has a floor plan and seats with valid statuses, the operator console loads.
 Prints one line per check with the response time, and exits 1 if any check fails.
 """
@@ -20,8 +20,7 @@ import urllib.request
 from datetime import datetime
 
 DEFAULT_URL = "https://affaad-birdie.hf.space"
-EXPECTED_VENUES = {"nestwork-msheireb", "qnl", "qu-library", "qahwa-corner", "corniche-cup", "nakheel-study",
-                   "waab-study-hall"}
+EXPECTED_VENUES = {"nestwork-msheireb", "corniche-cup"}
 VENUE_KEYS = {"venue_id", "name", "area", "type", "lat", "lon", "source", "drive_minutes", "open_until", "open_late",
               "amenities", "zones", "counts"}
 SEAT_KEYS = {"seat_id", "table_id", "has_outlet", "has_window", "plan_x", "plan_y", "plan_rot", "status", "since"}
@@ -150,7 +149,7 @@ def main() -> int:
             problems.append(f"venues differ: missing {sorted(EXPECTED_VENUES - ids)} extra {sorted(ids - EXPECTED_VENUES)}")
         for v in venues:
             problems += [f"{v.get('venue_id')}: {p}" for p in check_venue_summary(v)]
-        record("GET /api/venues (7 venues, contract shape)", not problems, secs, "; ".join(problems[:3]))
+        record("GET /api/venues (2 venues, contract shape)", not problems, secs, "; ".join(problems[:3]))
         for vid in sorted(ids):
             detail, secs = check_json(base, f"/api/venues/{vid}")
             if isinstance(detail, dict):

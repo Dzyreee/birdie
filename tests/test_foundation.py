@@ -55,17 +55,14 @@ def test_occupancy_buckets_average(repo, clock):
 
 def test_demo_venues_load():
     venues = load_all()
-    assert set(venues) == {
-        "nestwork-msheireb", "qnl", "qu-library", "qahwa-corner", "corniche-cup", "nakheel-study", "waab-study-hall"
-    }
-    assert set(list(venues)[:2]) == {"nestwork-msheireb", "corniche-cup"}  # camera-fed (recorded) venues first
+    assert set(venues) == {"nestwork-msheireb", "corniche-cup"}  # the two recorded clips, nothing simulated
     for cfg in venues.values():
-        assert cfg.seats, cfg.venue.venue_id
+        assert cfg.venue.source == VenueSource.recorded
+        assert cfg.seats and cfg.recording_sha256 and len(cfg.recording_sha256) == 64
         assert all(s.zone in cfg.venue.zones for s in cfg.seats)
-    assert venues["nestwork-msheireb"].venue.source == VenueSource.recorded
-    recorded = {"nestwork-msheireb", "corniche-cup"}
-    assert venues["corniche-cup"].venue.source == VenueSource.recorded
-    assert all(v.venue.source == VenueSource.simulated for k, v in venues.items() if k not in recorded)
+        assert len({s.seat_id for s in cfg.seats}) == len(cfg.seats)
+    assert len(venues["nestwork-msheireb"].seats) == 7
+    assert venues["nestwork-msheireb"].recording_sha256 != venues["corniche-cup"].recording_sha256
 
 
 def test_corniche_cup_is_a_recorded_venue_in_the_same_format_as_nestwork():
@@ -73,8 +70,24 @@ def test_corniche_cup_is_a_recorded_venue_in_the_same_format_as_nestwork():
     nest, cup = venues["nestwork-msheireb"], venues["corniche-cup"]
     assert cup.recording_sha256 and len(cup.recording_sha256) == 64  # the clip is pinned, like Nestwork's
     assert cup.stabilize_camera and cup.belongings_threshold == 0.15  # tuned for its hand-held clip
-    assert not nest.stabilize_camera and nest.belongings_threshold is None  # Nestwork behaves as before
+    assert nest.stabilize_camera and nest.belongings_threshold == 0.3  # its clip is hand-held too
     assert len(cup.seats) == 8 and all(len(s.seat_polygon) >= 3 and s.table_id for s in cup.seats)
     plan_tables = {t["table_id"] for t in cup.venue.floor_plan["tables"]}
     assert {s.table_id for s in cup.seats} == plan_tables == {t.table_id for t in cup.tables}
     assert all(s.plan_x is not None and s.plan_y is not None for s in cup.seats)
+
+
+def test_a_clip_finds_its_own_venue_by_hash(tmp_path):
+    import hashlib
+
+    from birdie.service import BirdieService
+    from birdie.storage import Repository
+
+    svc = BirdieService(repo=Repository(":memory:"), venues=load_all(), detector=lambda *a, **k: [],
+                        persist_venues=False)
+    clip = tmp_path / "x.mp4"
+    clip.write_bytes(b"not really a video")
+    assert svc.venue_for_clip(str(clip)) is None  # an unknown clip matches no venue
+    digest = hashlib.sha256(clip.read_bytes()).hexdigest()
+    svc.configs["corniche-cup"] = svc.configs["corniche-cup"].model_copy(update={"recording_sha256": digest})
+    assert svc.venue_for_clip(str(clip)) == "corniche-cup"

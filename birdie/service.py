@@ -102,6 +102,7 @@ class BirdieService:
         self._last_refit = self.clock.now()
         self.started_at = self.clock.now()
         self._observed_since: dict[str, object] = {vid: self.started_at for vid in self.configs}
+        self.demo_stops: dict[str, threading.Event] = {}  # running demo_clips replays, by venue
         self._aligners: dict[str, FrameAligner] = {}  # hand-held clips only (VenueConfig.stabilize_camera)
 
     # --- venues and seats -------------------------------------------------------
@@ -120,6 +121,12 @@ class BirdieService:
     def camera_venues(self) -> list[Venue]:
         """Venues fed by a camera or a recorded clip (simulated venues are driven by the simulator)."""
         return [v for v in self.venues() if v.source != VenueSource.simulated]
+
+    def venue_for_clip(self, path: str) -> str | None:
+        """The recorded venue whose calibration is pinned to this exact clip (by SHA-256), or None."""
+        with open(path, "rb") as video:
+            actual = hashlib.file_digest(video, "sha256").hexdigest()
+        return next((vid for vid, cfg in self.configs.items() if cfg.recording_sha256 == actual), None)
 
     def validate_recording(self, venue_id: str, path: str) -> None:
         """Reject a recording from another view when calibration is tied to a clip."""

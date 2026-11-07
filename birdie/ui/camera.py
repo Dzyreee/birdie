@@ -122,7 +122,8 @@ def build_camera_tab(svc: BirdieService) -> None:
         return
 
     venue = gr.Dropdown(
-        choices=[(v.name, v.venue_id) for v in venues], value=venues[0].venue_id, label="Venue"
+        choices=[(v.name, v.venue_id) for v in venues], value=venues[0].venue_id,
+        label="Venue (chosen automatically when the clip is one of the two demo clips)",
     )
     clip = gr.File(label="Video clip (mp4, mov, webm)", file_types=["video"], type="filepath")
     loop = gr.Checkbox(value=False, label="Repeat clip to test the accelerated 30-second demo timer")
@@ -136,9 +137,14 @@ def build_camera_tab(svc: BirdieService) -> None:
         if not path:
             yield frame_html(None, text="Upload a clip first"), "Upload a clip to start the seat-state test."
             return
+        from birdie.vision.demo import pause_for_venue, start_for_venue
+
         try:
+            venue_id = svc.venue_for_clip(path) or venue_id  # the Msheireb and Corniche clips find their own venue
+            pause_for_venue(svc, venue_id)  # the built-in replay of this venue steps aside while you test
             svc.validate_recording(venue_id, path)
             while True:
+                svc.reset_alignment(venue_id)
                 start = time.monotonic()
                 for t, frame in iter_clip_frames(path, fps=TARGET_FPS):
                     annotated_frame = svc.process_frame(venue_id, frame, update_state=True)
@@ -159,6 +165,7 @@ def build_camera_tab(svc: BirdieService) -> None:
                 os.remove(path)
             except OSError:
                 pass
+            start_for_venue(svc, venue_id)  # hand the venue back to its built-in replay
 
     play_event = play_btn.click(
         play_clip, inputs=[clip, venue, loop], outputs=[annotated, status],

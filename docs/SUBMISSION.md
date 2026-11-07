@@ -1,7 +1,7 @@
 # Submission pack (draft)
 
 Use only claims that can be shown in the current build. The Nestwork Msheireb and Corniche Cup demos replay **recorded** clips; they are not a
-live venue camera. The other venue listings are simulated. No seat-state accuracy result has been measured on held-out
+live venue camera. There are no other venues. No seat-state accuracy result has been measured on held-out
 venue footage.
 
 ## Submission sheet
@@ -20,14 +20,14 @@ venue footage.
 ## Short demo flow
 
 1. Open the customer app at the Space root and choose Nestwork Msheireb or Corniche Cup. Explain that they are recorded footage played
-   through the detection pipeline; other venues are sample data.
+   through the detection pipeline.
 2. Show the free and unavailable study-space counts and the mapped seat statuses. A seat is only shown as usable when
    its configured seat and workspace evidence passes the backend rules; uncalibrated or uncertain seats remain unknown.
 3. Open `/operator/`, select the recorded video, and run it through the detector. Show the detections and resulting
    states. The camera-region/table/seat mapping is configured ahead of time; the model does not discover a venue layout.
 4. Point out one detected person or belonging and show how the corresponding mapped seat/workspace status changes.
    Only claim a specific transition if it occurs in the clip during the actual demo.
-5. Explain the limits: pretrained model, fixed camera calibration, simulated listings, and no measured real-world
+5. Explain the limits: pretrained model, fixed camera calibration, two recorded clips only, and no measured real-world
    accuracy or validated arrival forecast.
 
 The operator video upload is for this demonstration. Uploaded frames are sent to the Space for processing. Do not claim
@@ -36,7 +36,7 @@ unless that behavior has been independently verified for the deployed Space.
 
 ## Claims supported by the repository
 
-- The app distinguishes a recorded demo venue from simulated venue listings.
+- Both venues are labelled as recorded demos in the app.
 - The vision pipeline uses pretrained RT-DETR and configured seat/table/workspace regions.
 - The API exposes seat and study-space availability, including uncertain states; only verified usable spaces count as
   available.

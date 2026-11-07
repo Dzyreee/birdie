@@ -140,25 +140,20 @@ def test_availability_at_uses_live_and_forecast_data(svc):
     assert 0 <= result.expected_free <= result.total
 
 
-def test_simulator_drives_seats_through_the_tracker(svc):
-    svc.setup_simulation(backfill_hours=3)
-    synthetic = svc.repo.seat_events("qnl")
-    assert synthetic, "backfill writes a synthetic event log"
-    assert not svc.repo.seat_events("qnl", include_synthetic=False)
-    occupied = sum(1 for s in svc.snapshots("qnl") if s.state != SeatState.FREE)
-    assert occupied > 0  # Sunday 16:00 at a library is busy
-    for _ in range(60):
+def test_no_venue_is_simulated_any_more(svc):
+    assert svc.simulator.venue_ids() == []  # only the two recorded clips remain
+    svc.setup_simulation(backfill_hours=3)  # still safe to run
+    for _ in range(5):
         svc.clock.advance(2)
         svc.tick()
-    assert svc.repo.seat_events("qnl", include_synthetic=False), "live simulated events go through the same path"
-    assert not svc.repo.seat_events("nestwork-msheireb"), "the live venue is never simulated"
+    assert not svc.repo.seat_events("nestwork-msheireb"), "recorded venues change only when their clip plays"
 
 
 def test_forecast_engine_uses_live_buckets(svc):
     eng: ForecastEngine = svc.forecast
     assert eng.model_name == "baseline"
     ts = svc.clock.now() + timedelta(minutes=30)
-    assert 0.0 <= eng.ratio_at("qnl", ts) <= 1.0
-    assert len(eng.typical_day("qnl", "weekday")) == 96
+    assert 0.0 <= eng.ratio_at("corniche-cup", ts) <= 1.0
+    assert len(eng.typical_day("corniche-cup", "weekday")) == 96
     svc.tick()
     eng.refit()  # live buckets fold in without errors

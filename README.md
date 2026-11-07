@@ -32,7 +32,7 @@ machine. Repeat a clip to observe the accelerated 30-second belongings timer. Th
 in memory; camera seat, table, and workspace polygons live in the venue JSON and stay hidden from the public API.
 Nestwork Msheireb and Corniche Cup are configured as **recorded-clip** venues, not live camera feeds; Corniche Cup is tuned for its hand-held clip (camera-drift alignment and a lower belongings score, per-venue options in its venue file).
 The mobile app under `web/` is served at `/` and reads the read-only API at `/api/venues`. Qatar National Library,
-Qatar University Library and Qahwa Corner remain **simulated** venues with **synthetic** history, and are labelled as such.
+There are exactly two venues, both recorded clips: **Nestwork Msheireb** (the Msheireb clip) and **Corniche Cup**. No simulated venues remain.
 
 ## Privacy
 
@@ -52,9 +52,9 @@ The supplied clips are only a few seconds long and show people at several seats.
 timer mechanics, but cannot establish detection accuracy or prove the real 30-minute rule. Seat polygons must be
 checked against the venue camera view before treating counts as real availability.
 
-The first supplied clip has a provisional seven-seat camera mapping and a separate approximate schematic. Four
-additional starter IDs remain pending and are excluded from configured capacity until mapped to a table and given
-camera/workspace polygons. The mirror is excluded from person detections.
+The Msheireb clip (832×464, 5 s, hand-held) has a seven-seat camera mapping and an approximate schematic; its camera
+outlines move with the picture (`stabilize_camera`). The Corniche Cup clip has eight seats. Uploading either clip in
+`/operator/` finds its venue automatically by SHA-256, pauses that venue's built-in replay while it plays, and resumes it after.
 The clips were handheld: the second clip uses a different view and is rejected until it has a separate calibration.
 The recording hash binds the current mirror region and polygons to the first clip; the hash is not model training data.
 

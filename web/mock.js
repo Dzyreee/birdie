@@ -60,7 +60,7 @@ window.BirdieMock = (() => {
   };
 
   // Doha venues. Nestwork is a recorded demo replay; the rest are simulated.
-  const VENUES = [
+  const ALL_VENUES = [
     { venue_id: 'nestwork-msheireb', name: 'Nestwork Msheireb', area: 'Msheireb Downtown', type: 'cowork', lat: 25.2867, lon: 51.5265,
       source: 'recorded', drive_minutes: 0, open_until: 'Open till 22:00', open_late: true, amenities: ['Wi-Fi', 'Outlets', 'Coffee'],
       zones: ['open'], layout: 'cowork', pFree: 0.45, pHeld: 0.08, seed: 11 },
@@ -83,6 +83,9 @@ window.BirdieMock = (() => {
       source: 'simulated', drive_minutes: 20, open_until: 'Open till 22:00', open_late: false,
       amenities: ['Quiet zone', "Women's section"], zones: ['quiet', 'women'], layout: 'study', pFree: 0, pHeld: 0, seed: 5 },
   ];
+  // Only the two recorded clips are shown, as in the real API.
+  const VENUES = ALL_VENUES.filter(v => ['nestwork-msheireb', 'corniche-cup'].includes(v.venue_id))
+    .map(v => ({ ...v, source: 'recorded' }));
 
   const round1 = n => Math.round(n * 10) / 10;
 
