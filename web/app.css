@@ -267,7 +267,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--indigo); ou
 .seat-status { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 10px 13px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
 .seat-status-id { min-width: 42px; font-weight: 800; }
 .seat-status-label { flex: 1; font-size: 14px; font-weight: 700; }
-.seat-free .seat-status-label { color: var(--free); }
+.seat-free .seat-status-label, .seat-available .seat-status-label { color: var(--free); }
 .seat-held .seat-status-label, .seat-review_required .seat-status-label { color: #9A6500; }
 .seat-unknown .seat-status-label, .seat-unavailable .seat-status-label { color: var(--slate); }
 .legend i { width: 12px; height: 10px; border-radius: 3px; }

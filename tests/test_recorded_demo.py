@@ -60,13 +60,14 @@ def test_recorded_demo_processes_frames_and_marks_decode_failures_unknown(monkey
     monkeypatch.setattr(demo, "iter_clip_frames", lambda path, fps: iter([(0, np.zeros((1, 1, 3)))]))
     demo.replay_recording(svc, "v", "clip.mp4", stop)
     assert svc.seen == [("v", True)]
+    assert svc.unknown == ["v"]
 
     stop.clear()
     def broken(path, fps):
         raise ValueError("unreadable")
     monkeypatch.setattr(demo, "iter_clip_frames", broken)
     demo.replay_recording(svc, "v", "clip.mp4", stop)
-    assert svc.unknown == ["v"]
+    assert svc.unknown == ["v", "v", "v"]
 
 
 def test_calibration_rejects_another_recording(clock, tmp_path):

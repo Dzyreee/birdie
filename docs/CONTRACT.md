@@ -18,11 +18,16 @@ Rules:
 | Model | Fields |
 |---|---|
 | `Venue` | `venue_id: str`, `name: str`, `area: str`, `type: VenueType` (`cafe`, `library`, `cowork`, `study_room`), `lat: float`, `lon: float`, `zones: list[str]`, `source: VenueSource` (`live`, `recorded`, `simulated`), optional `floor_plan` and display metadata |
-| `Seat` | `seat_id: str`, `venue_id: str`, `zone: str`, `has_outlet: bool`, optional customer-map coordinates, `polygon: list[tuple[float, float]]` (normalised camera region) |
+| `Seat` | `seat_id: str`, `venue_id: str`, `zone: str`, optional `table_id`, optional customer-map coordinates, `seat_polygon` and `workspace_polygon` (normalised camera regions), `has_outlet`, `has_window` |
+| `StudyTable` | `table_id`, `table_type` (`shared`, `private`, `single_person_desk`), `capacity`, `seat_ids`, normalised `table_polygon`, `is_shareable`, `is_available_for_studying` |
 | `SeatSnapshot` | `venue_id`, `seat_id`, `zone`, `has_outlet`, `state: SeatState` (`UNKNOWN`, `FREE`, `OCCUPIED`, `HELD`, `REVIEW_REQUIRED`, `UNAVAILABLE`), timestamps, detector evidence, grace-period countdown, review and override flags |
 | `SeatEvent` | `ts: datetime`, `venue_id`, `seat_id`, `old_state: SeatState \| None`, `new_state: SeatState` |
 | `Query` | `area: str \| None`, `party_size: int`, `needs_outlet: bool`, `quiet: bool`, `zone: str \| None`, `venue_type: VenueType \| None`, `arrival_minutes: int` |
-| `VenueConfig` | `venue`, `seats`, private camera `ignored_person_regions` and `camera_table_regions`, and optional `recording_sha256` tying calibration to one clip |
+| `VenueConfig` | `venue`, `seats`, `tables`, `unmapped_seat_ids`, private mirror-exclusion regions, legacy `camera_table_regions` fallback, and optional `recording_sha256` tying calibration to one clip |
+
+With an explicit `tables` layout, each configured seat must link to exactly one table and appear in that table's `seat_ids`. Known IDs awaiting calibration live in `unmapped_seat_ids`; they are excluded from capacity and availability. Camera coordinates stay private and are not returned by the public venue API.
+
+An API seat is a verified study space only when its state is `FREE`, its configured chair is detected above the detector confidence threshold, and its assigned workspace is clear. A missing chair, uncertain/shared item, missing polygon, unknown seat state, or disabled table is never counted as usable. Shared tables are evaluated seat by seat. Private or non-shareable tables are one group space and require every seat to be verified free. A belongings timeout only raises staff review; it never frees the blocked workspace. `counts.usable_study_spaces` is the customer-facing total; `counts.free` remains the lower-level occupancy count for compatibility.
 
 Zone ids used by the demo venues: `quiet`, `open`, `group`, `family`, `women`, `terrace`, `indoor`
 (labels in `birdie.venues.ZONE_LABELS`).
@@ -49,8 +54,9 @@ SQLite at `data/birdie.db` (gitignored). `Repository(path)`; use `Repository(":m
 |---|---|
 | `detector.detect(frame, threshold=0.4) -> list[{label, score, box}]` | RT-DETR r18 (`PekingU/rtdetr_r18vd`). Keeps COCO classes `chair`, `person`, `backpack, handbag, suitcase, laptop, cup, bottle, book, cell phone`. `box = [x1, y1, x2, y2]` in pixels of the frame passed in. Resizes to long side <= 640 internally |
 | `detector.resize_long_side(frame, 640) -> PIL.Image`, `detector.load()` | Helpers. `_infer` is the pure (frame in, detections out) function wrapped with `@spaces.GPU` when `spaces` is importable |
-| `seats.assign_detections(detections, seats, (w, h), min_overlap=0.2, table_regions=None) -> {seat_id: [det]}` | Assign detections to camera regions; ambiguous belongings on shared tables make linked seats unknown |
+| `seats.assign_detections(detections, seats, (w, h), min_overlap=0.2, table_regions=None) -> {seat_id: [det]}` | Assign person/item evidence to configured seat/workspace regions; ambiguous shared-table items remain unknown |
 | `seats.observe_evidence(assigned)` | Confidence-aware `PERSON`, `ITEMS`, `EMPTY`, or conservative `UNKNOWN` evidence |
+| `seats.workspace_evidence(detections, seats, (w, h))` | Verify a visible chair and clear/blocked/uncertain desk workspace for each calibrated seat |
 | `state.SeatStateMachine(venue_id, seat_id, clock, k=3, hold_seconds=...)` | Smooths evidence; belongings become `HELD`, then `REVIEW_REQUIRED` after the real-time grace period |
 | `state.VenueTracker(venue_id, seats, clock, on_event)` | `.process({seat_id: Observation}) -> [SeatEvent]` (missing seats = UNKNOWN), `.tick()` (hold timers and stale-feed expiry), `.snapshots()`, `.counts()`, `.force(states)`, `.set_seats(seats)` |
 | `render.annotate(frame, detections)` | RGB frame with detector boxes only; no static seat regions and no blurring |
@@ -95,8 +101,10 @@ and `forecast_ratio(id, ts)`. `BirdieService` implements it.
 
 `BirdieService(repo=None, clock=None, venues=None, timers=TIMERS, detector=None)` is the one object the UI talks to:
 `process_frame(venue_id, frame)` associates detections and updates seat state; `snapshots(venue_id)`, `zone_counts(venue_id)`, `upsert_seat(seat)`,
-`delete_seat(venue_id, seat_id)`, `availability_at(venue_id, minutes)`,
+`delete_seat(venue_id, seat_id)`, `study_availability(venue_id)`, `set_table_available_for_studying(...)`, `availability_at(venue_id, minutes)`,
 `forecast` (ForecastEngine), `simulator`, `tick()`, `start()` (back-fill + 2 s scheduler), `stop()`.
+
+`GET /api/venues/{venue_id}` returns table-level and seat-level `usable_for_studying`, `workspace_clear`, and `availability_reason`. Staff may disable/re-enable a seat or table through the bearer-token protected maintenance endpoints. Venue geometry changes are stored in `venues/<venue_id>.json` and require a fresh camera sample before availability returns.
 
 ## Assistant (`birdie/assistant/`, stub)
 

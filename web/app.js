@@ -13,7 +13,7 @@
   const COLORS = { free: '#2FB86A', taken: '#EF4E4E', held: '#F2A93B' };
   const TYPES = { library: 'Library', cafe: 'Café', cowork: 'Coworking', study_room: 'Study room' };
   const CATS = [['all', 'All'], ['library', 'Libraries'], ['cafe', 'Cafés'], ['cowork', 'Coworking'], ['study_room', 'Study rooms']];
-  const SORTS = [['near', 'Nearest'], ['free', 'Most seats free'], ['late', 'Open late']];
+  const SORTS = [['near', 'Nearest'], ['free', 'Most study spaces'], ['late', 'Open late']];
   const SEGS = [['all', 'All seats'], ['outlet', 'Outlet'], ['window', 'Window']];
 
   const params = new URLSearchParams(location.search);
@@ -50,7 +50,30 @@
     return ({ free: 'FREE', held: 'HELD', taken: 'OCCUPIED' })[s.status] || 'UNKNOWN';
   }
 
+  const studyCount = v => v.counts.usable_study_spaces ?? v.counts.free ?? 0;
+  const studyAvailable = s => s.usable_for_studying === true ||
+    (s.usable_for_studying === undefined && seatState(s) === 'FREE');
+  const filteredStudyCount = (v, matches) => !v.tables ? v.seats.filter(s => matches(s) && studyAvailable(s)).length :
+    v.tables.reduce((n, t) => {
+      const seats = v.seats.filter(s => t.seat_ids.includes(s.seat_id) && matches(s));
+      if (!seats.length || !t.usable_for_studying) return n;
+      return n + (t.table_type === 'private' || !t.is_shareable ? 1 : seats.filter(studyAvailable).length);
+    }, 0);
+
   function seatLabel(s) {
+    if (studyAvailable(s)) return 'Available for study';
+    if (s.state === 'FREE') {
+      return ({
+        seat_not_linked_to_table: 'Not mapped to a table',
+        camera_calibration_incomplete: 'Desk area not calibrated',
+        chair_not_visible: 'Chair not verified',
+        workspace_uncertain: 'Desk area needs checking',
+        workspace_blocked: 'Desk area blocked',
+        table_unavailable: 'Table unavailable',
+        private_table_in_use_or_unverified: 'Private table needs checking',
+        detection_confidence_too_low: 'Detection needs checking',
+      })[s.availability_reason] || 'Not verified for studying';
+    }
     return ({ FREE: 'Free', OCCUPIED: 'Taken', HELD: 'Held by belongings',
       REVIEW_REQUIRED: 'Staff review required', UNKNOWN: 'Checking', UNAVAILABLE: 'Unavailable' })[seatState(s)];
   }
@@ -201,7 +224,7 @@
         <nav class="rail cats" id="cats" aria-label="Categories"></nav>
         <section class="featured" id="featured" hidden>
           <div class="featured-head">
-            <h2 class="sec-title">Free right now</h2>
+            <h2 class="sec-title">Study spaces available</h2>
             ${liveBadge('Live')}
           </div>
           <div class="rail cards" id="cards"></div>
@@ -237,15 +260,15 @@
     const q = fold(state.query.trim());
     const inCat = v => state.cat === 'all' || v.type === state.cat;
 
-    const featured = venues.filter(v => inCat(v) && v.counts.free > 0)
-      .sort((a, b) => b.counts.free - a.counts.free)
+    const featured = venues.filter(v => inCat(v) && studyCount(v) > 0)
+      .sort((a, b) => studyCount(b) - studyCount(a))
       .slice(0, 5);
     $('#featured').hidden = featured.length === 0 || q !== '';
     setHTML($('#cards'), featured.map(v => `
       <button class="card" data-act="open" data-v="${esc(v.venue_id)}">
         <span class="card-num">
-          <span class="card-free">${v.counts.free}</span>
-          <span class="card-k">${v.counts.free === 1 ? 'seat free' : 'seats free'}</span>
+          <span class="card-free">${studyCount(v)}</span>
+          <span class="card-k">${studyCount(v) === 1 ? 'study space' : 'study spaces'}</span>
         </span>
         <span class="card-place">
           <span class="card-name">${esc(v.name)}</span>
@@ -256,7 +279,7 @@
     let list = venues.filter(v => inCat(v) && (!q || fold(`${v.name} ${v.area} ${typeLabel(v.type)} ${v.type}`).includes(q)));
     if (state.sort === 'late') list = list.filter(v => v.open_late);
     list.sort(state.sort === 'free'
-      ? (a, b) => b.counts.free - a.counts.free || a.drive_minutes - b.drive_minutes
+      ? (a, b) => studyCount(b) - studyCount(a) || a.drive_minutes - b.drive_minutes
       : (a, b) => a.drive_minutes - b.drive_minutes);
 
     $('#listTitle').textContent = state.cat === 'all' ? 'All places' : CATS.find(c => c[0] === state.cat)[1];
@@ -272,11 +295,14 @@
 
   function row(v) {
     const { free, held, total } = v.counts;
+    const usable = studyCount(v);
+    const usableSeats = v.counts.usable_seats ?? usable;
     const unknown = v.counts.unknown || 0;
     const taken = v.counts.taken ?? Math.max(0, total - free - held - unknown);
-    const full = free === 0 && unknown === 0;
-    const availability = free > 0 ? `${free} of ${total} free` : unknown > 0
-      ? `No seats marked free · ${unknown} checking` : 'No seats marked free';
+    const full = usable === 0 && unknown === 0 && free === 0;
+    const uncertain = usable === 0 && (free > 0 || unknown > 0);
+    const availability = usable > 0 ? `${usable} verified study ${usable === 1 ? 'space' : 'spaces'}` : unknown > 0
+      ? `No verified study spaces · ${unknown} seats checking` : 'No verified study spaces';
     const seg = (cls, n) => (n > 0 ? `<i class="${cls}" style="flex:${n} 1 0"></i>` : '');
     return `
       <button class="row${full ? ' is-full' : ''}" data-act="open" data-v="${esc(v.venue_id)}">
@@ -285,10 +311,10 @@
           <span class="row-name">${esc(v.name)}</span>
           <span class="row-meta">${esc(typeLabel(v.type))} · ${esc(v.area)}${v.source === 'live' ? '' : ` <span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`}</span>
           <span class="row-free">
-            <i class="dot" style="background:${free > 0 ? COLORS.free : full ? COLORS.taken : '#7C8190'}"></i>${availability}
+            <i class="dot" style="background:${usable > 0 ? COLORS.free : full ? COLORS.taken : '#7C8190'}"></i>${availability}
             <span class="row-drive">· ${esc(driveLabel(v.drive_minutes))}</span>
           </span>
-          <span class="bar">${seg('b-free', free)}${seg('b-held', held)}${seg('b-taken', taken)}${seg('b-unknown', unknown)}</span>
+          <span class="bar">${seg('b-free', usableSeats)}${seg('b-held', held)}${seg('b-taken', taken)}${seg('b-unknown', unknown)}</span>
         </span>
       </button>`;
   }
@@ -299,7 +325,8 @@
   let tableNames = new Map();
 
   // Changes when the floor plan or the set of seats changes, so the plan is rebuilt.
-  const layoutKey = v => JSON.stringify([v.floor_plan || null, v.seats.map(s => [s.seat_id, s.plan_x, s.plan_y, s.plan_rot])]);
+  const layoutKey = v => JSON.stringify([v.floor_plan || null, v.tables?.map(t => [t.table_id, t.seat_ids]) || [],
+    v.seats.map(s => [s.seat_id, s.table_id, s.plan_x, s.plan_y, s.plan_rot])]);
   const hasPlanPosition = s => Number.isFinite(s.plan_x) && Number.isFinite(s.plan_y);
 
   function openPlace(id) {
@@ -357,9 +384,10 @@
               ${plan.entrance === false ? '' : `<div class="entrance">${ICON.entrance()}Entrance</div>`}
             </div>
           </div>${plan.label ? `<p class="plan-caption">${esc(plan.label)}</p>` : ''}` : ''}
+          ${v.unmapped_seat_ids?.length ? `<p class="plan-caption">${v.unmapped_seat_ids.length} seat IDs await camera and table calibration and are excluded from availability.</p>` : ''}
           <div class="seat-status-list" id="seatStatusList" aria-label="Seat statuses"></div>
           <div class="legend">
-            <span><i style="background:${COLORS.free}"></i>Free</span>
+            <span><i style="background:${COLORS.free}"></i>Available for study</span>
             <span><i style="background:${COLORS.taken}"></i>Taken</span>
             <span><i style="background:${COLORS.held}"></i>Held</span>
             <span><i style="background:#8A8C98"></i>Checking</span>
@@ -408,32 +436,33 @@
     if (state.screen !== 'place' || !state.venue || (!$('#plan') && !$('#seatStatusList'))) return;
     const v = state.venue;
     const plan = Boolean(v.floor_plan && $('#plan'));
-    let free = 0;
-    let freeMatching = 0;
+    const free = studyCount(v);
+    const freeMatching = filteredStudyCount(v, matchesSeg);
 
     // Drop the selection when that seat was taken meanwhile or is hidden by the filter.
     const sel = state.sel && v.seats.find(x => x.seat_id === state.sel);
-    if (!sel || !matchesSeg(sel) || !['FREE', 'HELD'].includes(seatState(sel))) state.sel = null;
+    if (!sel || !matchesSeg(sel) || !studyAvailable(sel)) state.sel = null;
 
     v.seats.forEach(s => {
       const el = chairEls.get(s.seat_id);
       const ok = matchesSeg(s);
       const status = seatState(s);
-      if (status === 'FREE') { free += 1; if (ok) freeMatching += 1; }
       if (plan && el) {
         el.className = 'chair' +
-          (status === 'FREE' ? ' is-free' : status === 'HELD' ? ' is-held' :
-            status === 'UNKNOWN' ? ' is-unknown' : status === 'UNAVAILABLE' ? ' is-unavailable' : '') +
+          (studyAvailable(s) ? ' is-free' : status === 'HELD' ? ' is-held' :
+            status === 'UNKNOWN' || status === 'FREE' ? ' is-unknown' : status === 'UNAVAILABLE' ? ' is-unavailable' : '') +
           (ok ? '' : ' is-dim') + (state.sel === s.seat_id ? ' is-sel' : '');
         el.setAttribute('aria-label', `${s.seat_id}, ${seatLabel(s)}`);
-        el.setAttribute('aria-disabled', String(!(ok && ['FREE', 'HELD'].includes(status))));
+        el.title = `${s.table_id ? `Table ${s.table_id} · ` : ''}${seatLabel(s)}`;
+        el.setAttribute('aria-disabled', String(!(ok && studyAvailable(s))));
       }
     });
 
     if ($('#seatStatusList')) {
       setHTML($('#seatStatusList'), v.seats.filter(s => matchesSeg(s) && (!plan || !hasPlanPosition(s))).map(s => {
         const status = seatState(s);
-        return `<div class="seat-status seat-${status.toLowerCase()}">
+        const cls = studyAvailable(s) ? 'available' : status === 'FREE' ? 'unknown' : status.toLowerCase();
+        return `<div class="seat-status seat-${cls}">
           <span class="seat-status-id">${esc(s.seat_id)}</span>
           <span class="seat-status-label">${esc(seatLabel(s))}</span></div>`;
       }).join(''));
@@ -441,9 +470,9 @@
 
     const unknown = v.counts?.unknown ?? v.seats.filter(s => seatState(s) === 'UNKNOWN').length;
     $('#headline').textContent = freeMatching > 0
-      ? plural(freeMatching, 'seat free', 'seats free')
-      : free > 0 ? 'No seats match this filter'
-        : unknown > 0 ? 'Availability is being checked' : 'No seats marked free';
+      ? plural(freeMatching, 'verified study space', 'verified study spaces')
+      : free > 0 ? 'No available spaces match this filter'
+        : unknown > 0 ? 'Availability is being checked' : 'No verified study spaces';
 
     document.querySelectorAll('#seg button').forEach(b => {
       const on = b.dataset.v === state.seg;
@@ -456,7 +485,7 @@
 
   function onChair(id) {
     const s = state.venue && state.venue.seats.find(x => x.seat_id === id);
-    if (!s || !matchesSeg(s) || !['FREE', 'HELD'].includes(seatState(s))) return;
+    if (!s || !matchesSeg(s) || !studyAvailable(s)) return;
     state.sel = id;
     updatePlace();
   }
@@ -486,7 +515,6 @@
       document.body.appendChild(el);
       $('#place').classList.add('has-sheet');
     }
-    const held = seatState(s) === 'HELD';
     el.setAttribute('aria-label', `Seat ${s.seat_id}`);
     const chips = s.table_id ? [tableNames.get(s.table_id) || `Table ${s.table_id}`] : [];
     if (s.has_window) chips.push('Window');
@@ -497,8 +525,8 @@
       <div class="sheet-row">
         <div class="sheet-tile" style="background:${held ? COLORS.held : COLORS.free}">${esc(s.seat_id)}</div>
         <div class="sheet-text">
-          <span class="sheet-title">${held ? `Seat ${esc(s.seat_id)} is held by a bag` : `Seat ${esc(s.seat_id)} is free`}</span>
-          ${held ? `<span class="sheet-sub">Unavailable because belongings are present</span>` : ''}
+          <span class="sheet-title">Seat ${esc(s.seat_id)} is available for study</span>
+          <span class="sheet-sub">Desk area is clear and verified${s.table_id ? ` at table ${esc(s.table_id)}` : ''}.</span>
           <div class="sheet-chips">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>
         </div>
         <button class="sheet-close" data-act="close" aria-label="Close">${ICON.close()}</button>

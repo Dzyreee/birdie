@@ -93,9 +93,9 @@ def draw_numbered_seats(frame: np.ndarray, seats: Iterable[Seat], highlight: int
     h, w = img.shape[:2]
     scale = max(0.6, min(1.6, max(w, h) / 900))
     for i, seat in enumerate(seats):
-        if len(seat.polygon) < 3:
+        if len(seat.seat_polygon) < 3:
             continue
-        pts = _to_px(seat.polygon, w, h)
+        pts = _to_px(seat.seat_polygon, w, h)
         thick = 4 if highlight == i else 2
         color = (255, 196, 0) if highlight == i else NUMBERED_COLOR
         cv2.polylines(img, [pts], True, color, thick, cv2.LINE_AA)

@@ -27,14 +27,16 @@ from birdie.config import (
 )
 from birdie.decision import Availability, availability_at
 from birdie.forecast.model import ForecastEngine
-from birdie.models import Seat, SeatEvent, SeatSnapshot, SeatState, Venue, VenueConfig, VenueSource
+from birdie.models import (
+    Seat, SeatEvent, SeatSnapshot, SeatState, StudyTable, TableType, Venue, VenueConfig, VenueSource,
+)
 from birdie.scheduler import Scheduler
 from birdie.simulator import Simulator
 from birdie.storage import Repository
 from birdie.venues import load_all, save_venue
 from birdie.vision import render
 from birdie.vision.detector import PERSON, resize_long_side
-from birdie.vision.seats import assign_detections, observe_evidence
+from birdie.vision.seats import assign_detections, observe_evidence, workspace_evidence
 from birdie.vision.state import VenueTracker
 
 log = logging.getLogger(__name__)
@@ -69,6 +71,7 @@ class BirdieService:
         self.configs: dict[str, VenueConfig] = venues if venues is not None else load_all(self.venues_dir)
         self._detect = detector or _default_detector
         self._lock = threading.RLock()
+        self._workspace_evidence: dict[str, dict[str, dict]] = {vid: {} for vid in self.configs}
         self.recorded_demo_status: dict = {"state": "not_configured"}
         self._listeners: list[Callable[[SeatEvent], None]] = []
         self.trackers: dict[str, VenueTracker] = {
@@ -149,16 +152,136 @@ class BirdieService:
             z[snap.state.value] += 1
         return out
 
+    def study_availability(self, venue_id: str) -> dict:
+        """Compute verified study spaces from the saved venue layout and latest camera evidence."""
+        config = self.configs[venue_id]
+        snapshots = self.snapshot_map(venue_id)
+        evidence = self._workspace_evidence.get(venue_id, {})
+        seats = {seat.seat_id: seat for seat in config.seats}
+        tables = {table.table_id: table for table in config.tables}
+        by_seat = {}
+        for seat_id, seat in seats.items():
+            table = tables.get(seat.table_id)
+            proof = evidence.get(seat_id, {})
+            workspace_clear = proof.get("clear")
+            confidence = proof.get("confidence")
+            chair_detected = proof.get("chair_detected", False)
+            state = snapshots[seat_id].state
+            if table is None or seat_id not in table.seat_ids:
+                reason = "seat_not_linked_to_table"
+            elif not table.is_available_for_studying:
+                reason = "table_unavailable"
+            elif len(seat.seat_polygon) < 3 or len(seat.workspace_polygon) < 3 or len(table.table_polygon) < 3:
+                reason = "camera_calibration_incomplete"
+            elif state != SeatState.FREE:
+                reason = {
+                    SeatState.OCCUPIED: "seat_occupied",
+                    SeatState.HELD: "workspace_blocked_by_belongings",
+                    SeatState.REVIEW_REQUIRED: "workspace_blocked_staff_review",
+                    SeatState.UNAVAILABLE: "seat_unavailable",
+                }.get(state, "seat_state_unknown")
+            elif workspace_clear is False:
+                reason = "workspace_blocked"
+            elif workspace_clear is None:
+                reason = "workspace_uncertain" if chair_detected else "chair_not_visible"
+            elif confidence is None or confidence < DETECTION_THRESHOLD:
+                reason = "detection_confidence_too_low"
+            else:
+                reason = "available"
+            by_seat[seat_id] = {
+                "table_id": seat.table_id,
+                "seat_id": seat_id,
+                "seat_state": state.value,
+                "workspace_clear": workspace_clear,
+                "confidence": confidence,
+                "usable_for_studying": reason == "available",
+                "availability_reason": reason,
+            }
+
+        table_rows = []
+        usable_spaces = usable_seats = 0
+        for table in config.tables:
+            rows = [by_seat[sid] for sid in table.seat_ids if sid in by_seat]
+            complete = len(rows) == table.capacity and len(table.table_polygon) >= 3
+            exclusive = table.table_type == TableType.private or not table.is_shareable
+            if exclusive:
+                ready = complete and table.is_available_for_studying and all(
+                    row["usable_for_studying"] for row in rows
+                )
+                if not ready:
+                    for row in rows:
+                        if row["usable_for_studying"]:
+                            row["usable_for_studying"] = False
+                            row["availability_reason"] = "private_table_in_use_or_unverified"
+                count = int(ready)
+            else:
+                count = sum(row["usable_for_studying"] for row in rows)
+            usable_spaces += count
+            usable_seats += sum(row["usable_for_studying"] for row in rows)
+            table_rows.append({
+                "table_id": table.table_id,
+                "table_type": table.table_type.value,
+                "capacity": table.capacity,
+                "seat_ids": table.seat_ids,
+                "is_shareable": table.is_shareable,
+                "is_available_for_studying": table.is_available_for_studying,
+                "layout_complete": complete,
+                "usable_for_studying": count > 0,
+                "usable_study_spaces": count,
+                "seats": rows,
+                "availability_reason": "available" if count else (
+                    "table_layout_incomplete" if not complete else "no_verified_usable_workspace"
+                ),
+            })
+        return {"usable_study_spaces": usable_spaces, "usable_seats": usable_seats,
+                "tables": table_rows, "seats": list(by_seat.values())}
+
+    def set_table_available_for_studying(self, venue_id: str, table_id: str, available: bool) -> StudyTable | None:
+        """Persist a staff table-level override and require fresh camera evidence afterward."""
+        with self._lock:
+            config = self.configs.get(venue_id)
+            if config is None:
+                return None
+            tables = [
+                table.model_copy(update={"is_available_for_studying": available})
+                if table.table_id == table_id else table
+                for table in config.tables
+            ]
+            updated = next((table for table in tables if table.table_id == table_id), None)
+            if updated is None:
+                return None
+            self.configs[venue_id] = config.model_copy(update={"tables": tables})
+            if self.persist_venues:
+                save_venue(self.configs[venue_id], self.venues_dir)
+        self.mark_unknown(venue_id)
+        return updated
+
     def upsert_seat(self, seat: Seat) -> None:
         """Add or replace a configured seat region and save the venue JSON."""
         with self._lock:
             cfg = self.configs[seat.venue_id]
+            if cfg.tables and (not seat.table_id or not seat.workspace_polygon):
+                raise ValueError("Seats in a table layout need a table_id and workspace_polygon before saving")
             seats = [s for s in cfg.seats if s.seat_id != seat.seat_id] + [seat]
             seats.sort(key=lambda s: s.seat_id)
             zones = list(cfg.venue.zones)
             if seat.zone not in zones:
                 zones.append(seat.zone)
-            self._replace_config(cfg.model_copy(update={"venue": cfg.venue.model_copy(update={"zones": zones}), "seats": seats}))
+            tables = cfg.tables
+            if cfg.tables:
+                if seat.table_id not in {table.table_id for table in cfg.tables}:
+                    raise ValueError(f"Unknown table {seat.table_id}; add it to the venue layout first")
+                tables = [
+                    table.model_copy(update={"seat_ids": list(dict.fromkeys([*table.seat_ids, seat.seat_id]))})
+                    if table.table_id == seat.table_id else table
+                    for table in cfg.tables
+                ]
+            pending = [seat_id for seat_id in cfg.unmapped_seat_ids if seat_id != seat.seat_id]
+            updated = cfg.model_copy(update={
+                "venue": cfg.venue.model_copy(update={"zones": zones}), "seats": seats,
+                "tables": tables, "unmapped_seat_ids": pending,
+            })
+            self._replace_config(VenueConfig.model_validate(updated.model_dump(mode="python")))
 
     def delete_seat(self, venue_id: str, seat_id: str) -> bool:
         with self._lock:
@@ -166,12 +289,20 @@ class BirdieService:
             seats = [s for s in cfg.seats if s.seat_id != seat_id]
             if len(seats) == len(cfg.seats):
                 return False
-            self._replace_config(cfg.model_copy(update={"seats": seats}))
+            tables = []
+            for table in cfg.tables:
+                ids = [sid for sid in table.seat_ids if sid != seat_id]
+                if ids:
+                    tables.append(table.model_copy(update={"seat_ids": ids}))
+            updated = cfg.model_copy(update={"seats": seats, "tables": tables})
+            self._replace_config(VenueConfig.model_validate(updated.model_dump(mode="python")))
             return True
 
     def _replace_config(self, cfg: VenueConfig) -> None:
+        cfg = VenueConfig.model_validate(cfg.model_dump(mode="python"))
         self.configs[cfg.venue.venue_id] = cfg
         self.trackers[cfg.venue.venue_id].set_seats(cfg.seats)
+        self._workspace_evidence[cfg.venue.venue_id] = {}
         self.mark_unknown(cfg.venue.venue_id)
         if self.persist_venues:
             save_venue(cfg, self.venues_dir)
@@ -206,8 +337,13 @@ class BirdieService:
         now = self.clock.now()
         self.simulator.step()
         for tracker in self.trackers.values():
+            before = {snap.seat_id: snap.state for snap in tracker.snapshots()}
             tracker.tick()
-            self.repo.save_seat_snapshots(tracker.snapshots())
+            snapshots = tracker.snapshots()
+            for snap in snapshots:
+                if before.get(snap.seat_id) != SeatState.UNKNOWN and snap.state == SeatState.UNKNOWN:
+                    self._workspace_evidence.get(snap.venue_id, {}).pop(snap.seat_id, None)
+            self.repo.save_seat_snapshots(snapshots)
         for vid in self.configs:
             c = self.counts(vid)
             # Partial samples would treat unknown seats as empty in historical occupancy ratios.
@@ -271,6 +407,7 @@ class BirdieService:
                 )]
         except Exception:
             if update_state and venue_id is not None:
+                self._workspace_evidence[venue_id] = {}
                 self.mark_unknown(venue_id)
             raise
         counted = [d for d in detections if d["score"] >= DETECTION_THRESHOLD]
@@ -280,14 +417,24 @@ class BirdieService:
                     self.mark_unknown(venue_id)
                 else:
                     tracker = self.trackers[venue_id]
+                    tables = {table.table_id: table.table_polygon for table in config.tables}
+                    tables.update({key: value for key, value in config.camera_table_regions.items() if key not in tables})
                     assigned = assign_detections(detections, list(tracker.seats.values()), img.size,
-                                                 table_regions=config.camera_table_regions)
+                                                 table_regions=tables)
                     tracker.process(observe_evidence(assigned))
+                    proof = workspace_evidence(detections, list(tracker.seats.values()), img.size,
+                                               table_regions=tables)
+                    self._workspace_evidence[venue_id] = {
+                        seat_id: {"clear": item.clear, "confidence": item.confidence,
+                                  "chair_detected": item.chair_detected}
+                        for seat_id, item in proof.items()
+                    }
                     self.repo.save_seat_snapshots(tracker.snapshots())
         return render.annotate(np.asarray(img), counted)
 
     def mark_unknown(self, venue_id: str) -> None:
         """Invalidate all current venue evidence after a decode or camera failure."""
+        self._workspace_evidence[venue_id] = {}
         tracker = self.trackers[venue_id]
         tracker.process({})
         self.repo.save_seat_snapshots(tracker.snapshots())
@@ -297,6 +444,8 @@ class BirdieService:
         if tracker is None or seat_id not in tracker.seats:
             return None
         tracker.set_unavailable(seat_id, unavailable)
+        if not unavailable:
+            self._workspace_evidence.get(venue_id, {}).pop(seat_id, None)
         snapshots = tracker.snapshots()
         self.repo.save_seat_snapshots(snapshots)
         return next(snapshot for snapshot in snapshots if snapshot.seat_id == seat_id)

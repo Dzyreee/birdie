@@ -43,7 +43,10 @@ class _CalibrationBackend:
         return self.svc.venue(key).zones
 
     def upsert(self, key: str, seat: Seat) -> str:
-        self.svc.upsert_seat(seat)
+        try:
+            self.svc.upsert_seat(seat)
+        except ValueError as exc:
+            return str(exc)
         return f"Saved camera region for {seat.seat_id}. It remains hidden in the normal camera preview."
 
     def delete(self, key: str, seat_id: str) -> bool:
@@ -55,7 +58,21 @@ class _CalibrationBackend:
 
 def _status_html(svc: BirdieService, venue_id: str) -> str:
     counts = svc.counts(venue_id)
-    total = sum(counts.values())
+    study = svc.study_availability(venue_id)
+    by_seat = {seat["seat_id"]: seat for seat in study["seats"]}
+    reasons = {
+        "camera_calibration_incomplete": "desk area needs calibration",
+        "chair_not_visible": "chair not clearly visible",
+        "workspace_uncertain": "desk area needs checking",
+        "workspace_blocked": "desk area is blocked",
+        "workspace_blocked_by_belongings": "belongings are present",
+        "private_table_in_use_or_unverified": "private table is in use or unverified",
+        "table_layout_incomplete": "table layout needs calibration",
+        "table_unavailable": "table unavailable",
+        "seat_not_linked_to_table": "seat is not linked to a table",
+        "seat_occupied": "person detected at seat",
+        "seat_unavailable": "seat unavailable",
+    }
     rows = []
     for snap in svc.snapshots(venue_id):
         label = {
@@ -70,12 +87,17 @@ def _status_html(svc: BirdieService, venue_id: str) -> str:
             f" · staff review in {snap.grace_period_remaining_seconds}s"
             if snap.grace_period_remaining_seconds is not None else ""
         )
-        rows.append(f"<li><b>{esc(snap.seat_id)}</b>: {esc(label + countdown)}</li>")
+        result = by_seat.get(snap.seat_id, {})
+        code = result.get("availability_reason", "not calibrated")
+        detail = "Available for study" if result.get("usable_for_studying") else reasons.get(code, code.replace("_", " "))
+        table = f" · {esc(result['table_id'])}" if result.get("table_id") else ""
+        rows.append(f"<li><b>{esc(snap.seat_id)}</b>{table}: {esc(label + countdown)} · {esc(detail)}</li>")
     timer_note = "30s demo timer" if DEMO_MODE else "30m production timer"
     return (
         "<section class='birdie-card'>"
-        f"<b>Marked free: {counts[SeatState.FREE]} of {total}</b><br>"
-        f"Taken: {counts[SeatState.OCCUPIED]} · Held: {counts[SeatState.HELD]} · "
+        f"<b>Verified usable study spaces: {study['usable_study_spaces']} ({study['usable_seats']} seats)</b><br>"
+        f"Seat states: {counts[SeatState.FREE]} free · {counts[SeatState.OCCUPIED]} taken · "
+        f"{counts[SeatState.HELD]} held · "
         f"Needs staff review: {counts[SeatState.REVIEW_REQUIRED]} · "
         f"Checking: {counts[SeatState.UNKNOWN]} · Unavailable: {counts[SeatState.UNAVAILABLE]}"
         f"<p class='birdie-muted'>Held belongings require staff review after the {timer_note}. "

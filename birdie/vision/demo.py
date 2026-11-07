@@ -21,6 +21,7 @@ def replay_recording(svc: BirdieService, venue_id: str, path: str, stop: threadi
         if venue_id not in svc.configs or svc.venue(venue_id).source != VenueSource.recorded:
             raise ValueError(f"{venue_id!r} is not a recorded-demo venue")
         svc.validate_recording(venue_id, path)
+        svc.mark_unknown(venue_id)  # Discard persisted states/timers from an earlier recording session.
         while not stop.is_set():
             start = time.monotonic()
             for timestamp, frame in iter_clip_frames(path, fps=TARGET_FPS):

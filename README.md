@@ -20,38 +20,44 @@ Data models and public functions: [docs/CONTRACT.md](docs/CONTRACT.md).
 ## What it does
 
 - **Seat states** using the COCO-pretrained `PekingU/rtdetr_r18vd` detector: `FREE`, `OCCUPIED`, `HELD`,
-  `REVIEW_REQUIRED`, `UNKNOWN`, and staff-set `UNAVAILABLE`. Only `FREE` seats count as available.
-- **Venue view**: predicted free-seat counts and each configured seat's status.
+  `REVIEW_REQUIRED`, `UNKNOWN`, and staff-set `UNAVAILABLE`.
+- **Study spaces**: a chair counts only when its seat is `FREE`, the calibrated chair is visible, its assigned
+  desk workspace is clear, and the table is enabled. A free chair alone is not advertised as usable.
+- **Venue view**: verified usable-space counts and per-table/per-seat availability reasons.
 - **Experimental availability at arrival** and a **focus score** in the operator tools; neither is validated forecasting.
 - **Venue dashboard**: occupancy by hour, minutes held by belongings, peak times.
 
 The Camera tab runs uploaded clips through detection, camera-seat association, temporal smoothing, and the state
 machine. Repeat a clip to observe the accelerated 30-second belongings timer. The calibration editor uses one frame
-in memory and saves only normalized camera polygons; those polygons are hidden in the normal preview and separate
-from any customer floor map. Nestwork is configured as a **recorded-clip** venue, not a live camera feed.
+in memory; camera seat, table, and workspace polygons live in the venue JSON and stay hidden from the public API.
+Nestwork is configured as a **recorded-clip** venue, not a live camera feed.
 The mobile app under `web/` is served at `/` and reads the read-only API at `/api/venues`. Qatar National Library,
 Qatar University Library and Qahwa Corner remain **simulated** venues with **synthetic** history, and are labelled as such.
 
 ## Privacy
 
-Uploaded video is processed in memory by the backend and shown without blurring. The uploaded file is deleted after
-playback, but remains in temporary Space storage while processing. The calibration frame stays in process memory;
-only seat polygons, state timestamps, alerts, and aggregate counts are persisted. Hugging Face logging and retention
-are not verified. No face recognition or identity matching is used.
+The hosted customer app reads seat states; it does not receive the private source clip. The hosted Space disables
+operator uploads while its private recorded demo is mounted. For testing another upload, run the operator locally
+as described below: its temporary upload is processed without blurring, then deleted after playback. The app itself
+does not store source frames. Venue polygons, seat states, alerts, and aggregate counts are persisted. Hugging Face
+logging and retention are not verified. No face recognition or identity matching is used.
 
 ## Test the video-to-availability path
 
-1. Run the recorded demo using `BIRDIE_DEMO_VIDEO`, as shown below. The app loops the clip in the background.
-2. Open the customer app at `/`. Seat markers and counts update through the API and are labelled **Recorded**.
-3. For manual inspection, run without `BIRDIE_DEMO_VIDEO`, open `/operator/`, and upload the calibrated clip in **Camera**.
-   Use **Calibrate seats for this camera view** to inspect or update camera regions, then test the video.
+1. Open the hosted Space customer app at `/`. It automatically replays the private clip and labels the venue
+   **Recorded**; the browser receives API statuses, not video.
+2. To show computer-vision boxes, run the local operator below, open `http://localhost:7862/operator/`, select
+   **Camera**, upload `WhatsApp Video 2026-11-06 at 21.13.46.mp4`, and click **Test video → seat availability**.
+   The preview shows person/chair/item detections and updates local table/seat statuses. This local instance is
+   separate from the hosted Space.
 
 The supplied clips are only a few seconds long and show people at several seats. Repeating them tests the pipeline and
 timer mechanics, but cannot establish detection accuracy or prove the real 30-minute rule. Seat polygons must be
 checked against the venue camera view before treating counts as real availability.
 
 The first supplied clip has a provisional seven-seat camera mapping and a separate approximate schematic. Four
-additional starter IDs have no camera region and stay **Checking**. The mirror is excluded from person detections.
+additional starter IDs remain pending and are excluded from configured capacity until mapped to a table and given
+camera/workspace polygons. The mirror is excluded from person detections.
 The clips were handheld: the second clip uses a different view and is rejected until it has a separate calibration.
 The recording hash binds the current mirror region and polygons to the first clip; the hash is not model training data.
 
@@ -70,6 +76,16 @@ locally; the lightweight test environment does not download model weights:
 docker build -t birdie .
 docker run --rm -p 7860:7860 birdie
 ```
+
+For a local upload/detection demo, build once and launch without `BIRDIE_DEMO_VIDEO`:
+
+```bash
+docker build -t birdie:local .
+docker run --rm -p 7862:7860 -v "$(pwd)/venues:/home/user/app/venues" birdie:local
+```
+
+Then open `http://localhost:7862/operator/`. Upload the first supplied clip in **Camera**. The root `/` is the
+local customer app, and `/operator/` is the detection/testing tool. This process does not change the hosted Space.
 
 To run the supplied first clip automatically on this Mac (stop the old container first):
 

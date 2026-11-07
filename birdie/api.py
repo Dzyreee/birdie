@@ -51,11 +51,19 @@ def _venue_data(svc: BirdieService, venue_id: str, details: bool = False) -> dic
     cfg = svc.configs[venue_id]
     venue = cfg.venue.model_dump(mode="json")
     snapshots = svc.snapshot_map(venue_id)
-    venue["counts"] = _counts(list(snapshots.values()))
+    study = svc.study_availability(venue_id)
+    venue["counts"] = {
+        **_counts(list(snapshots.values())),
+        "usable_study_spaces": study["usable_study_spaces"],
+        "usable_seats": study["usable_seats"],
+        "unmapped_seats": len(cfg.unmapped_seat_ids),
+    }
+    venue["unmapped_seat_ids"] = cfg.unmapped_seat_ids
     if details:
+        study_seats = {seat["seat_id"]: seat for seat in study["seats"]}
         venue["seats"] = [
             {
-                **seat.model_dump(mode="json", exclude={"polygon"}),
+                **seat.model_dump(mode="json", exclude={"seat_polygon", "workspace_polygon"}),
                 "status": _status(snapshots[seat.seat_id].state),
                 "state": snapshots[seat.seat_id].state.value,
                 "since": snapshots[seat.seat_id].since.isoformat(),
@@ -69,9 +77,11 @@ def _venue_data(svc: BirdieService, venue_id: str, details: bool = False) -> dic
                 "grace_period_remaining_seconds": snapshots[seat.seat_id].grace_period_remaining_seconds,
                 "requires_staff_review": snapshots[seat.seat_id].requires_staff_review,
                 "manual_override": snapshots[seat.seat_id].manual_override,
+                **study_seats[seat.seat_id],
             }
             for seat in cfg.seats
         ]
+        venue["tables"] = study["tables"]
     return venue
 
 
@@ -116,6 +126,25 @@ def create_app(svc: BirdieService) -> FastAPI:
             "requires_staff_review": snapshot.requires_staff_review,
             "manual_override": snapshot.manual_override,
         }
+
+    @app.put("/api/venues/{venue_id}/tables/{table_id}/unavailable")
+    def set_table_unavailable(
+        venue_id: str,
+        table_id: str,
+        request: AvailabilityOverride,
+        authorization: str | None = Header(default=None),
+    ):
+        token = os.getenv("BIRDIE_ADMIN_TOKEN", "")
+        if not token:
+            raise HTTPException(status_code=503, detail="Staff controls are not configured")
+        supplied = authorization.removeprefix("Bearer ").strip() if authorization else ""
+        if not secrets.compare_digest(supplied, token):
+            raise HTTPException(status_code=401, detail="Staff authorization required")
+        table = svc.set_table_available_for_studying(venue_id, table_id, not request.unavailable)
+        if table is None:
+            raise HTTPException(status_code=404, detail="Table not found")
+        return {"venue_id": venue_id, "table_id": table_id,
+                "is_available_for_studying": table.is_available_for_studying}
 
     return app
 
