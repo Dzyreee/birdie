@@ -55,15 +55,26 @@
   const typeLabel = t => TYPES[t] || t;
   const kindLabel = v => `${typeLabel(v.type)}, ${v.area}`;
   const studyCount = v => v.counts?.usable_study_spaces ?? v.counts?.free ?? 0;
-  const seatState = s => s.seat_state || s.state || ({ free: 'FREE', held: 'HELD', taken: 'OCCUPIED' })[s.status] || 'UNKNOWN';
+  const rawSeatState = s => s.seat_state || s.state || 'UNKNOWN';
+  const seatState = s => ({ free: 'FREE', held: 'HELD', taken: 'OCCUPIED', checking: 'UNKNOWN', unknown: 'UNKNOWN' })[s.status]
+    || ({ UNAVAILABLE: 'OCCUPIED', REVIEW_REQUIRED: 'HELD' })[rawSeatState(s)] || rawSeatState(s);
   const studyAvailable = s => s.usable_for_studying === undefined
     ? seatState(s) === 'FREE' : s.usable_for_studying === true;
+  const availabilityGroup = s => {
+    if (studyAvailable(s)) return 'available';
+    const key = seatState(s);
+    if (key === 'HELD' || s.availability_reason === 'workspace_blocked') return 'held';
+    if (key === 'OCCUPIED' || ['seat_unavailable', 'table_unavailable'].includes(s.availability_reason)) return 'taken';
+    return 'checking';
+  };
   const sourceLabel = source => ({ live: 'Live camera', recorded: 'Recorded demo', simulated: 'Simulated' }[source] || 'Availability demo');
   function seatLabel(s) {
-    if (studyAvailable(s)) return 'Available for studying';
+    const group = availabilityGroup(s);
+    if (group === 'available') return 'Available for studying';
+    if (group === 'held') return rawSeatState(s) === 'REVIEW_REQUIRED' ? 'Held / staff review' : 'Held by belongings';
+    if (group === 'taken') return 'Taken';
     return ({
-      OCCUPIED: 'Taken', HELD: 'Held by belongings', REVIEW_REQUIRED: 'Needs staff review',
-      UNKNOWN: 'Checking', UNAVAILABLE: 'Unavailable',
+      OCCUPIED: 'Taken', UNKNOWN: 'Checking',
     })[seatState(s)] || ({
       seat_not_linked_to_table: 'Not mapped to a table',
       camera_calibration_incomplete: 'Desk area not calibrated',
@@ -232,12 +243,12 @@
     const total = counts.total || 0;
     let n = total;
     let free = counts.free;
-    let held = counts.held;
+    let held = counts.held_or_review ?? counts.held;
     if (total > max) {
       const k = max / total;
       n = max;
       free = Math.round(counts.free * k);
-      held = Math.round(counts.held * k);
+      held = Math.round((counts.held_or_review ?? counts.held) * k);
       if (counts.free > 0 && free === 0) free = 1;
       if (free + held > n) held = n - free;
     }
@@ -621,10 +632,7 @@
       const el = chairEls.get(s.seat_id);
       if (!el) return;
       const ok = matchesSeg(s);
-      const key = seatState(s);
-      const available = studyAvailable(s);
-      const display = available ? 'available' : key === 'HELD' || key === 'REVIEW_REQUIRED' ? 'held'
-        : key === 'OCCUPIED' ? 'taken' : 'checking';
+      const display = availabilityGroup(s);
       counts[display] += 1;
       const tappable = ok;
       const changed = lastStatus.has(s.seat_id) && lastStatus.get(s.seat_id) !== display;
@@ -742,8 +750,9 @@
       document.body.appendChild(el);
       $('#place').classList.add('has-sheet');
     }
-    const held = seatState(s) === 'HELD' || seatState(s) === 'REVIEW_REQUIRED';
-    const available = studyAvailable(s);
+    const group = availabilityGroup(s);
+    const held = group === 'held';
+    const available = group === 'available';
     const table = tableNames.get(s.table_id) || `Table ${s.table_id}`;
     const chips = [];
     if (s.table_id) chips.push(table);
@@ -754,7 +763,7 @@
     setHTML(el, `
       <div class="sheet-handle"></div>
       <div class="sheet-row">
-        <div class="sheet-tile ${available ? 'is-free' : held ? 'is-held' : 'is-checking'}">${esc(s.seat_id)}</div>
+        <div class="sheet-tile ${available ? 'is-free' : held ? 'is-held' : group === 'checking' ? 'is-checking' : ''}">${esc(s.seat_id)}</div>
         <div class="sheet-text">
           <span class="sheet-title">${esc(seatLabel(s))}</span>
           <span class="sheet-sub">${held && s.since ? `Held for ${esc(heldFor(s.since))}` : esc(s.availability_reason || table)}</span>

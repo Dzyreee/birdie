@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from fastapi.testclient import TestClient
 
-from birdie.api import create_app, mount_mobile_web
-from birdie.models import Seat, SeatState, Venue, VenueConfig, VenueSource, VenueType
+from birdie.api import _counts, _status, create_app, mount_mobile_web
+from birdie.models import Seat, SeatSnapshot, SeatState, Venue, VenueConfig, VenueSource, VenueType
 from birdie.service import BirdieService
 from birdie.storage import Repository
 
@@ -28,9 +30,24 @@ def test_public_api_reports_unknown_seats_as_not_free_and_hides_camera_polygons(
     assert listed["counts"]["unknown"] == 1
     assert listed["counts"]["taken"] == 0
     assert detail["seats"][0]["state"] == SeatState.UNKNOWN.value
-    assert detail["seats"][0]["status"] == "unknown"
+    assert detail["seats"][0]["status"] == "checking"
     assert "polygon" not in detail["seats"][0]
     assert client.get("/api/venues/missing").status_code == 404
+
+
+def test_public_availability_has_three_groups_and_a_checking_indicator():
+    assert {state: _status(state) for state in SeatState} == {
+        SeatState.UNKNOWN: "checking", SeatState.FREE: "free", SeatState.OCCUPIED: "taken",
+        SeatState.HELD: "held", SeatState.REVIEW_REQUIRED: "held", SeatState.UNAVAILABLE: "taken",
+    }
+    now = datetime.fromisoformat("2026-11-07T12:00:00+00:00")
+    states = [SeatState.FREE, SeatState.OCCUPIED, SeatState.UNAVAILABLE, SeatState.HELD,
+              SeatState.REVIEW_REQUIRED, SeatState.UNKNOWN]
+    snapshots = [SeatSnapshot(venue_id="v", seat_id=str(i), zone="open", has_outlet=False,
+                              state=state, since=now, updated_at=now) for i, state in enumerate(states)]
+    counts = _counts(snapshots)
+    assert (counts["free"], counts["taken"], counts["held_or_review"], counts["checking"]) == (1, 2, 2, 1)
+    assert counts["free"] + counts["taken"] + counts["held_or_review"] + counts["checking"] == counts["total"]
 
 
 def test_mobile_web_is_served_after_api_routes(clock):

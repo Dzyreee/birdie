@@ -30,10 +30,10 @@ class AvailabilityOverride(BaseModel):
 def _status(state: SeatState) -> str:
     if state == SeatState.FREE:
         return "free"
-    if state == SeatState.HELD:
+    if state in (SeatState.HELD, SeatState.REVIEW_REQUIRED):
         return "held"
     if state == SeatState.UNKNOWN:
-        return "unknown"
+        return "checking"
     return "taken"
 
 
@@ -49,7 +49,9 @@ def _counts(snapshots: list[SeatSnapshot]) -> dict[str, int]:
         "review_required": counts[SeatState.REVIEW_REQUIRED],
         "unknown": counts[SeatState.UNKNOWN],
         "unavailable": counts[SeatState.UNAVAILABLE],
-        "taken": counts[SeatState.OCCUPIED] + counts[SeatState.REVIEW_REQUIRED] + counts[SeatState.UNAVAILABLE],
+        "held_or_review": counts[SeatState.HELD] + counts[SeatState.REVIEW_REQUIRED],
+        "checking": counts[SeatState.UNKNOWN],
+        "taken": counts[SeatState.OCCUPIED] + counts[SeatState.UNAVAILABLE],
     }
 
 

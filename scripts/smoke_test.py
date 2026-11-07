@@ -27,7 +27,7 @@ VENUE_KEYS = {"venue_id", "name", "area", "type", "lat", "lon", "source", "drive
 SEAT_KEYS = {"seat_id", "table_id", "has_outlet", "has_window", "plan_x", "plan_y", "plan_rot", "status", "since"}
 TYPES = {"library", "cafe", "cowork", "study_room"}
 SOURCES = {"live", "recorded", "simulated"}
-STATUSES = {"free", "taken", "held", "unknown"}
+STATUSES = {"free", "taken", "held", "checking"}
 
 results: list[tuple[str, bool, float, str]] = []
 
@@ -79,8 +79,8 @@ def check_venue_summary(v: dict) -> list[str]:
     if v.get("source") not in SOURCES:
         problems.append(f"source {v.get('source')!r}")
     c = v.get("counts") or {}
-    if not {"free", "taken", "held", "unknown", "total"}.issubset(c) or sum(
-        c.get(k, 0) for k in ("free", "taken", "held", "unknown")
+    if not {"free", "taken", "held_or_review", "checking", "total"}.issubset(c) or sum(
+        c.get(k, 0) for k in ("free", "taken", "held_or_review", "checking")
     ) != c.get("total"):
         problems.append(f"counts {c}")
     cam = v.get("camera_online")
@@ -102,7 +102,7 @@ def check_seats(detail: dict) -> list[str]:
     ids = [s.get("seat_id") for s in seats]
     if len(ids) != len(set(ids)):
         problems.append("duplicate seat ids")
-    counts = {"free": 0, "taken": 0, "held": 0, "unknown": 0}
+    counts = {"free": 0, "taken": 0, "held": 0, "checking": 0}
     for s in seats:
         if SEAT_KEYS - set(s):
             problems.append(f"seat {s.get('seat_id')} missing keys {sorted(SEAT_KEYS - set(s))}")
@@ -122,7 +122,9 @@ def check_seats(detail: dict) -> list[str]:
             problems.append(f"seat {s['seat_id']} has no plan position")
             break
     summary = detail.get("counts") or {}
-    if not problems and any(summary.get(k) != counts[k] for k in counts):
+    summary_counts = {"free": summary.get("free"), "taken": summary.get("taken"),
+                      "held": summary.get("held_or_review"), "checking": summary.get("checking")}
+    if not problems and any(summary_counts[k] != counts[k] for k in counts):
         problems.append(f"seat status counts {counts} do not match API counts {summary}")
     return problems
 

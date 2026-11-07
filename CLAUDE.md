@@ -256,13 +256,13 @@ Removed: `Booking`, `Query`, `bookable`, `bookable_fraction`, `prepaid_item`, an
 
 | Method and path | Response |
 |---|---|
-| `GET /api/venues` | List of venues (no camera polygons), each with `counts`: `free`, `taken`, `held`, `unknown`, `unavailable`, `review_required`, `total` |
+| `GET /api/venues` | List of venues (no camera polygons), each with customer availability counts `free`, `taken`, `held_or_review`, `checking`, `total`; detailed state counters remain for diagnostics |
 | `GET /api/venues/{venue_id}` | Venue with an optional customer `floor_plan` and per-seat status, timestamps, confidence, timer and review fields. Camera polygons are never returned. |
 | `PUT /api/venues/{venue_id}/seats/{seat_id}/unavailable` | Protected staff override; requires `BIRDIE_ADMIN_TOKEN` and a bearer token |
 
 Both also return `forecast`: `arrival` (`minutes` = the venue's drive time, `at`, `expected_free`, `low`, `high`) and, on the venue endpoint only, `timeline` (the same fields every 30 minutes from now to 3 hours ahead), or `null` if the forecast fails. It starts from the verified study spaces shown now and blends towards the forecast with the rule in `birdie.decision`. `web/mock.js` returns the same shape.
 
-Status mapping: only `FREE` is available; `OCCUPIED`, `REVIEW_REQUIRED` and `UNAVAILABLE` map to `taken`, `HELD` maps to `held`, and `UNKNOWN` remains explicitly checking. Times are ISO 8601 with a timezone. `web/mock.js` is local demo data only.
+Status mapping: only `FREE` is available; `OCCUPIED` and `UNAVAILABLE` map to `taken`, `HELD` and `REVIEW_REQUIRED` map to `held`, and `UNKNOWN` is shown as `checking`. Times are ISO 8601 with a timezone. `web/mock.js` is local demo data only.
 
 ### 7.3 Demo venues
 
