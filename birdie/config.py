@@ -43,6 +43,8 @@ TIMERS: Timers = DEMO_TIMERS if DEMO_MODE else PRODUCTION_TIMERS
 DETECTOR_MODEL_ID = "PekingU/rtdetr_r18vd"
 DETECTION_THRESHOLD = 0.4  # minimum detector score that counts for seat states
 BLUR_THRESHOLD = 0.2  # people are blurred from this lower score, to err on the side of privacy
+BELONGINGS_THRESHOLD = 0.15  # bags, laptops, cups... count from this score: the pretrained model is unsure about
+#                              them (a backpack on a chair scores 0.15 to 0.48) and flips between classes
 MAX_FRAME_SIDE = 640  # long side of a frame is resized to at most this many pixels
 WEBCAM_ENABLED = os.getenv("BIRDIE_ENABLE_WEBCAM", "0").strip().lower() in ("1", "true", "yes", "on")  # off: clip upload only
 TARGET_FPS = 1.0  # frames per second sent from the browser / sampled from clips

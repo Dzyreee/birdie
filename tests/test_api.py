@@ -65,6 +65,8 @@ def test_camera_online_live_true_false_simulated_null(client, svc):
 
 
 def test_live_seat_status_follows_the_camera(client, svc):
+    for seat in svc.seats("nestwork-msheireb"):  # the venue file ships with outlines; start from none
+        svc.clear_seat_polygon("nestwork-msheireb", seat.seat_id)
     svc.set_seat_polygon("nestwork-msheireb", "A1", [(0.0, 0.0), (0.5, 0.0), (0.5, 1.0), (0.0, 1.0)])
     svc._test_detections.append({"label": "person", "score": 0.9, "box": [100, 100, 200, 400]})
     for _ in range(3):

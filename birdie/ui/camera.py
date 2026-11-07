@@ -182,6 +182,7 @@ def build_camera_tab(svc: BirdieService) -> None:
             return
         try:
             while True:
+                svc.reset_alignment(venue_id)  # the first frame of every pass is the reference for the outlines
                 start = time.monotonic()
                 for t, frame in iter_clip_frames(path, fps=TARGET_FPS):
                     yield frame_html(svc.process_frame(venue_id, frame, update_state=True))

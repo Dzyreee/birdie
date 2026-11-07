@@ -17,6 +17,7 @@ import numpy as np
 from birdie.alerts import raise_held_alerts, resolve_on_event
 from birdie.clock import Clock, RealClock
 from birdie.config import (
+    BELONGINGS_THRESHOLD,
     BLUR_THRESHOLD,
     DETECTION_THRESHOLD,
     SCHEDULER_INTERVAL_SECONDS,
@@ -33,7 +34,8 @@ from birdie.storage import Repository
 from birdie.venues import load_all, save_venue
 from birdie.vision import render
 from birdie.vision.chairs import chair_candidates
-from birdie.vision.detector import CHAIR, PERSON, resize_long_side
+from birdie.vision.detector import BELONGINGS, CHAIR, PERSON, resize_long_side
+from birdie.vision.motion import FrameAligner, warp_polygon
 from birdie.vision.seats import assign_detections, observe
 from birdie.vision.state import VenueTracker
 
@@ -94,6 +96,7 @@ class BirdieService:
         self._last_frame_at: dict[str, datetime] = {}
         self._last_person_boxes: dict[str, list[list[float]]] = {}
         self._setup: dict[str, dict] = {}  # venue_id -> {"frame", "detections", "candidates"}
+        self._aligners: dict[str, FrameAligner] = {}  # hand-held camera drift, per venue
 
     # --- venues and seats -------------------------------------------------------
     def venues(self) -> list[Venue]:
@@ -282,8 +285,12 @@ class BirdieService:
         return venue_id in self._last_frame_at and self.camera_online(venue_id) is False
 
     def _detect_all(self, img) -> list[dict]:
-        # One pass at the low blur threshold: people to blur, chairs, and the boxes that count.
-        return self._detect(img, threshold=BLUR_THRESHOLD)
+        # One pass at the lowest threshold: people to blur, chairs, and the boxes that count (filtered later).
+        return self._detect(img, threshold=min(BLUR_THRESHOLD, BELONGINGS_THRESHOLD))
+
+    def reset_alignment(self, venue_id: str) -> None:
+        """Start of a clip (or of a loop): the next frame becomes the reference the seat outlines were drawn on."""
+        self._aligners.setdefault(venue_id, FrameAligner()).reset()
 
     def process_frame(self, venue_id: str | None, frame: np.ndarray, update_state: bool = True) -> np.ndarray:
         """One camera frame: detect, assign people and belongings to seat outlines (one per chair), update the
@@ -292,7 +299,11 @@ class BirdieService:
         img = resize_long_side(frame)
         arr = np.asarray(img)
         detections = self._detect_all(img)
-        counted = [d for d in detections if d["score"] >= DETECTION_THRESHOLD and d["label"] != CHAIR]
+        counted = [
+            d for d in detections
+            if (d["label"] == PERSON and d["score"] >= DETECTION_THRESHOLD)
+            or (d["label"] in BELONGINGS and d["score"] >= BELONGINGS_THRESHOLD)
+        ]
         shown = counted + [d for d in detections if d["label"] == CHAIR and d["score"] >= DETECTION_THRESHOLD]
         persons = [d["box"] for d in detections if d["label"] == PERSON]
         key = venue_id or "_preview"
@@ -303,6 +314,10 @@ class BirdieService:
         if venue_id is not None:
             tracker = self.trackers[venue_id]
             seats = [s for s in tracker.seats.values() if len(s.polygon) >= 3]
+            if seats and self.venue(venue_id).source != VenueSource.simulated:
+                # A hand-held camera drifts: move the outlines with the picture (first frame = reference).
+                h = self._aligners.setdefault(venue_id, FrameAligner()).update(arr)
+                seats = [s.model_copy(update={"polygon": warp_polygon(s.polygon, h)}) for s in seats]
             if update_state:
                 self._last_frame_at[venue_id] = self.clock.now()
                 assigned = assign_detections(counted, seats, img.size)
