@@ -1,0 +1,14 @@
+{
+  "name": "Birdie",
+  "short_name": "Birdie",
+  "description": "Live study seats in Doha, checked by camera.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#8A1538",
+  "theme_color": "#8A1538",
+  "icons": [
+    { "src": "assets/logo-512.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any" },
+    { "src": "assets/apple-touch-icon.jpg", "sizes": "180x180", "type": "image/jpeg", "purpose": "any" }
+  ]
+}

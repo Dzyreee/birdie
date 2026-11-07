@@ -231,7 +231,7 @@ tests/
 
 ### Privacy story
 
-The detector processes sampled frames in memory. The uploaded clip is temporarily held by the Space during processing and deleted after playback; hosted logging and retention are unverified. The normal preview is unblurred and draws detector boxes only. Calibration frames stay in process memory, and only camera polygons are saved. The app stores seat states and aggregate counts, not source frames in its database. No face recognition or identity matching is used.
+The demo sends an uploaded clip to the Space for processing; the operator removes the upload after playback, but hosted logging and retention are unverified. The preview is unblurred and draws detector boxes only. Calibration frames stay in process memory, and only camera polygons are saved. The app stores seat states and aggregate counts, not source frames in its database. No face recognition or identity matching is used.
 
 ---
 
@@ -396,14 +396,14 @@ Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 - **"Isn't this just Google popular times?"** Google estimates relative busyness from phone location. We show actual seats, outlets, windows, sections and seats held by bags, verified by camera.
 - **"Why no booking? UTSeat and coworking apps do booking."** On purpose. Booking-based availability is what makes those apps wrong: walk-ins aren't counted and no-shows block seats. We show what the camera sees.
 - **"Can't someone grab the seat before I get there?"** Yes, and that's honest: we show what's free right now, with a free count per venue. In a big venue like QNL, a place with 30 free seats will still have seats when you arrive.
-- **"Why would a cafe or library give you camera access?"** Many venues already have cameras. Only seat states leave the device. The venue gets live occupancy, alerts for seats hogged by bags, and peak-time analytics. Libraries (QNL, QU) are natural anchor customers.
+- **"Why would a cafe or library give you camera access?"** Many venues already have cameras. This demo uploads a recorded clip to the Space; an on-premise deployment that sends only seat states is a future privacy goal. Venue alerts and peak-time analytics are planned, not validated with partner venues.
 - **"Privacy?"** No face recognition or identity matching. The uploaded clip is shown unblurred and deleted after playback; hosted logging and retention have not been verified.
 - **"Why is this Qatar-specific?"** Car-dependent sprawl and heat make every wasted check a drive, which is why we show drive times. Doha venues, family and women's sections, the Friday and Saturday weekend, Ramadan nights and exam season around QNL.
-- **"Where is Hugging Face in this?"** The detector from the Hub, the whole app on a Space, evaluation and backtests on HF Jobs, the labelled dataset published to the Hub.
-- **"Why only one vision model?"** COCO already includes people, bags, laptops and cups, so one small detector does both jobs in one pass. That halves the compute and lets vision run on CPU.
+- **"Where is Hugging Face in this?"** The pretrained detector is from the Hub; the app and demo pipeline run on a Space. A labelled dataset is not published, and held-out accuracy has not been measured.
+- **"Why only one vision model?"** The MVP uses one pretrained detector for people and common objects. It does not reliably identify every kind of belonging; uncertain desk evidence must remain unknown.
 - **"Why a web app and not a native app?"** You open it from a link with no install, on any phone.
 - **"How accurate is it?"** Report seat-state accuracy on our labelled frames, and be upfront about failure cases (occlusion, lighting).
-- **"Is the other venues' data real?"** No: only Nestwork is live. The others are simulated and labelled as such, to show how Birdie works across a city.
+- **"Is the other venues' data real?"** Nestwork replays recorded footage through the pipeline. The others are simulated listings to show the product across the city.
 
 ---
 
@@ -425,7 +425,7 @@ Put the real numbers on a slide: for example, "X of 20 builders here said yes, l
 | Judges call it "not clearly regional" | Lead with the Doha framing: car dependency and drive times, QNL, Doha venues, sections, Ramadan and weekend patterns |
 | Judges call it a convenience app | Room survey data + venue-side value (held-seat alerts, utilisation) + verified-availability framing |
 | Detection flicker from occlusion or lighting | Smoothing over k frames; good camera angle; test in the actual demo room early |
-| Frontend and backend don't fit together | The API shapes in section 7.2 are fixed; the frontend builds on mock data in exactly that shape |
+| Frontend and backend don't fit together | Keep the API shapes in section 7.2 aligned; the current customer app reads the venue API and tests cover the response contract |
 | Space latency or Wi-Fi failure in the demo | About 1 fps, 2 s polling; local fallback; backup video |
 | Privacy concerns from the audience | No face recognition; show clips unblurred as requested; disclose temporary upload and unverified hosted retention |
 | Burning the $100 credits | Free CPU Space for the whole app; money only for short HF Jobs; track spend |

@@ -35,6 +35,13 @@ _PROFILES: dict[tuple[str, str], list[tuple[float, float]]] = {
                             (19, 0.3), (21, 0.1), (22, 0.0), (24, 0.0)],
     ("cowork", "friday"): [(0, 0.0), (13, 0.0), (14, 0.1), (17, 0.2), (20, 0.1), (21, 0.0), (24, 0.0)],
     ("cowork", "saturday"): [(0, 0.0), (8, 0.0), (9, 0.15), (12, 0.35), (16, 0.3), (19, 0.15), (21, 0.0), (24, 0.0)],
+    # Study rooms: students after classes, busiest late afternoon and evening, open late.
+    ("study_room", "weekday"): [(0, 0.2), (0.5, 0.0), (8, 0.0), (9, 0.15), (12, 0.35), (15, 0.6), (18, 0.8), (21, 0.7),
+                                (23, 0.45), (24, 0.2)],
+    ("study_room", "friday"): [(0, 0.15), (0.5, 0.0), (13.5, 0.0), (14, 0.1), (17, 0.45), (20, 0.6), (23, 0.35),
+                               (24, 0.15)],
+    ("study_room", "saturday"): [(0, 0.2), (0.5, 0.0), (9, 0.0), (10, 0.2), (14, 0.5), (18, 0.65), (22, 0.45),
+                                 (24, 0.2)],
 }
 
 # During Ramadan days are quiet (fasting) and the rush moves to the hours between iftar and suhoor.
@@ -45,9 +52,11 @@ _RAMADAN: dict[str, list[tuple[float, float]]] = {
                 (20, 0.5), (22, 0.7), (24, 0.35)],
     "cowork": [(0, 0.0), (9, 0.0), (10, 0.45), (14, 0.5), (15, 0.2), (16, 0.0), (20.5, 0.0), (21, 0.3), (23, 0.35),
                (24, 0.0)],
+    "study_room": [(0, 0.45), (1.5, 0.1), (2, 0.0), (10, 0.0), (11, 0.2), (17, 0.3), (18, 0.05), (19.5, 0.0),
+                   (20, 0.55), (22, 0.8), (24, 0.45)],
 }
 
-_EXAM_FACTOR = {"library": 1.3, "cafe": 1.1, "cowork": 1.0}
+_EXAM_FACTOR = {"library": 1.3, "cafe": 1.1, "cowork": 1.0, "study_room": 1.35}
 
 
 def _interp(points: list[tuple[float, float]], hour: float) -> float:

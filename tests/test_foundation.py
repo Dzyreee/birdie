@@ -55,7 +55,9 @@ def test_occupancy_buckets_average(repo, clock):
 
 def test_demo_venues_load():
     venues = load_all()
-    assert set(venues) == {"nestwork-msheireb", "qnl", "qu-library", "qahwa-corner"}
+    assert set(venues) == {
+        "nestwork-msheireb", "qnl", "qu-library", "qahwa-corner", "corniche-cup", "nakheel-study", "waab-study-hall"
+    }
     assert next(iter(venues)) == "nestwork-msheireb"  # camera-fed venue first
     for cfg in venues.values():
         assert cfg.seats, cfg.venue.venue_id

@@ -59,11 +59,10 @@ window.BirdieMock = (() => {
     },
   };
 
-  // Doha venues. Only Nestwork is live in the real app; the rest are simulated. Names marked
-  // "invented" are made up for the demo.
+  // Doha venues. Nestwork is a recorded demo replay; the rest are simulated.
   const VENUES = [
     { venue_id: 'nestwork-msheireb', name: 'Nestwork Msheireb', area: 'Msheireb Downtown', type: 'cowork', lat: 25.2867, lon: 51.5265,
-      source: 'live', drive_minutes: 0, open_until: 'Open till 22:00', open_late: true, amenities: ['Wi-Fi', 'Outlets', 'Coffee'],
+      source: 'recorded', drive_minutes: 0, open_until: 'Open till 22:00', open_late: true, amenities: ['Wi-Fi', 'Outlets', 'Coffee'],
       zones: ['open'], layout: 'cowork', pFree: 0.45, pHeld: 0.08, seed: 11 },
     { venue_id: 'qnl', name: 'Qatar National Library', area: 'Education City', type: 'library', lat: 25.3147, lon: 51.4405,
       source: 'simulated', drive_minutes: 15, open_until: 'Open till 22:00', open_late: true,

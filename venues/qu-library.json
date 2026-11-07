@@ -2,1174 +2,557 @@
   "venue": {
     "venue_id": "qu-library",
     "name": "Qatar University Library",
-    "area": "Qatar University, Al Tarfa",
+    "area": "Qatar University",
     "type": "library",
     "lat": 25.377,
-    "lon": 51.489,
-    "zones": [
-      "quiet",
-      "women",
-      "group"
-    ],
+    "lon": 51.49,
     "source": "simulated",
-    "noise_db": 38.0,
     "drive_minutes": 25,
     "open_until": "Open till 21:00",
     "open_late": false,
-    "amenities": ["Quiet zone", "Women's section", "Printing"]
+    "amenities": [
+      "Quiet zone",
+      "Women's section",
+      "Printing"
+    ],
+    "zones": [
+      "quiet",
+      "women"
+    ],
+    "floor_plan": {
+      "width": 362.0,
+      "height": 490.0,
+      "window_top": true,
+      "tables": [
+        {
+          "table_id": "W",
+          "name": "Window bar",
+          "shape": "rect",
+          "x": 24.0,
+          "y": 22.0,
+          "w": 314.0,
+          "h": 16.0,
+          "cx": null,
+          "cy": null,
+          "r": null
+        },
+        {
+          "table_id": "A",
+          "name": "Table A",
+          "shape": "rect",
+          "x": 34.0,
+          "y": 118.0,
+          "w": 130.0,
+          "h": 46.0,
+          "cx": null,
+          "cy": null,
+          "r": null
+        },
+        {
+          "table_id": "B",
+          "name": "Table B",
+          "shape": "rect",
+          "x": 198.0,
+          "y": 118.0,
+          "w": 130.0,
+          "h": 46.0,
+          "cx": null,
+          "cy": null,
+          "r": null
+        },
+        {
+          "table_id": "C",
+          "name": "Round table C",
+          "shape": "round",
+          "x": null,
+          "y": null,
+          "w": null,
+          "h": null,
+          "cx": 96.0,
+          "cy": 272.0,
+          "r": 30.0
+        },
+        {
+          "table_id": "D",
+          "name": "Round table D",
+          "shape": "round",
+          "x": null,
+          "y": null,
+          "w": null,
+          "h": null,
+          "cx": 266.0,
+          "cy": 272.0,
+          "r": 30.0
+        },
+        {
+          "table_id": "E",
+          "name": "Booth E",
+          "shape": "rect",
+          "x": 60.0,
+          "y": 366.0,
+          "w": 56.0,
+          "h": 72.0,
+          "cx": null,
+          "cy": null,
+          "r": null
+        },
+        {
+          "table_id": "F",
+          "name": "Booth F",
+          "shape": "rect",
+          "x": 246.0,
+          "y": 366.0,
+          "w": 56.0,
+          "h": 72.0,
+          "cx": null,
+          "cy": null,
+          "r": null
+        }
+      ],
+      "fixtures": [
+        {
+          "label": "Books",
+          "x": 152.0,
+          "y": 370.0,
+          "w": 58.0,
+          "h": 64.0
+        }
+      ]
+    },
+    "noise_db": 38.0
   },
   "seats": [
     {
-      "seat_id": "Q01",
+      "seat_id": "W1",
       "venue_id": "qu-library",
+      "table_id": "W",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.0485,
-          0.095
-        ],
-        [
-          0.104,
-          0.095
-        ],
-        [
-          0.104,
-          0.23
-        ],
-        [
-          0.0485,
-          0.23
-        ]
-      ]
+      "has_window": true,
+      "plan_x": 43.6,
+      "plan_y": 55.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q02",
+      "seat_id": "W2",
       "venue_id": "qu-library",
+      "table_id": "W",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.141,
-          0.095
-        ],
-        [
-          0.1965,
-          0.095
-        ],
-        [
-          0.1965,
-          0.23
-        ],
-        [
-          0.141,
-          0.23
-        ]
-      ]
+      "has_window": true,
+      "plan_x": 82.9,
+      "plan_y": 55.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q03",
+      "seat_id": "W3",
       "venue_id": "qu-library",
+      "table_id": "W",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.2335,
-          0.095
-        ],
-        [
-          0.289,
-          0.095
-        ],
-        [
-          0.289,
-          0.23
-        ],
-        [
-          0.2335,
-          0.23
-        ]
-      ]
+      "has_window": true,
+      "plan_x": 122.1,
+      "plan_y": 55.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q04",
+      "seat_id": "W4",
       "venue_id": "qu-library",
+      "table_id": "W",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.326,
-          0.095
-        ],
-        [
-          0.3815,
-          0.095
-        ],
-        [
-          0.3815,
-          0.23
-        ],
-        [
-          0.326,
-          0.23
-        ]
-      ]
+      "has_window": true,
+      "plan_x": 161.4,
+      "plan_y": 55.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q05",
+      "seat_id": "W5",
       "venue_id": "qu-library",
+      "table_id": "W",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.0485,
-          0.32
-        ],
-        [
-          0.104,
-          0.32
-        ],
-        [
-          0.104,
-          0.455
-        ],
-        [
-          0.0485,
-          0.455
-        ]
-      ]
+      "has_window": true,
+      "plan_x": 200.6,
+      "plan_y": 55.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q06",
+      "seat_id": "W6",
       "venue_id": "qu-library",
+      "table_id": "W",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.141,
-          0.32
-        ],
-        [
-          0.1965,
-          0.32
-        ],
-        [
-          0.1965,
-          0.455
-        ],
-        [
-          0.141,
-          0.455
-        ]
-      ]
+      "has_window": true,
+      "plan_x": 239.9,
+      "plan_y": 55.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q07",
+      "seat_id": "W7",
       "venue_id": "qu-library",
+      "table_id": "W",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.2335,
-          0.32
-        ],
-        [
-          0.289,
-          0.32
-        ],
-        [
-          0.289,
-          0.455
-        ],
-        [
-          0.2335,
-          0.455
-        ]
-      ]
+      "has_window": true,
+      "plan_x": 279.1,
+      "plan_y": 55.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q08",
+      "seat_id": "W8",
       "venue_id": "qu-library",
+      "table_id": "W",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.326,
-          0.32
-        ],
-        [
-          0.3815,
-          0.32
-        ],
-        [
-          0.3815,
-          0.455
-        ],
-        [
-          0.326,
-          0.455
-        ]
-      ]
+      "has_window": true,
+      "plan_x": 318.4,
+      "plan_y": 55.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q09",
+      "seat_id": "A1",
       "venue_id": "qu-library",
+      "table_id": "A",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.0485,
-          0.545
-        ],
-        [
-          0.104,
-          0.545
-        ],
-        [
-          0.104,
-          0.68
-        ],
-        [
-          0.0485,
-          0.68
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 55.7,
+      "plan_y": 101.0,
+      "plan_rot": 0.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q10",
+      "seat_id": "A2",
       "venue_id": "qu-library",
+      "table_id": "A",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.141,
-          0.545
-        ],
-        [
-          0.1965,
-          0.545
-        ],
-        [
-          0.1965,
-          0.68
-        ],
-        [
-          0.141,
-          0.68
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 99.0,
+      "plan_y": 101.0,
+      "plan_rot": 0.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q11",
+      "seat_id": "A3",
       "venue_id": "qu-library",
+      "table_id": "A",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.2335,
-          0.545
-        ],
-        [
-          0.289,
-          0.545
-        ],
-        [
-          0.289,
-          0.68
-        ],
-        [
-          0.2335,
-          0.68
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 142.3,
+      "plan_y": 101.0,
+      "plan_rot": 0.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q12",
+      "seat_id": "A4",
       "venue_id": "qu-library",
+      "table_id": "A",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.326,
-          0.545
-        ],
-        [
-          0.3815,
-          0.545
-        ],
-        [
-          0.3815,
-          0.68
-        ],
-        [
-          0.326,
-          0.68
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 55.7,
+      "plan_y": 181.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q13",
+      "seat_id": "A5",
       "venue_id": "qu-library",
+      "table_id": "A",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.0485,
-          0.77
-        ],
-        [
-          0.104,
-          0.77
-        ],
-        [
-          0.104,
-          0.905
-        ],
-        [
-          0.0485,
-          0.905
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 99.0,
+      "plan_y": 181.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q14",
+      "seat_id": "A6",
       "venue_id": "qu-library",
+      "table_id": "A",
       "zone": "quiet",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.141,
-          0.77
-        ],
-        [
-          0.1965,
-          0.77
-        ],
-        [
-          0.1965,
-          0.905
-        ],
-        [
-          0.141,
-          0.905
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 142.3,
+      "plan_y": 181.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q15",
+      "seat_id": "B1",
       "venue_id": "qu-library",
+      "table_id": "B",
       "zone": "quiet",
-      "has_outlet": true,
-      "polygon": [
-        [
-          0.2335,
-          0.77
-        ],
-        [
-          0.289,
-          0.77
-        ],
-        [
-          0.289,
-          0.905
-        ],
-        [
-          0.2335,
-          0.905
-        ]
-      ]
+      "has_outlet": false,
+      "has_window": false,
+      "plan_x": 219.7,
+      "plan_y": 101.0,
+      "plan_rot": 0.0,
+      "polygon": []
     },
     {
-      "seat_id": "Q16",
+      "seat_id": "B2",
       "venue_id": "qu-library",
+      "table_id": "B",
       "zone": "quiet",
-      "has_outlet": true,
-      "polygon": [
-        [
-          0.326,
-          0.77
-        ],
-        [
-          0.3815,
-          0.77
-        ],
-        [
-          0.3815,
-          0.905
-        ],
-        [
-          0.326,
-          0.905
-        ]
-      ]
+      "has_outlet": false,
+      "has_window": false,
+      "plan_x": 263.0,
+      "plan_y": 101.0,
+      "plan_rot": 0.0,
+      "polygon": []
     },
     {
-      "seat_id": "W01",
+      "seat_id": "B3",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": true,
-      "polygon": [
-        [
-          0.4612,
-          0.0725
-        ],
-        [
-          0.5248,
-          0.0725
-        ],
-        [
-          0.5248,
-          0.14
-        ],
-        [
-          0.4612,
-          0.14
-        ]
-      ]
+      "table_id": "B",
+      "zone": "quiet",
+      "has_outlet": false,
+      "has_window": false,
+      "plan_x": 306.3,
+      "plan_y": 101.0,
+      "plan_rot": 0.0,
+      "polygon": []
     },
     {
-      "seat_id": "W02",
+      "seat_id": "B4",
       "venue_id": "qu-library",
+      "table_id": "B",
+      "zone": "quiet",
+      "has_outlet": false,
+      "has_window": false,
+      "plan_x": 219.7,
+      "plan_y": 181.0,
+      "plan_rot": 180.0,
+      "polygon": []
+    },
+    {
+      "seat_id": "B5",
+      "venue_id": "qu-library",
+      "table_id": "B",
+      "zone": "quiet",
+      "has_outlet": false,
+      "has_window": false,
+      "plan_x": 263.0,
+      "plan_y": 181.0,
+      "plan_rot": 180.0,
+      "polygon": []
+    },
+    {
+      "seat_id": "B6",
+      "venue_id": "qu-library",
+      "table_id": "B",
+      "zone": "quiet",
+      "has_outlet": false,
+      "has_window": false,
+      "plan_x": 306.3,
+      "plan_y": 181.0,
+      "plan_rot": 180.0,
+      "polygon": []
+    },
+    {
+      "seat_id": "C1",
+      "venue_id": "qu-library",
+      "table_id": "C",
       "zone": "women",
       "has_outlet": false,
-      "polygon": [
-        [
-          0.5672,
-          0.0725
-        ],
-        [
-          0.6308,
-          0.0725
-        ],
-        [
-          0.6308,
-          0.14
-        ],
-        [
-          0.5672,
-          0.14
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 96.0,
+      "plan_y": 225.0,
+      "plan_rot": 0.0,
+      "polygon": []
     },
     {
-      "seat_id": "W03",
+      "seat_id": "C2",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": true,
-      "polygon": [
-        [
-          0.6732,
-          0.0725
-        ],
-        [
-          0.7368,
-          0.0725
-        ],
-        [
-          0.7368,
-          0.14
-        ],
-        [
-          0.6732,
-          0.14
-        ]
-      ]
-    },
-    {
-      "seat_id": "W04",
-      "venue_id": "qu-library",
+      "table_id": "C",
       "zone": "women",
       "has_outlet": false,
-      "polygon": [
-        [
-          0.7792,
-          0.0725
-        ],
-        [
-          0.8428,
-          0.0725
-        ],
-        [
-          0.8428,
-          0.14
-        ],
-        [
-          0.7792,
-          0.14
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 143.0,
+      "plan_y": 272.0,
+      "plan_rot": 90.0,
+      "polygon": []
     },
     {
-      "seat_id": "W05",
+      "seat_id": "C3",
       "venue_id": "qu-library",
+      "table_id": "C",
+      "zone": "women",
+      "has_outlet": false,
+      "has_window": false,
+      "plan_x": 96.0,
+      "plan_y": 319.0,
+      "plan_rot": 180.0,
+      "polygon": []
+    },
+    {
+      "seat_id": "C4",
+      "venue_id": "qu-library",
+      "table_id": "C",
+      "zone": "women",
+      "has_outlet": false,
+      "has_window": false,
+      "plan_x": 49.0,
+      "plan_y": 272.0,
+      "plan_rot": 270.0,
+      "polygon": []
+    },
+    {
+      "seat_id": "D1",
+      "venue_id": "qu-library",
+      "table_id": "D",
       "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.8852,
-          0.0725
-        ],
-        [
-          0.9488,
-          0.0725
-        ],
-        [
-          0.9488,
-          0.14
-        ],
-        [
-          0.8852,
-          0.14
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 266.0,
+      "plan_y": 225.0,
+      "plan_rot": 0.0,
+      "polygon": []
     },
     {
-      "seat_id": "W06",
+      "seat_id": "D2",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.4612,
-          0.185
-        ],
-        [
-          0.5248,
-          0.185
-        ],
-        [
-          0.5248,
-          0.2525
-        ],
-        [
-          0.4612,
-          0.2525
-        ]
-      ]
-    },
-    {
-      "seat_id": "W07",
-      "venue_id": "qu-library",
+      "table_id": "D",
       "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.5672,
-          0.185
-        ],
-        [
-          0.6308,
-          0.185
-        ],
-        [
-          0.6308,
-          0.2525
-        ],
-        [
-          0.5672,
-          0.2525
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 313.0,
+      "plan_y": 272.0,
+      "plan_rot": 90.0,
+      "polygon": []
     },
     {
-      "seat_id": "W08",
+      "seat_id": "D3",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.6732,
-          0.185
-        ],
-        [
-          0.7368,
-          0.185
-        ],
-        [
-          0.7368,
-          0.2525
-        ],
-        [
-          0.6732,
-          0.2525
-        ]
-      ]
-    },
-    {
-      "seat_id": "W09",
-      "venue_id": "qu-library",
+      "table_id": "D",
       "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.7792,
-          0.185
-        ],
-        [
-          0.8428,
-          0.185
-        ],
-        [
-          0.8428,
-          0.2525
-        ],
-        [
-          0.7792,
-          0.2525
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 266.0,
+      "plan_y": 319.0,
+      "plan_rot": 180.0,
+      "polygon": []
     },
     {
-      "seat_id": "W10",
+      "seat_id": "D4",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.8852,
-          0.185
-        ],
-        [
-          0.9488,
-          0.185
-        ],
-        [
-          0.9488,
-          0.2525
-        ],
-        [
-          0.8852,
-          0.2525
-        ]
-      ]
-    },
-    {
-      "seat_id": "W11",
-      "venue_id": "qu-library",
+      "table_id": "D",
       "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.4612,
-          0.2975
-        ],
-        [
-          0.5248,
-          0.2975
-        ],
-        [
-          0.5248,
-          0.365
-        ],
-        [
-          0.4612,
-          0.365
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 219.0,
+      "plan_y": 272.0,
+      "plan_rot": 270.0,
+      "polygon": []
     },
     {
-      "seat_id": "W12",
+      "seat_id": "E1",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.5672,
-          0.2975
-        ],
-        [
-          0.6308,
-          0.2975
-        ],
-        [
-          0.6308,
-          0.365
-        ],
-        [
-          0.5672,
-          0.365
-        ]
-      ]
-    },
-    {
-      "seat_id": "W13",
-      "venue_id": "qu-library",
+      "table_id": "E",
       "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.6732,
-          0.2975
-        ],
-        [
-          0.7368,
-          0.2975
-        ],
-        [
-          0.7368,
-          0.365
-        ],
-        [
-          0.6732,
-          0.365
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 43.0,
+      "plan_y": 384.0,
+      "plan_rot": -90.0,
+      "polygon": []
     },
     {
-      "seat_id": "W14",
+      "seat_id": "E2",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.7792,
-          0.2975
-        ],
-        [
-          0.8428,
-          0.2975
-        ],
-        [
-          0.8428,
-          0.365
-        ],
-        [
-          0.7792,
-          0.365
-        ]
-      ]
-    },
-    {
-      "seat_id": "W15",
-      "venue_id": "qu-library",
+      "table_id": "E",
       "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.8852,
-          0.2975
-        ],
-        [
-          0.9488,
-          0.2975
-        ],
-        [
-          0.9488,
-          0.365
-        ],
-        [
-          0.8852,
-          0.365
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 43.0,
+      "plan_y": 420.0,
+      "plan_rot": -90.0,
+      "polygon": []
     },
     {
-      "seat_id": "W16",
+      "seat_id": "E3",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.4612,
-          0.41
-        ],
-        [
-          0.5248,
-          0.41
-        ],
-        [
-          0.5248,
-          0.4775
-        ],
-        [
-          0.4612,
-          0.4775
-        ]
-      ]
-    },
-    {
-      "seat_id": "W17",
-      "venue_id": "qu-library",
+      "table_id": "E",
       "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.5672,
-          0.41
-        ],
-        [
-          0.6308,
-          0.41
-        ],
-        [
-          0.6308,
-          0.4775
-        ],
-        [
-          0.5672,
-          0.4775
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 133.0,
+      "plan_y": 384.0,
+      "plan_rot": 90.0,
+      "polygon": []
     },
     {
-      "seat_id": "W18",
+      "seat_id": "E4",
       "venue_id": "qu-library",
-      "zone": "women",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.6732,
-          0.41
-        ],
-        [
-          0.7368,
-          0.41
-        ],
-        [
-          0.7368,
-          0.4775
-        ],
-        [
-          0.6732,
-          0.4775
-        ]
-      ]
-    },
-    {
-      "seat_id": "W19",
-      "venue_id": "qu-library",
+      "table_id": "E",
       "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.7792,
-          0.41
-        ],
-        [
-          0.8428,
-          0.41
-        ],
-        [
-          0.8428,
-          0.4775
-        ],
-        [
-          0.7792,
-          0.4775
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 133.0,
+      "plan_y": 420.0,
+      "plan_rot": 90.0,
+      "polygon": []
     },
     {
-      "seat_id": "W20",
+      "seat_id": "F1",
       "venue_id": "qu-library",
+      "table_id": "F",
       "zone": "women",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.8852,
-          0.41
-        ],
-        [
-          0.9488,
-          0.41
-        ],
-        [
-          0.9488,
-          0.4775
-        ],
-        [
-          0.8852,
-          0.4775
-        ]
-      ]
-    },
-    {
-      "seat_id": "G01",
-      "venue_id": "qu-library",
-      "zone": "group",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.4577,
-          0.599
-        ],
-        [
-          0.5107,
-          0.599
-        ],
-        [
-          0.5107,
-          0.716
-        ],
-        [
-          0.4577,
-          0.716
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 229.0,
+      "plan_y": 384.0,
+      "plan_rot": -90.0,
+      "polygon": []
     },
     {
-      "seat_id": "G02",
+      "seat_id": "F2",
       "venue_id": "qu-library",
-      "zone": "group",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.546,
-          0.599
-        ],
-        [
-          0.599,
-          0.599
-        ],
-        [
-          0.599,
-          0.716
-        ],
-        [
-          0.546,
-          0.716
-        ]
-      ]
-    },
-    {
-      "seat_id": "G03",
-      "venue_id": "qu-library",
-      "zone": "group",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.6343,
-          0.599
-        ],
-        [
-          0.6873,
-          0.599
-        ],
-        [
-          0.6873,
-          0.716
-        ],
-        [
-          0.6343,
-          0.716
-        ]
-      ]
-    },
-    {
-      "seat_id": "G04",
-      "venue_id": "qu-library",
-      "zone": "group",
+      "table_id": "F",
+      "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.7227,
-          0.599
-        ],
-        [
-          0.7757,
-          0.599
-        ],
-        [
-          0.7757,
-          0.716
-        ],
-        [
-          0.7227,
-          0.716
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 229.0,
+      "plan_y": 420.0,
+      "plan_rot": -90.0,
+      "polygon": []
     },
     {
-      "seat_id": "G05",
+      "seat_id": "F3",
       "venue_id": "qu-library",
-      "zone": "group",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.811,
-          0.599
-        ],
-        [
-          0.864,
-          0.599
-        ],
-        [
-          0.864,
-          0.716
-        ],
-        [
-          0.811,
-          0.716
-        ]
-      ]
-    },
-    {
-      "seat_id": "G06",
-      "venue_id": "qu-library",
-      "zone": "group",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.8993,
-          0.599
-        ],
-        [
-          0.9523,
-          0.599
-        ],
-        [
-          0.9523,
-          0.716
-        ],
-        [
-          0.8993,
-          0.716
-        ]
-      ]
-    },
-    {
-      "seat_id": "G07",
-      "venue_id": "qu-library",
-      "zone": "group",
+      "table_id": "F",
+      "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.4577,
-          0.794
-        ],
-        [
-          0.5107,
-          0.794
-        ],
-        [
-          0.5107,
-          0.911
-        ],
-        [
-          0.4577,
-          0.911
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 319.0,
+      "plan_y": 384.0,
+      "plan_rot": 90.0,
+      "polygon": []
     },
     {
-      "seat_id": "G08",
+      "seat_id": "F4",
       "venue_id": "qu-library",
-      "zone": "group",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.546,
-          0.794
-        ],
-        [
-          0.599,
-          0.794
-        ],
-        [
-          0.599,
-          0.911
-        ],
-        [
-          0.546,
-          0.911
-        ]
-      ]
-    },
-    {
-      "seat_id": "G09",
-      "venue_id": "qu-library",
-      "zone": "group",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.6343,
-          0.794
-        ],
-        [
-          0.6873,
-          0.794
-        ],
-        [
-          0.6873,
-          0.911
-        ],
-        [
-          0.6343,
-          0.911
-        ]
-      ]
-    },
-    {
-      "seat_id": "G10",
-      "venue_id": "qu-library",
-      "zone": "group",
+      "table_id": "F",
+      "zone": "women",
       "has_outlet": true,
-      "polygon": [
-        [
-          0.7227,
-          0.794
-        ],
-        [
-          0.7757,
-          0.794
-        ],
-        [
-          0.7757,
-          0.911
-        ],
-        [
-          0.7227,
-          0.911
-        ]
-      ]
-    },
-    {
-      "seat_id": "G11",
-      "venue_id": "qu-library",
-      "zone": "group",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.811,
-          0.794
-        ],
-        [
-          0.864,
-          0.794
-        ],
-        [
-          0.864,
-          0.911
-        ],
-        [
-          0.811,
-          0.911
-        ]
-      ]
-    },
-    {
-      "seat_id": "G12",
-      "venue_id": "qu-library",
-      "zone": "group",
-      "has_outlet": false,
-      "polygon": [
-        [
-          0.8993,
-          0.794
-        ],
-        [
-          0.9523,
-          0.794
-        ],
-        [
-          0.9523,
-          0.911
-        ],
-        [
-          0.8993,
-          0.911
-        ]
-      ]
+      "has_window": false,
+      "plan_x": 319.0,
+      "plan_y": 420.0,
+      "plan_rot": 90.0,
+      "polygon": []
     }
   ]
 }

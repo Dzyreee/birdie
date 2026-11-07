@@ -144,8 +144,10 @@ class FocusScore:
         return "steady"
 
 
-def _free_now(data: LiveData, venue_id: str) -> list[SeatSnapshot]:
-    return [s for s in data.snapshots(venue_id) if s.state == SeatState.FREE]
+def _free_now(data: LiveData, venue_id: str) -> list[Seat]:
+    """The seats that are FREE right now (seat details joined from the venue's seats)."""
+    free = {s.seat_id for s in data.snapshots(venue_id) if s.state == SeatState.FREE}
+    return [seat for seat in data.seats(venue_id) if seat.seat_id in free]
 
 
 def focus_score(data: LiveData, venue_id: str, arrival_minutes: int) -> FocusScore:

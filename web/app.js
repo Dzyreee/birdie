@@ -1,4 +1,4 @@
-/* Birdie mobile app: Splash, Browse and Place (screens 1 to 3 of design/mobile).
+/* Birdie mobile app: Explore, Saved, About, and a Place screen with the live floor plan.
  *
  * Reads the read-only API in CLAUDE.md section 7.2 and polls it every 2 seconds:
  *   GET api/venues               list of venues with seat counts
@@ -10,11 +10,21 @@
   'use strict';
 
   const POLL_MS = 2000;
-  const COLORS = { free: '#2FB86A', taken: '#EF4E4E', held: '#F2A93B' };
+  const SAVED_KEY = 'birdie:saved';
   const TYPES = { library: 'Library', cafe: 'Café', cowork: 'Coworking', study_room: 'Study room' };
   const CATS = [['all', 'All'], ['library', 'Libraries'], ['cafe', 'Cafés'], ['cowork', 'Coworking'], ['study_room', 'Study rooms']];
   const SORTS = [['near', 'Nearest'], ['free', 'Most study spaces'], ['late', 'Open late']];
   const SEGS = [['all', 'All seats'], ['outlet', 'Outlet'], ['window', 'Window']];
+  const TABS = [['home', '#/', 'Explore'], ['saved', '#/saved', 'Saved'], ['about', '#/about', 'About']];
+
+  // Place photos shipped with the app. A venue's own `photo` URL from the API wins if it has one.
+  const PHOTOS = {
+    'nestwork-msheireb': 'assets/places/nestwork',
+    qnl: 'assets/places/qnl',
+    'qu-library': 'assets/places/qu-library',
+  };
+  const photoOf = v => (v.photo ? { full: v.photo, thumb: v.photo }
+    : PHOTOS[v.venue_id] ? { full: `${PHOTOS[v.venue_id]}.jpg`, thumb: `${PHOTOS[v.venue_id]}-thumb.jpg` } : null);
 
   const params = new URLSearchParams(location.search);
   const app = document.getElementById('app');
@@ -24,15 +34,16 @@
     online: true,     // false while the API can't be reached
     venues: null,     // GET api/venues
     venue: null,      // GET api/venues/{id} for the open place
-    screen: 'browse', // 'browse' or 'place'
+    screen: 'home',   // 'home', 'saved', 'about' or 'place'
     venueId: null,
     cat: 'all',
     sort: 'near',
     query: '',
     seg: 'all',
     sel: null,        // seat_id of the chair whose sheet is open
-    browseScroll: 0,
-    fromBrowse: false,
+    homeScroll: 0,
+    fromList: false,
+    saved: loadSaved(),
   };
 
   // ---------- Small helpers ----------
@@ -41,41 +52,50 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fold = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const typeLabel = t => TYPES[t] || t;
-  const driveLabel = m => (m === 0 ? "You're here" : `${m} min drive`);
-  const sourceLabel = s => (s === 'live' ? 'Live' : s.charAt(0).toUpperCase() + s.slice(1));
+  const kindLabel = v => `${typeLabel(v.type)}, ${v.area}`;
+  const studyCount = v => v.counts?.usable_study_spaces ?? v.counts?.free ?? 0;
+  const seatState = s => s.seat_state || s.state || ({ free: 'FREE', held: 'HELD', taken: 'OCCUPIED' })[s.status] || 'UNKNOWN';
+  const studyAvailable = s => s.usable_for_studying === undefined
+    ? seatState(s) === 'FREE' : s.usable_for_studying === true;
+  const sourceLabel = source => ({ live: 'Live camera', recorded: 'Recorded demo', simulated: 'Simulated' }[source] || 'Availability demo');
+  function seatLabel(s) {
+    if (studyAvailable(s)) return 'Available for studying';
+    return ({
+      OCCUPIED: 'Taken', HELD: 'Held by belongings', REVIEW_REQUIRED: 'Needs staff review',
+      UNKNOWN: 'Checking', UNAVAILABLE: 'Unavailable',
+    })[seatState(s)] || ({
+      seat_not_linked_to_table: 'Not mapped to a table',
+      camera_calibration_incomplete: 'Desk area not calibrated',
+      chair_not_visible: 'Chair not verified',
+      workspace_uncertain: 'Desk area needs checking',
+      workspace_blocked: 'Desk area blocked',
+      table_unavailable: 'Table unavailable',
+      private_table_in_use_or_unverified: 'Private table needs checking',
+      detection_confidence_too_low: 'Detection needs checking',
+    })[s.availability_reason] || 'Not verified for studying';
+  }
+  function filteredStudyCount(v, matches) {
+    if (state.seg === 'all') return studyCount(v);
+    if (!v.tables) return v.seats.filter(s => matches(s) && studyAvailable(s)).length;
+    return v.tables.reduce((n, table) => {
+      const seats = v.seats.filter(s => table.seat_ids.includes(s.seat_id) && matches(s));
+      if (!seats.length || !table.usable_for_studying) return n;
+      if (table.table_type === 'private' || !table.is_shareable) return n + (table.usable_study_spaces ? 1 : 0);
+      return n + seats.filter(studyAvailable).length;
+    }, 0);
+  }
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  function seatState(s) {
-    if (s.state) return s.state;
-    return ({ free: 'FREE', held: 'HELD', taken: 'OCCUPIED' })[s.status] || 'UNKNOWN';
+  function heldFor(since) {
+    const ms = Date.now() - Date.parse(since);
+    if (!Number.isFinite(ms) || ms < 60000) return 'under a minute';
+    const m = Math.floor(ms / 60000);
+    return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
   }
 
-  const studyCount = v => v.counts.usable_study_spaces ?? v.counts.free ?? 0;
-  const studyAvailable = s => s.usable_for_studying === true ||
-    (s.usable_for_studying === undefined && seatState(s) === 'FREE');
-  const filteredStudyCount = (v, matches) => !v.tables ? v.seats.filter(s => matches(s) && studyAvailable(s)).length :
-    v.tables.reduce((n, t) => {
-      const seats = v.seats.filter(s => t.seat_ids.includes(s.seat_id) && matches(s));
-      if (!seats.length || !t.usable_for_studying) return n;
-      return n + (t.table_type === 'private' || !t.is_shareable ? 1 : seats.filter(studyAvailable).length);
-    }, 0);
-
-  function seatLabel(s) {
-    if (studyAvailable(s)) return 'Available for study';
-    if (s.state === 'FREE') {
-      return ({
-        seat_not_linked_to_table: 'Not mapped to a table',
-        camera_calibration_incomplete: 'Desk area not calibrated',
-        chair_not_visible: 'Chair not verified',
-        workspace_uncertain: 'Desk area needs checking',
-        workspace_blocked: 'Desk area blocked',
-        table_unavailable: 'Table unavailable',
-        private_table_in_use_or_unverified: 'Private table needs checking',
-        detection_confidence_too_low: 'Detection needs checking',
-      })[s.availability_reason] || 'Not verified for studying';
-    }
-    return ({ FREE: 'Free', OCCUPIED: 'Taken', HELD: 'Held by belongings',
-      REVIEW_REQUIRED: 'Staff review required', UNKNOWN: 'Checking', UNAVAILABLE: 'Unavailable' })[seatState(s)];
+  function greeting() {
+    const h = new Date().getHours();
+    return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   }
 
   // Replace an element's HTML only when it changed, keeping its sideways scroll position.
@@ -87,44 +107,42 @@
     el.scrollLeft = x;
   }
 
-  function themeColor(c) {
-    const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute('content', c);
+  // Saved places live in this browser only.
+  function loadSaved() {
+    try { return new Set(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]')); } catch { return new Set(); }
+  }
+  function storeSaved() {
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify([...state.saved])); } catch { /* private mode: keep in memory */ }
   }
 
-  // ---------- Icons (from the design handoff) ----------
+  // ---------- Icons ----------
 
   const svg = (w, h, vb, body, extra = '') =>
     `<svg width="${w}" height="${h}" viewBox="${vb}" fill="none" aria-hidden="true" focusable="false" ${extra}>${body}</svg>`;
-  const line = 'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
+  const line = (width = 2) => `stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"`;
+
+  const TYPE_ICON = {
+    all: '<rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="15" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="15" width="8" height="8" rx="2.5"/><rect x="15" y="15" width="8" height="8" rx="2.5"/>',
+    library: '<path d="M13 5.5C10.2 3.2 6.5 2.7 2.8 3.2V20c3.7-.5 7.4 0 10.2 2.3 2.8-2.3 6.5-2.8 10.2-2.3V3.2C19.5 2.7 15.8 3.2 13 5.5Z"/><path d="M13 5.5v16.8"/>',
+    cafe: '<path d="M3.5 9h14v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6V9Z"/><path d="M17.5 11h1.8a2.8 2.8 0 0 1 0 5.6h-2.2"/><path d="M8 2.5v3M12.5 2.5v3"/>',
+    cowork: '<rect x="4.5" y="4" width="17" height="11.5" rx="2"/><path d="M1.5 19.5h23"/>',
+    study_room: '<path d="M7 3v9h12"/><path d="M7 12v10M19 12v10"/><path d="M7 16.5h12"/>',
+  };
+  const typeIcon = (type, size = 26) => svg(size, size, '0 0 26 26', TYPE_ICON[type] || TYPE_ICON.all, line(2.1));
 
   const ICON = {
-    all: (k = 1) => svg(26 * k, 26 * k, '0 0 26 26',
-      '<rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="15" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="15" width="8" height="8" rx="2.5"/><rect x="15" y="15" width="8" height="8" rx="2.5"/>', line),
-    library: (k = 1) => svg(28 * k, 26 * k, '0 0 28 26',
-      '<path d="M14 6C11 3.5 7 3 3 3.5V21c4-.5 8 0 11 2.5C17 21 21 20.5 25 21V3.5C21 3 17 3.5 14 6Z"/><path d="M14 6v17"/>', line),
-    cafe: (k = 1) => svg(28 * k, 26 * k, '0 0 28 26',
-      '<path d="M4 9h15v6a6 6 0 0 1-6 6h-3a6 6 0 0 1-6-6V9Z"/><path d="M19 11h2a3 3 0 0 1 0 6h-2.5"/><path d="M9 2.5v3M13.5 2.5v3"/>', line),
-    cowork: (k = 1) => svg(28 * k, 26 * k, '0 0 28 26',
-      '<rect x="5" y="4" width="18" height="12" rx="2"/><path d="M2 20h24"/>', line),
-    study_room: (k = 1) => svg(28 * k, 26 * k, '0 0 28 26',
-      '<path d="M8 3.5v9h12"/><path d="M8 12.5v10M20 12.5v10"/><path d="M8 17h12"/>', line),
-    chevron: () => svg(12, 8, '0 0 12 8',
-      '<path d="M1.5 1.5L6 6l4.5-4.5" stroke="#4B3BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'),
-    search: () => svg(18, 18, '0 0 20 20',
-      '<circle cx="9" cy="9" r="6.5" stroke="#4A4D63" stroke-width="2"/><path d="M14 14l4 4" stroke="#4A4D63" stroke-width="2" stroke-linecap="round"/>'),
-    back: () => svg(10, 16, '0 0 12 20',
-      '<path d="M10 2L2 10l8 8" stroke="#16172E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'),
-    close: () => svg(11, 11, '0 0 12 12',
-      '<path d="M1 1l10 10M11 1L1 11" stroke="#4A4D63" stroke-width="2.2" stroke-linecap="round"/>'),
-    entrance: () => svg(10, 10, '0 0 10 10',
-      '<path d="M5 9V1M1.5 4.5L5 1l3.5 3.5" stroke="#4A4D63" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'),
-    logo: () => svg(80, 80, '0 0 100 100',
-      '<path d="M22 84 C20 52 34 24 60 22 C75 21 86 29 89 43 C90.5 50 88 57 82 61 C82.5 55 80 51 75.5 50.5 L69 51 C66 62 61 74 58 84 Z" fill="#FFFFFF"/>' +
-      '<path d="M58.5 40 C55 50 52.5 60 51.5 72" stroke="#4B3BFF" stroke-width="5.5" stroke-linecap="round"/>' +
-      '<circle cx="64" cy="36" r="6.5" fill="#2FB86A"/>'),
+    search: () => svg(22, 22, '0 0 20 20', '<circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l4.5 4.5"/>', line(2)),
+    chevron: () => svg(14, 9, '0 0 14 9', '<path d="M1.5 1.5L7 7l5.5-5.5"/>', line(2.4)),
+    pin: () => svg(15, 15, '0 0 24 24', '<path d="M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z"/><circle cx="12" cy="10.5" r="2.3"/>', line(2)),
+    car: () => svg(16, 16, '0 0 24 24', '<path d="M5 12l1.6-4.4A2 2 0 0 1 8.5 6.3h7a2 2 0 0 1 1.9 1.3L19 12"/><path d="M4 12h16a1 1 0 0 1 1 1v4H3v-4a1 1 0 0 1 1-1Z"/><path d="M6 17v1.5M18 17v1.5"/><path d="M7 14.5h1M16 14.5h1"/>', line(1.9)),
+    clock: () => svg(15, 15, '0 0 24 24', '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', line(2)),
+    back: () => svg(11, 18, '0 0 12 20', '<path d="M10 2L2 10l8 8"/>', line(2.6)),
+    close: () => svg(11, 11, '0 0 12 12', '<path d="M1 1l10 10M11 1L1 11"/>', line(2.2)),
+    entrance: () => svg(10, 10, '0 0 10 10', '<path d="M5 9V1M1.5 4.5L5 1l3.5 3.5"/>', line(1.6)),
+    heart: () => svg(20, 20, '0 0 24 24', '<path d="M12 20.5s-7.5-4.6-9.2-9.6C1.6 7.3 3.9 4 7.4 4c2 0 3.6 1.1 4.6 2.7C13 5.1 14.6 4 16.6 4c3.5 0 5.8 3.3 4.6 6.9-1.7 5-9.2 9.6-9.2 9.6Z"/>', line(2)),
+    explore: () => svg(24, 24, '0 0 24 24', '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z"/>', line(2)),
+    info: () => svg(24, 24, '0 0 24 24', '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.1"/>', line(2.2)),
   };
-  const typeIcon = (type, k) => (ICON[type] ? ICON[type](k) : '');
 
   // ---------- API ----------
 
@@ -141,16 +159,20 @@
     return res.json();
   }
 
+  // A small pill at the top while the API can't be reached.
   function setOnline(on) {
     state.online = on;
-    document.querySelectorAll('[data-live]').forEach(el => {
-      el.classList.toggle('is-offline', !on);
-      el.querySelector('[data-live-text]').textContent = on ? el.dataset.label : 'Reconnecting…';
-    });
+    let el = document.getElementById('offline');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'offline';
+      el.className = 'offline';
+      el.setAttribute('role', 'status');
+      el.textContent = 'Reconnecting…';
+      document.body.appendChild(el);
+    }
+    el.hidden = on;
   }
-
-  const liveBadge = label =>
-    `<span class="live" data-live data-label="${esc(label)}"><i class="dot"></i><span data-live-text>${esc(label)}</span></span>`;
 
   // ---------- Polling ----------
 
@@ -163,13 +185,13 @@
         const id = state.venueId;
         const v = await get(`api/venues/${encodeURIComponent(id)}`);
         if (state.screen !== 'place' || state.venueId !== id) return;
-        const rebuild = !state.venue || !$('#plan') || layoutKey(state.venue) !== layoutKey(v);
+        const rebuild = !state.venue || state.venue.venue_id !== id || !$('#plan') || layoutKey(state.venue) !== layoutKey(v);
         state.venue = v;
         if (rebuild) renderPlace(); else updatePlace();
       } else {
-        const list = await get('api/venues');
-        state.venues = list;
-        if (state.screen === 'browse') updateBrowse();
+        state.venues = await get('api/venues');
+        if (state.screen === 'home') updateHome();
+        if (state.screen === 'saved') updateSaved();
       }
       setOnline(true);
     } catch (err) {
@@ -194,152 +216,302 @@
 
   document.addEventListener('visibilitychange', () => { if (!document.hidden) kick(); });
 
-  // ---------- Browse ----------
+  // ---------- Shared pieces ----------
 
-  function showBrowse() {
-    state.screen = 'browse';
+  function dotsHTML(counts, { max, cols }) {
+    const total = counts.total || 0;
+    let n = total;
+    let free = counts.free;
+    let held = counts.held;
+    if (total > max) {
+      const k = max / total;
+      n = max;
+      free = Math.round(counts.free * k);
+      held = Math.round(counts.held * k);
+      if (counts.free > 0 && free === 0) free = 1;
+      if (free + held > n) held = n - free;
+    }
+    const taken = Math.max(0, n - free - held);
+    const style = cols ? ` style="grid-template-columns:repeat(${cols},1fr)"` : '';
+    return `<span class="dots"${style} aria-hidden="true">` +
+      '<i class="d-free"></i>'.repeat(free) + '<i class="d-held"></i>'.repeat(held) + '<i></i>'.repeat(taken) +
+      '</span>';
+  }
+
+  const thumb = v => {
+    const photo = photoOf(v);
+    if (photo) return `<span class="thumb is-photo"><img src="${esc(photo.thumb)}" alt="" loading="lazy" decoding="async"></span>`;
+    const n = Math.min(v.counts.total || 0, 64);
+    return `<span class="thumb">${dotsHTML({ ...v.counts, free: studyCount(v) }, { max: 64, cols: Math.max(1, Math.ceil(Math.sqrt(n))) })}</span>`;
+  };
+
+  const distance = (v, long = false) => (v.drive_minutes === 0
+    ? `<span class="fact">${ICON.pin()}You're here</span>`
+    : `<span class="fact">${ICON.car()}${v.drive_minutes} min${long ? ' drive' : ''}</span>`);
+
+  function row(v) {
+    const spaces = studyCount(v);
+    const full = spaces === 0;
+    return `
+      <button class="row press${full ? ' is-full' : ''}" data-act="open" data-v="${esc(v.venue_id)}">
+        ${thumb(v)}
+        <span class="row-body">
+          <span class="row-name">${esc(v.name)}</span>
+          <span class="row-kind">${esc(kindLabel(v))} · ${esc(sourceLabel(v.source))}</span>
+          <span class="row-facts">
+            <span class="row-free">${full ? 'No verified study spaces' : `${spaces} verified study ${spaces === 1 ? 'space' : 'spaces'}`}</span>
+            ${distance(v)}
+          </span>
+          <span class="row-kind">${v.counts.total || 0} mapped seats</span>
+        </span>
+      </button>`;
+  }
+
+  const tabbar = active => `
+    <nav class="tabbar" aria-label="Main">
+      ${TABS.map(([k, href, label]) => `
+        <a class="tab${k === active ? ' is-on' : ''}" href="${href}"${k === active ? ' aria-current="page"' : ''}>
+          ${k === 'home' ? ICON.explore() : k === 'saved' ? ICON.heart() : ICON.info()}<span>${label}</span>
+        </a>`).join('')}
+    </nav>`;
+
+  // ---------- Explore ----------
+
+  function showTab(tab) {
+    const wasHome = state.screen === 'home';
+    state.screen = tab;
     state.venueId = null;
     state.sel = null;
-    state.fromBrowse = false;
-    removeSheet();
-    renderBrowse();
-    window.scrollTo(0, state.browseScroll);
+    state.fromList = false;
+    removeSheet(false);
+    if (tab === 'home') { renderHome(); window.scrollTo(0, wasHome ? window.scrollY : state.homeScroll); }
+    else { (tab === 'saved' ? renderSaved : renderAbout)(); window.scrollTo(0, 0); }
     kick();
   }
 
-  function renderBrowse() {
+  function renderHome() {
     app.innerHTML = `
-      <main class="browse">
-        <div class="browse-top">
-          <div class="loc">
-            <span class="loc-k">Seats near</span>
-            <span class="loc-v">Msheireb ${ICON.chevron()}</span>
-          </div>
+      <main class="screen home">
+        <header class="band">
+          <p class="loc">Seats near <b>Msheireb</b> ${ICON.chevron()}</p>
           <label class="search">
             ${ICON.search()}
             <input id="q" type="search" placeholder="Search libraries, cafés, coworks" aria-label="Search places"
               autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
           </label>
-        </div>
-        <nav class="rail cats" id="cats" aria-label="Categories"></nav>
-        <section class="featured" id="featured" hidden>
-          <div class="featured-head">
-            <h2 class="sec-title">Study spaces available</h2>
-            ${liveBadge('Live')}
-          </div>
+        </header>
+        <nav class="rail tiles" id="tiles" aria-label="Kinds of place"></nav>
+        <section class="intro" id="intro">
+          <h1 class="hello"><span>${greeting()},</span> where are you studying?</h1>
+          <div id="best"></div>
+        </section>
+        <section class="free-now" id="freeNow" hidden>
+          <div class="sec-head"><h2>Verified study spaces</h2></div>
           <div class="rail cards" id="cards"></div>
         </section>
         <section class="list">
-          <h2 class="sec-title" id="listTitle">All places</h2>
+          <div class="sec-head"><h2 id="listTitle">All places</h2></div>
           <div class="sorts" id="sorts" role="group" aria-label="Sort places"></div>
           <div class="rows" id="rows"></div>
         </section>
         <p class="note" id="note"></p>
-      </main>`;
+      </main>
+      ${tabbar('home')}`;
     const q = $('#q');
     q.value = state.query;
-    q.addEventListener('input', () => { state.query = q.value; updateBrowse(); });
+    q.addEventListener('input', () => { state.query = q.value; updateHome(); });
     q.addEventListener('keydown', e => { if (e.key === 'Enter') q.blur(); });
-    updateBrowse();
+    updateHome();
     setOnline(state.online);
   }
 
-  function updateBrowse() {
-    if (state.screen !== 'browse' || !$('#rows')) return;
+  // Rank by verified usable study spaces, not empty chairs.
+  function bestBet(venues) {
+    const open = venues.filter(v => studyCount(v) > 0);
+    if (!open.length) return null;
+    return open.reduce((a, b) => (studyCount(b) / (b.drive_minutes + 10) > studyCount(a) / (a.drive_minutes + 10) ? b : a));
+  }
+
+  function updateHome() {
+    if (state.screen !== 'home' || !$('#rows')) return;
     const venues = state.venues || [];
+    const loaded = !!state.venues;
 
     const present = new Set(venues.map(v => v.type));
     const cats = CATS.filter(([k]) => k === 'all' || present.has(k));
     if (!cats.some(([k]) => k === state.cat)) state.cat = 'all';
-    setHTML($('#cats'), cats.map(([k, label]) => {
+    const inCat = (v, cat = state.cat) => cat === 'all' || v.type === cat;
+    setHTML($('#tiles'), cats.map(([k, label]) => {
       const on = k === state.cat;
-      return `<button class="cat${on ? ' is-on' : ''}" data-act="cat" data-v="${k}" aria-pressed="${on}">
-        <span class="cat-tile">${ICON[k](1)}</span><span class="cat-label">${label}</span></button>`;
+      const free = venues.filter(v => inCat(v, k)).reduce((n, v) => n + studyCount(v), 0);
+      const badge = loaded ? `<span class="tile-badge">${free ? `${free} available` : 'None verified'}</span>` : '';
+      return `<button class="tile press${on ? ' is-on' : ''}" data-act="cat" data-v="${k}" aria-pressed="${on}">
+        ${badge}${typeIcon(k, 34)}<span class="tile-label">${label}</span></button>`;
     }).join(''));
 
     const q = fold(state.query.trim());
-    const inCat = v => state.cat === 'all' || v.type === state.cat;
+    const pool = venues.filter(v => inCat(v));
 
-    const featured = venues.filter(v => inCat(v) && studyCount(v) > 0)
-      .sort((a, b) => studyCount(b) - studyCount(a))
-      .slice(0, 5);
-    $('#featured').hidden = featured.length === 0 || q !== '';
+    const best = bestBet(pool);
+    $('#intro').hidden = !best || q !== '';
+    setHTML($('#best'), best ? `
+      <article class="best">
+        <div class="best-head">
+          <span class="best-icon">${typeIcon(best.type, 22)}</span>
+          <span class="best-name">${esc(best.name)}<small>${esc(kindLabel(best))}</small></span>
+        </div>
+        <div class="best-body">
+          ${thumb(best)}
+          <div class="best-text">
+            <strong>${plural(studyCount(best), 'verified study space', 'verified study spaces')}</strong>
+            ${distance(best, true)}
+          </div>
+          <button class="btn press" data-act="open" data-v="${esc(best.venue_id)}">See seats</button>
+        </div>
+      </article>` : '');
+
+    const featured = pool.filter(v => studyCount(v) > 0).sort((a, b) => studyCount(b) - studyCount(a)).slice(0, 5);
+    $('#freeNow').hidden = featured.length === 0 || q !== '';
     setHTML($('#cards'), featured.map(v => `
-      <button class="card" data-act="open" data-v="${esc(v.venue_id)}">
-        <span class="card-num">
-          <span class="card-free">${studyCount(v)}</span>
-          <span class="card-k">${studyCount(v) === 1 ? 'study space' : 'study spaces'}</span>
-        </span>
-        <span class="card-place">
-          <span class="card-name">${esc(v.name)}</span>
-          <span class="card-drive">${esc(driveLabel(v.drive_minutes))}${v.source === 'live' ? '' : ' · ' + esc(sourceLabel(v.source))}</span>
-        </span>
+      <button class="card press" data-act="open" data-v="${esc(v.venue_id)}" aria-label="${esc(v.name)}, ${studyCount(v)} verified study spaces">
+        ${photoOf(v) ? `<span class="card-photo"><img src="${esc(photoOf(v).thumb)}" alt="" loading="lazy" decoding="async"></span>` : dotsHTML({ ...v.counts, free: studyCount(v) }, { max: 36 })}
+        <span class="card-count">${studyCount(v)}<span>spaces</span></span>
+        <span class="card-name">${esc(v.name)}</span>
+        <span class="card-foot">${distance(v)}</span>
       </button>`).join(''));
 
-    let list = venues.filter(v => inCat(v) && (!q || fold(`${v.name} ${v.area} ${typeLabel(v.type)} ${v.type}`).includes(q)));
+    let list = pool.filter(v => !q || fold(`${v.name} ${v.area} ${typeLabel(v.type)} ${v.type}`).includes(q));
     if (state.sort === 'late') list = list.filter(v => v.open_late);
     list.sort(state.sort === 'free'
       ? (a, b) => studyCount(b) - studyCount(a) || a.drive_minutes - b.drive_minutes
       : (a, b) => a.drive_minutes - b.drive_minutes);
 
-    $('#listTitle').textContent = state.cat === 'all' ? 'All places' : CATS.find(c => c[0] === state.cat)[1];
+    $('#listTitle').textContent = q ? 'Results' : state.cat === 'all' ? 'All places' : CATS.find(c => c[0] === state.cat)[1];
     setHTML($('#sorts'), SORTS.map(([k, label]) => {
       const on = k === state.sort;
-      return `<button class="sort${on ? ' is-on' : ''}" data-act="sort" data-v="${k}" aria-pressed="${on}">${label}</button>`;
+      return `<button class="sort press${on ? ' is-on' : ''}" data-act="sort" data-v="${k}" aria-pressed="${on}">${label}</button>`;
     }).join(''));
-    setHTML($('#rows'), !state.venues
-      ? `<p class="empty">${state.online ? 'Loading places…' : 'Can’t reach Birdie. Retrying…'}</p>`
-      : list.length ? list.map(row).join('') : '<p class="empty">No places match that search.</p>');
+
+    let rows;
+    if (!loaded) rows = `<p class="empty">${state.online ? 'Loading places…' : 'Can’t reach Birdie. Trying again…'}</p>`;
+    else if (!list.length) rows = `<p class="empty">${q ? 'No places match that search.' : 'Nothing open late in this category.'}</p>`;
+    else rows = list.map(row).join('');
+    setHTML($('#rows'), rows);
     $('#note').textContent = state.mock ? 'Demo data: no backend connected' : '';
   }
 
-  function row(v) {
-    const { free, held, total } = v.counts;
-    const usable = studyCount(v);
-    const usableSeats = v.counts.usable_seats ?? usable;
-    const unknown = v.counts.unknown || 0;
-    const taken = v.counts.taken ?? Math.max(0, total - free - held - unknown);
-    const full = usable === 0 && unknown === 0 && free === 0;
-    const uncertain = usable === 0 && (free > 0 || unknown > 0);
-    const availability = usable > 0 ? `${usable} verified study ${usable === 1 ? 'space' : 'spaces'}` : unknown > 0
-      ? `No verified study spaces · ${unknown} seats checking` : 'No verified study spaces';
-    const seg = (cls, n) => (n > 0 ? `<i class="${cls}" style="flex:${n} 1 0"></i>` : '');
-    return `
-      <button class="row${full ? ' is-full' : ''}" data-act="open" data-v="${esc(v.venue_id)}">
-        <span class="thumb">${typeIcon(v.type, 1.15)}</span>
-        <span class="row-body">
-          <span class="row-name">${esc(v.name)}</span>
-          <span class="row-meta">${esc(typeLabel(v.type))} · ${esc(v.area)}${v.source === 'live' ? '' : ` <span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`}</span>
-          <span class="row-free">
-            <i class="dot" style="background:${usable > 0 ? COLORS.free : full ? COLORS.taken : '#7C8190'}"></i>${availability}
-            <span class="row-drive">· ${esc(driveLabel(v.drive_minutes))}</span>
-          </span>
-          <span class="bar">${seg('b-free', usableSeats)}${seg('b-held', held)}${seg('b-taken', taken)}${seg('b-unknown', unknown)}</span>
-        </span>
-      </button>`;
+  // ---------- Saved ----------
+
+  function renderSaved() {
+    app.innerHTML = `
+      <main class="screen">
+        <header class="band band-title">
+          <h1>Saved places</h1>
+          <p>Your usual spots, with live seats.</p>
+        </header>
+        <section class="list"><div class="rows" id="rows"></div></section>
+      </main>
+      ${tabbar('saved')}`;
+    updateSaved();
+  }
+
+  function updateSaved() {
+    if (state.screen !== 'saved' || !$('#rows')) return;
+    const list = (state.venues || []).filter(v => state.saved.has(v.venue_id)).sort((a, b) => a.drive_minutes - b.drive_minutes);
+    setHTML($('#rows'), !state.venues
+      ? '<p class="empty">Loading places…</p>'
+      : list.length ? list.map(row).join('')
+        : '<p class="empty"><strong>No saved places yet</strong>Tap the heart on a place to keep it here.</p>');
+  }
+
+  // ---------- About ----------
+
+  function renderAbout() {
+    app.innerHTML = `
+      <main class="screen">
+        <header class="band band-title">
+          <h1>How Birdie works</h1>
+          <p>Know there's a seat before you drive.</p>
+        </header>
+        <div class="about">
+          <section>
+            <h2>From camera to your phone</h2>
+            <ol class="steps">
+              <li><b>1</b><span>A venue camera or recorded demo clip is checked frame by frame.</span></li>
+              <li><b>2</b><span>A vision model checks people and belongings against the configured seat and desk areas.</span></li>
+              <li><b>3</b><span>Birdie counts a study space only when the seat and its workspace are verified usable.</span></li>
+            </ol>
+          </section>
+          <section>
+            <h2>What the colours mean</h2>
+            <div class="states">
+              <div class="state"><i class="sw-free"></i><div><strong>Free</strong><span>Nobody there and nothing on it.</span></div></div>
+              <div class="state"><i class="sw-taken"></i><div><strong>Taken</strong><span>Someone is sitting there, or just stepped away.</span></div></div>
+              <div class="state"><i class="sw-held"></i><div><strong>Held by a bag</strong><span>Things left on the seat with nobody there for a long time.</span></div></div>
+              <div class="state"><i class="sw-checking"></i><div><strong>Checking</strong><span>Unclear evidence is not counted as available.</span></div></div>
+            </div>
+          </section>
+          <section class="panel">
+            <h2>Your privacy</h2>
+            <p>Birdie detects people and belongings at configured seats; it does not identify people. This demo shows seat states from a recorded clip or simulated venue data.</p>
+          </section>
+          <section>
+            <h2>Where does this demo data come from?</h2>
+            <p>Nestwork Msheireb uses a recorded camera clip in this demo. The other listed venues are simulated and are not live availability feeds.</p>
+          </section>
+        </div>
+      </main>
+      ${tabbar('about')}`;
   }
 
   // ---------- Place ----------
 
   let chairEls = new Map();
   let tableNames = new Map();
+  let lastStatus = new Map();
 
   // Changes when the floor plan or the set of seats changes, so the plan is rebuilt.
-  const layoutKey = v => JSON.stringify([v.floor_plan || null, v.tables?.map(t => [t.table_id, t.seat_ids]) || [],
-    v.seats.map(s => [s.seat_id, s.table_id, s.plan_x, s.plan_y, s.plan_rot])]);
-  const hasPlanPosition = s => Number.isFinite(s.plan_x) && Number.isFinite(s.plan_y);
+  const layoutKey = v => JSON.stringify([v.floor_plan, v.seats.map(s => [s.seat_id, s.plan_x, s.plan_y, s.plan_rot])]);
+
+  function placeBand(v) {
+    const saved = state.saved.has(v.venue_id);
+    const photo = photoOf(v);
+    const facts = distance(v, true) + (v.open_until ? `<span class="fact">${ICON.clock()}${esc(v.open_until)}</span>` : '');
+    const chips = (v.amenities || []).map(a => `<span class="chip">${esc(a)}</span>`).join('');
+    const buttons = `
+        <div class="place-top">
+          <button class="round-btn press" data-act="back" aria-label="Back">${ICON.back()}</button>
+          <button class="round-btn press" data-act="save" data-v="${esc(v.venue_id)}" aria-pressed="${saved}" aria-label="Save place">${ICON.heart()}</button>
+        </div>`;
+    return `
+      ${photo ? `<div class="hero"><img src="${esc(photo.full)}" alt="">${buttons}</div>` : ''}
+      <header class="band${photo ? ' under-hero' : ''}">
+        ${photo ? '' : buttons}
+        <div class="place-head">
+          <h1>${esc(v.name)}</h1>
+          <span class="place-kind">${esc(kindLabel(v))} · ${esc(sourceLabel(v.source))}</span>
+          <div class="place-facts">${facts}</div>
+          ${chips ? `<div class="chips">${chips}</div>` : ''}
+        </div>
+      </header>`;
+  }
 
   function openPlace(id) {
     const cached = state.venue && state.venue.venue_id === id;
+    if (state.screen === 'home') state.homeScroll = window.scrollY;
     state.screen = 'place';
     state.venueId = id;
     state.seg = 'all';
     state.sel = null;
-    removeSheet();
+    removeSheet(false);
     if (cached) renderPlace();
     else {
       state.venue = null;
-      app.innerHTML = '<p class="loading">Loading…</p>';
+      const summary = (state.venues || []).find(v => v.venue_id === id);
+      app.innerHTML = summary
+        ? `<main class="place">${placeBand(summary)}<p class="empty">Loading seats…</p></main>`
+        : '<p class="loading">Loading…</p>';
+      setOnline(state.online);
     }
     window.scrollTo(0, 0);
     kick();
@@ -348,49 +520,34 @@
   function renderPlace() {
     const v = state.venue;
     const plan = v.floor_plan;
-    tableNames = new Map((plan?.tables || []).map(t => [t.table_id, t.name]));
-    const meta = [typeLabel(v.type), v.area, driveLabel(v.drive_minutes), v.open_until].filter(Boolean).map(esc).join(' · ');
-    const live = v.source === 'live';
+    tableNames = new Map((plan.tables || []).map(t => [t.table_id, t.name]));
+    lastStatus = new Map();
 
     app.innerHTML = `
       <main class="place" id="place">
-        <div class="hero">
-          ${typeIcon(v.type, 2)}
-          <button class="back" data-act="back" aria-label="Back">${ICON.back()}</button>
-        </div>
+        ${placeBand(v)}
         <div class="place-body">
-          <div class="place-head">
-            <h1>${esc(v.name)}</h1>
-            <span class="place-meta">${meta}</span>
-            <div class="amenities">
-              ${live ? '' : `<span class="chip chip-sim">${esc(sourceLabel(v.source))}</span>`}
-              ${(v.amenities || []).map(a => `<span class="chip">${esc(a)}</span>`).join('')}
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div class="headline-row">
-            <span class="headline" id="headline"></span>
-            ${live ? liveBadge('Live') : ''}
+          <div class="count">
+            <h2 id="headline"></h2>
+            <p id="breakdown"></p>
           </div>
           <div class="seg" id="seg" role="group" aria-label="Filter seats">
             ${SEGS.map(([k, label]) => `<button data-act="seg" data-v="${k}">${label}</button>`).join('')}
           </div>
-          ${plan ? `<div class="plan-wrap" id="planWrap">
+          <div class="plan-wrap" id="planWrap">
             <div class="plan" id="plan" style="width:${plan.width}px;height:${plan.height}px">
               ${plan.window_top ? '<div class="window-strip"></div>' : ''}
               ${(plan.fixtures || []).map(fixtureHTML).join('')}
               ${(plan.tables || []).map(tableHTML).join('')}
-              ${v.seats.filter(hasPlanPosition).map(chairHTML).join('')}
-              ${plan.entrance === false ? '' : `<div class="entrance">${ICON.entrance()}Entrance</div>`}
+              ${v.seats.map(chairHTML).join('')}
+              <div class="entrance">${ICON.entrance()}Entrance</div>
             </div>
-          </div>${plan.label ? `<p class="plan-caption">${esc(plan.label)}</p>` : ''}` : ''}
-          ${v.unmapped_seat_ids?.length ? `<p class="plan-caption">${v.unmapped_seat_ids.length} seat IDs await camera and table calibration and are excluded from availability.</p>` : ''}
-          <div class="seat-status-list" id="seatStatusList" aria-label="Seat statuses"></div>
+          </div>
           <div class="legend">
-            <span><i style="background:${COLORS.free}"></i>Available for study</span>
-            <span><i style="background:${COLORS.taken}"></i>Taken</span>
-            <span><i style="background:${COLORS.held}"></i>Held</span>
-            <span><i style="background:#8A8C98"></i>Checking</span>
+            <span><i class="sw-free"></i>Available for study</span>
+            <span><i class="sw-taken"></i>Taken</span>
+            <span><i class="sw-held"></i>Held / staff review</span>
+            <span><i class="sw-checking"></i>Checking</span>
           </div>
         </div>
       </main>`;
@@ -416,16 +573,16 @@
 
   const chairHTML = s =>
     `<button class="chair" data-act="chair" data-v="${esc(s.seat_id)}" style="left:${px(s.plan_x - 17)};top:${px(s.plan_y - 17)};transform:rotate(${s.plan_rot}deg)">` +
-    `<span class="chair-back"></span><span class="chair-seat"></span><span class="chair-id">${esc(s.seat_id)}</span></button>`;
+    '<span class="chair-in"><span class="chair-back"></span><span class="chair-seat"></span></span></button>';
 
-  // Scale the 362-point plan down on narrow phones.
+  // Fit the plan to the screen width (it is drawn on a 362-point grid).
   function fitPlan() {
     const wrap = $('#planWrap');
     const plan = $('#plan');
     if (!wrap || !plan || !state.venue) return;
     const { width, height } = state.venue.floor_plan;
-    const k = Math.min(1, wrap.clientWidth / width);
-    plan.style.transform = k < 1 ? `scale(${k})` : '';
+    const k = Math.min(1.2, wrap.clientWidth / width);
+    plan.style.transform = k !== 1 ? `scale(${k})` : '';
     wrap.style.height = `${height * k}px`;
   }
   window.addEventListener('resize', fitPlan);
@@ -433,46 +590,46 @@
   const matchesSeg = s => state.seg === 'all' || (state.seg === 'outlet' && s.has_outlet) || (state.seg === 'window' && s.has_window);
 
   function updatePlace() {
-    if (state.screen !== 'place' || !state.venue || (!$('#plan') && !$('#seatStatusList'))) return;
+    if (state.screen !== 'place' || !state.venue || !$('#plan')) return;
     const v = state.venue;
-    const plan = Boolean(v.floor_plan && $('#plan'));
-    const free = studyCount(v);
+    const counts = { available: 0, held: 0, taken: 0, checking: 0 };
     const freeMatching = filteredStudyCount(v, matchesSeg);
 
     // Drop the selection when that seat was taken meanwhile or is hidden by the filter.
     const sel = state.sel && v.seats.find(x => x.seat_id === state.sel);
-    if (!sel || !matchesSeg(sel) || !studyAvailable(sel)) state.sel = null;
+    if (!sel || !matchesSeg(sel)) state.sel = null;
 
     v.seats.forEach(s => {
       const el = chairEls.get(s.seat_id);
+      if (!el) return;
       const ok = matchesSeg(s);
-      const status = seatState(s);
-      if (plan && el) {
-        el.className = 'chair' +
-          (studyAvailable(s) ? ' is-free' : status === 'HELD' ? ' is-held' :
-            status === 'UNKNOWN' || status === 'FREE' ? ' is-unknown' : status === 'UNAVAILABLE' ? ' is-unavailable' : '') +
-          (ok ? '' : ' is-dim') + (state.sel === s.seat_id ? ' is-sel' : '');
-        el.setAttribute('aria-label', `${s.seat_id}, ${seatLabel(s)}`);
-        el.title = `${s.table_id ? `Table ${s.table_id} · ` : ''}${seatLabel(s)}`;
-        el.setAttribute('aria-disabled', String(!(ok && studyAvailable(s))));
+      const key = seatState(s);
+      const available = studyAvailable(s);
+      const display = available ? 'available' : key === 'HELD' || key === 'REVIEW_REQUIRED' ? 'held'
+        : key === 'OCCUPIED' ? 'taken' : 'checking';
+      counts[display] += 1;
+      const tappable = ok;
+      const changed = lastStatus.has(s.seat_id) && lastStatus.get(s.seat_id) !== display;
+      lastStatus.set(s.seat_id, display);
+
+      el.className = 'chair' +
+        (display === 'available' ? ' is-free' : display === 'held' ? ' is-held' : display === 'checking' ? ' is-checking' : '') +
+        (ok ? '' : ' is-dim') +
+        (state.sel === s.seat_id ? ' is-sel' : '');
+      if (changed && ok) {
+        void el.offsetWidth; // restart the ring animation
+        el.classList.add('is-changed');
       }
+      el.setAttribute('aria-label', `Seat ${s.seat_id}, ${seatLabel(s)}`);
+      el.setAttribute('aria-disabled', String(!tappable));
     });
 
-    if ($('#seatStatusList')) {
-      setHTML($('#seatStatusList'), v.seats.filter(s => matchesSeg(s) && (!plan || !hasPlanPosition(s))).map(s => {
-        const status = seatState(s);
-        const cls = studyAvailable(s) ? 'available' : status === 'FREE' ? 'unknown' : status.toLowerCase();
-        return `<div class="seat-status seat-${cls}">
-          <span class="seat-status-id">${esc(s.seat_id)}</span>
-          <span class="seat-status-label">${esc(seatLabel(s))}</span></div>`;
-      }).join(''));
-    }
-
-    const unknown = v.counts?.unknown ?? v.seats.filter(s => seatState(s) === 'UNKNOWN').length;
     $('#headline').textContent = freeMatching > 0
       ? plural(freeMatching, 'verified study space', 'verified study spaces')
-      : free > 0 ? 'No available spaces match this filter'
-        : unknown > 0 ? 'Availability is being checked' : 'No verified study spaces';
+      : 'No verified study spaces right now';
+    const unmapped = v.counts?.unmapped_seats ?? 0;
+    $('#breakdown').textContent = `${counts.taken} taken · ${counts.held} held or review · ${counts.checking} checking` +
+      (unmapped ? ` · ${unmapped} seats await calibration` : '');
 
     document.querySelectorAll('#seg button').forEach(b => {
       const on = b.dataset.v === state.seg;
@@ -485,26 +642,34 @@
 
   function onChair(id) {
     const s = state.venue && state.venue.seats.find(x => x.seat_id === id);
-    if (!s || !matchesSeg(s) || !studyAvailable(s)) return;
+    if (!s || !matchesSeg(s)) return;
     state.sel = id;
     updatePlace();
   }
 
+  function toggleSave(id, btn) {
+    if (state.saved.has(id)) state.saved.delete(id); else state.saved.add(id);
+    storeSaved();
+    if (btn) btn.setAttribute('aria-pressed', String(state.saved.has(id)));
+  }
+
   // ---------- Seat sheet ----------
 
-  function removeSheet() {
+  function removeSheet(animate) {
     const el = $('#sheet');
-    if (el) el.remove();
     const place = $('#place');
     if (place) place.classList.remove('has-sheet');
+    if (!el) return;
+    el.id = '';
+    if (!animate) { el.remove(); return; }
+    el.classList.add('is-closing');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), 320);
   }
 
   function updateSheet() {
     const s = state.sel && state.venue.seats.find(x => x.seat_id === state.sel);
-    if (!s) {
-      removeSheet();
-      return;
-    }
+    if (!s) { removeSheet(true); return; }
 
     let el = $('#sheet');
     if (!el) {
@@ -515,21 +680,25 @@
       document.body.appendChild(el);
       $('#place').classList.add('has-sheet');
     }
-    el.setAttribute('aria-label', `Seat ${s.seat_id}`);
-    const chips = s.table_id ? [tableNames.get(s.table_id) || `Table ${s.table_id}`] : [];
-    if (s.has_window) chips.push('Window');
+    const held = seatState(s) === 'HELD' || seatState(s) === 'REVIEW_REQUIRED';
+    const available = studyAvailable(s);
+    const table = tableNames.get(s.table_id) || `Table ${s.table_id}`;
+    const chips = [];
+    if (s.table_id) chips.push(table);
+    if (s.has_window) chips.push('By the window');
     if (s.has_outlet) chips.push('Outlet');
+    el.setAttribute('aria-label', `Seat ${s.seat_id}`);
 
     setHTML(el, `
       <div class="sheet-handle"></div>
       <div class="sheet-row">
-        <div class="sheet-tile" style="background:${held ? COLORS.held : COLORS.free}">${esc(s.seat_id)}</div>
+        <div class="sheet-tile ${available ? 'is-free' : held ? 'is-held' : 'is-checking'}">${esc(s.seat_id)}</div>
         <div class="sheet-text">
-          <span class="sheet-title">Seat ${esc(s.seat_id)} is available for study</span>
-          <span class="sheet-sub">Desk area is clear and verified${s.table_id ? ` at table ${esc(s.table_id)}` : ''}.</span>
-          <div class="sheet-chips">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>
+          <span class="sheet-title">${esc(seatLabel(s))}</span>
+          <span class="sheet-sub">${held && s.since ? `Held for ${esc(heldFor(s.since))}` : esc(s.availability_reason || table)}</span>
+          ${chips.length ? `<div class="sheet-chips">${chips.map(c => `<span>${esc(c)}</span>`).join('')}</div>` : ''}
         </div>
-        <button class="sheet-close" data-act="close" aria-label="Close">${ICON.close()}</button>
+        <button class="sheet-close" data-act="close" aria-label="Close"><span>${ICON.close()}</span></button>
       </div>`);
   }
 
@@ -539,18 +708,17 @@
     const el = document.createElement('div');
     el.className = 'splash';
     el.setAttribute('role', 'presentation');
-    el.innerHTML = `<div class="splash-mark">${ICON.logo()}<span class="splash-word">Birdie</span></div>`;
+    el.innerHTML = '<img src="assets/logo-512.jpg" alt="" width="120" height="120">' +
+      '<span class="splash-word">Birdie</span><span class="splash-line">Verified study spaces in Doha</span>';
     document.body.appendChild(el);
-    themeColor('#4B3BFF');
     const timers = [
-      setTimeout(() => el.classList.add('is-in'), 60),
-      setTimeout(() => el.classList.add('is-out'), 1700),
-      setTimeout(done, 2200),
+      setTimeout(() => el.classList.add('is-in'), 40),
+      setTimeout(() => el.classList.add('is-out'), 1400),
+      setTimeout(done, 1700),
     ];
     function done() {
       timers.forEach(clearTimeout);
       el.remove();
-      themeColor('#F6F1E7');
     }
     el.addEventListener('click', done);
   }
@@ -558,9 +726,12 @@
   // ---------- Routing and events ----------
 
   function route() {
-    const m = location.hash.match(/^#\/place\/(.+)$/);
+    const h = location.hash;
+    const m = h.match(/^#\/place\/(.+)$/);
     if (m) openPlace(decodeURIComponent(m[1]));
-    else showBrowse();
+    else if (h === '#/saved') showTab('saved');
+    else if (h === '#/about') showTab('about');
+    else showTab('home');
   }
   window.addEventListener('hashchange', route);
 
@@ -569,17 +740,17 @@
     if (!t) return;
     const v = t.dataset.v;
     switch (t.dataset.act) {
-      case 'cat': state.cat = v; updateBrowse(); break;
-      case 'sort': state.sort = v; updateBrowse(); break;
+      case 'cat': state.cat = v === state.cat ? 'all' : v; updateHome(); break;
+      case 'sort': state.sort = v; updateHome(); break;
       case 'open':
-        state.browseScroll = window.scrollY;
         location.hash = `#/place/${encodeURIComponent(v)}`;
-        state.fromBrowse = true;
+        state.fromList = true;
         break;
       case 'back':
-        if (state.fromBrowse) history.back();
+        if (state.fromList) history.back();
         else location.hash = '';
         break;
+      case 'save': toggleSave(v, t); break;
       case 'seg': state.seg = v; state.sel = null; updatePlace(); break;
       case 'chair': onChair(v); break;
       case 'close': state.sel = null; updatePlace(); break;
