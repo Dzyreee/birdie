@@ -48,3 +48,6 @@ jobs/results/
 # Evaluation data (pixelated frames, labels) and source clips: never committed
 eval_data/
 eval_clips/
+
+# Demo clips live on the Space (uploaded with hf upload), never in git
+demo_clips/

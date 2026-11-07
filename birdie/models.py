@@ -165,6 +165,9 @@ class VenueConfig(_Model):
     ignored_person_regions: list[list[tuple[float, float]]] = Field(default_factory=list)
     camera_table_regions: dict[str, list[tuple[float, float]]] = Field(default_factory=dict)
     recording_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    # Per-clip tuning, off by default so existing venues behave exactly as before.
+    stabilize_camera: bool = False  # hand-held clip: move the seat outlines with the picture (vision/motion.py)
+    belongings_threshold: float | None = Field(default=None, ge=0.05, le=0.95)  # score from which bags and cups count
 
     @model_validator(mode="after")
     def _check_table_links(self):

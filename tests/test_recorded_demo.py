@@ -49,6 +49,9 @@ def test_recorded_demo_processes_frames_and_marks_decode_failures_unknown(monkey
         def validate_recording(self, venue_id, path):
             pass
 
+        def reset_alignment(self, venue_id):
+            pass
+
         def process_frame(self, venue_id, frame, update_state):
             self.seen.append((venue_id, update_state))
             stop.set()

@@ -479,7 +479,7 @@
           </section>
           <section>
             <h2>Where does this demo data come from?</h2>
-            <p>Nestwork Msheireb uses a recorded camera clip in this demo. The other listed venues are simulated and are not live availability feeds.</p>
+            <p>Nestwork Msheireb and Corniche Cup use recorded camera clips in this demo. The other listed venues are simulated and are not live availability feeds.</p>
           </section>
         </div>
       </main>

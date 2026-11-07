@@ -12,7 +12,7 @@ short_description: Recorded study-seat availability demo
 # Birdie
 
 **A bird's-eye view of study-seat availability.**
-The current Nestwork entry is a recorded-video demo, not a live venue feed.
+The Nestwork Msheireb and Corniche Cup entries are recorded-video demos, not live venue feeds.
 
 Built at the Qai x Hugging Face Hackathon 01 (Nestwork Msheireb, Doha).
 Data models and public functions: [docs/CONTRACT.md](docs/CONTRACT.md).
@@ -30,7 +30,7 @@ Data models and public functions: [docs/CONTRACT.md](docs/CONTRACT.md).
 The Camera tab runs uploaded clips through detection, camera-seat association, temporal smoothing, and the state
 machine. Repeat a clip to observe the accelerated 30-second belongings timer. The calibration editor uses one frame
 in memory; camera seat, table, and workspace polygons live in the venue JSON and stay hidden from the public API.
-Nestwork is configured as a **recorded-clip** venue, not a live camera feed.
+Nestwork Msheireb and Corniche Cup are configured as **recorded-clip** venues, not live camera feeds; Corniche Cup is tuned for its hand-held clip (camera-drift alignment and a lower belongings score, per-venue options in its venue file).
 The mobile app under `web/` is served at `/` and reads the read-only API at `/api/venues`. Qatar National Library,
 Qatar University Library and Qahwa Corner remain **simulated** venues with **synthetic** history, and are labelled as such.
 
@@ -38,7 +38,7 @@ Qatar University Library and Qahwa Corner remain **simulated** venues with **syn
 
 The customer app reads seat states from the API and does not receive the source clip. The operator console at
 `/operator/` accepts video uploads and processes the original frames without blurring, as requested. The upload is
-removed after analysis; Hugging Face logging and retention are not verified. The app stores venue polygons, seat
+removed after analysis. The two demo clips (`demo_clips/nestwork-msheireb.mp4`, `demo_clips/corniche-cup.mp4`) are stored on the Space repository, which is public, so anyone can download them; they replay automatically and survive deploys. Hugging Face logging and retention are not verified. (Console uploads are removed after analysis; Hugging Face logging and retention are not verified. The app stores venue polygons, seat
 states, alerts, and aggregate counts, not source frames in its database. No face recognition or identity matching is
 used.
 

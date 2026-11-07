@@ -35,7 +35,8 @@ from birdie.simulator import Simulator
 from birdie.storage import Repository
 from birdie.venues import load_all, save_venue
 from birdie.vision import render
-from birdie.vision.detector import PERSON, resize_long_side
+from birdie.vision.detector import BELONGINGS, PERSON, resize_long_side
+from birdie.vision.motion import FrameAligner, warp_polygon
 from birdie.vision.seats import assign_detections, observe_evidence, workspace_evidence
 from birdie.vision.state import VenueTracker
 
@@ -101,6 +102,7 @@ class BirdieService:
         self._last_refit = self.clock.now()
         self.started_at = self.clock.now()
         self._observed_since: dict[str, object] = {vid: self.started_at for vid in self.configs}
+        self._aligners: dict[str, FrameAligner] = {}  # hand-held clips only (VenueConfig.stabilize_camera)
 
     # --- venues and seats -------------------------------------------------------
     def venues(self) -> list[Venue]:
@@ -396,7 +398,17 @@ class BirdieService:
             if arr.ndim != 3 or arr.shape[0] <= 0 or arr.shape[1] <= 0 or arr.shape[2] not in (3, 4):
                 raise ValueError("frame must be a non-empty RGB or RGBA image")
             img = resize_long_side(arr)
-            detections = self._detect(img, threshold=UNCERTAIN_DETECTION_THRESHOLD)
+            floor = UNCERTAIN_DETECTION_THRESHOLD
+            if config is not None and config.belongings_threshold:
+                floor = min(floor, config.belongings_threshold)
+            detections = self._detect(img, threshold=floor)
+            if config is not None and config.belongings_threshold:
+                # This clip's belongings are scored low by the pretrained model: count them as confident.
+                detections = [
+                    {**d, "score": max(d["score"], DETECTION_THRESHOLD)}
+                    if d["label"] in BELONGINGS and d["score"] >= config.belongings_threshold else d
+                    for d in detections
+                ]
             if config is not None:
                 regions = [Polygon(points) for points in config.ignored_person_regions]
                 w, h = img.size
@@ -419,11 +431,18 @@ class BirdieService:
                     tracker = self.trackers[venue_id]
                     tables = {table.table_id: table.table_polygon for table in config.tables}
                     tables.update({key: value for key, value in config.camera_table_regions.items() if key not in tables})
-                    assigned = assign_detections(detections, list(tracker.seats.values()), img.size,
-                                                 table_regions=tables)
+                    seats_now = list(tracker.seats.values())
+                    if config.stabilize_camera and any(seat.seat_polygon for seat in seats_now):
+                        h = self._aligners.setdefault(venue_id, FrameAligner()).update(np.asarray(img))
+                        seats_now = [
+                            seat.model_copy(update={"seat_polygon": warp_polygon(seat.seat_polygon, h),
+                                                    "workspace_polygon": warp_polygon(seat.workspace_polygon, h)})
+                            for seat in seats_now
+                        ]
+                        tables = {key: warp_polygon(value, h) for key, value in tables.items()}
+                    assigned = assign_detections(detections, seats_now, img.size, table_regions=tables)
                     tracker.process(observe_evidence(assigned))
-                    proof = workspace_evidence(detections, list(tracker.seats.values()), img.size,
-                                               table_regions=tables)
+                    proof = workspace_evidence(detections, seats_now, img.size, table_regions=tables)
                     self._workspace_evidence[venue_id] = {
                         seat_id: {"clear": item.clear, "confidence": item.confidence,
                                   "chair_detected": item.chair_detected}
@@ -431,6 +450,10 @@ class BirdieService:
                     }
                     self.repo.save_seat_snapshots(tracker.snapshots())
         return render.annotate(np.asarray(img), counted)
+
+    def reset_alignment(self, venue_id: str) -> None:
+        """Start of a clip pass: the next frame becomes the reference the seat outlines were drawn on."""
+        self._aligners.setdefault(venue_id, FrameAligner()).reset()
 
     def mark_unknown(self, venue_id: str) -> None:
         """Invalidate all current venue evidence after a decode or camera failure."""

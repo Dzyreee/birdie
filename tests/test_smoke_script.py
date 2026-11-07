@@ -51,6 +51,6 @@ def test_smoke_checks_catch_a_broken_response(api):
     detail = api.get("/api/venues/qnl").json()
     detail["floor_plan"] = None
     assert smoke.check_seats(detail)
-    summary = api.get("/api/venues").json()[1]
+    summary = next(v for v in api.get("/api/venues").json() if v["source"] == "simulated")
     summary["camera_online"] = True  # a simulated venue must have null
     assert smoke.check_venue_summary(summary)

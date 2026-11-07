@@ -1,6 +1,6 @@
 # Submission pack (draft)
 
-Use only claims that can be shown in the current build. The Nestwork demo replays a **recorded** clip; it is not a
+Use only claims that can be shown in the current build. The Nestwork Msheireb and Corniche Cup demos replay **recorded** clips; they are not a
 live venue camera. The other venue listings are simulated. No seat-state accuracy result has been measured on held-out
 venue footage.
 
@@ -19,7 +19,7 @@ venue footage.
 
 ## Short demo flow
 
-1. Open the customer app at the Space root and choose Nestwork Msheireb. Explain that it is recorded footage played
+1. Open the customer app at the Space root and choose Nestwork Msheireb or Corniche Cup. Explain that they are recorded footage played
    through the detection pipeline; other venues are sample data.
 2. Show the free and unavailable study-space counts and the mapped seat statuses. A seat is only shown as usable when
    its configured seat and workspace evidence passes the backend rules; uncalibrated or uncertain seats remain unknown.

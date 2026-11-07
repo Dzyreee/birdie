@@ -2,7 +2,7 @@
 
 > **How to use this file:** It lives in the repo root as `CLAUDE.md`, so every Claude Code session starts with the full context. Teammates can also paste it into any AI assistant and say: *"This is our hackathon project brief. Help me with [your part]."*
 
-**Birdie** gives you a bird's-eye view of study-seat availability in Doha. The current Nestwork demo processes uploaded recorded clips; it is not connected to a live camera feed.
+**Birdie** gives you a bird's-eye view of study-seat availability in Doha. The current Nestwork Msheireb and Corniche Cup demos replay recorded clips; it is not connected to a live camera feed.
 
 > **Updated Fri 6 Nov, evening.** The team dropped booking, check-in, QR codes and the Fanar assistant, and adopted the mobile app design in `design/mobile/`. Birdie is now a live view: it shows seats, it doesn't reserve them. Section 16 lists what changes in the existing code.
 
@@ -21,7 +21,7 @@ You are helping a 4-person team at the **Qai x Hugging Face Hackathon 01**, held
 - **It must genuinely run on Hugging Face infrastructure** (Spaces, Hub models, HF Jobs). Frontier models (GPT, Claude, etc.) only "around the edges", never as the core.
 - **Compute budget:** $100 for the whole team, one shared pool, no top-ups. HF Jobs stop after 30 minutes by default, so save outputs to the Hub from inside the job.
 - **Prefer small, efficient open models.** Efficiency is a judging criterion.
-- **Privacy matters:** no face recognition or identity matching. Uploaded clips are deleted after processing; hosted logging and retention are unverified.
+- **Privacy matters:** no face recognition or identity matching. Console uploads are deleted after processing, but the two demo clips are stored on the public Space repository; hosted logging and retention are unverified.
 - **Simple, working code over clever code.** Working end to end beats feature-rich and broken.
 - **Never commit** tokens, `.env` files, videos, frames or model weights.
 - **The mobile app follows the design handoff** in `design/mobile/` (`README.md` and `prototype.html`), screens 1 to 3 only (section 8.2). It is high fidelity: recreate its colours, type, spacing and interactions exactly. Where this file and the handoff disagree (check-in, QR codes, sample data, walk times, seat colours), this file wins.
@@ -268,7 +268,8 @@ Status mapping: only `FREE` is available; `OCCUPIED` and `UNAVAILABLE` map to `t
 
 | venue_id | Name | Type | Area | Source | Drive time (approx.) |
 |---|---|---|---|---|---|
-| `nestwork-msheireb` | Nestwork Msheireb | Coworking | Msheireb Downtown | Uploaded recorded clips; camera regions require calibration | You're here |
+| `nestwork-msheireb` | Nestwork Msheireb | Coworking | Msheireb Downtown | Recorded clip; camera regions require calibration | You're here |
+| `corniche-cup` | Corniche Cup (invented) | Cafe | West Bay | Recorded clip (hand-held; drift-aligned) | ~10 min |
 | `qnl` | Qatar National Library | Library | Education City | Simulated | ~15 min |
 | `qu-library` | Qatar University Library | Library | Qatar University | Simulated | ~25 min |
 | `qahwa-corner` | Qahwa Corner (invented) | Cafe | Lusail | Simulated | ~25 min |
@@ -400,13 +401,13 @@ Always keep the **backup video** ready in case the Wi-Fi or camera fails.
 - **"Why no booking? UTSeat and coworking apps do booking."** On purpose. Booking-based availability is what makes those apps wrong: walk-ins aren't counted and no-shows block seats. We show what the camera sees.
 - **"Can't someone grab the seat before I get there?"** Yes, and that's honest: we show what's free right now, with a free count per venue. In a big venue like QNL, a place with 30 free seats will still have seats when you arrive.
 - **"Why would a cafe or library give you camera access?"** Many venues already have cameras. This demo uploads a recorded clip to the Space; an on-premise deployment that sends only seat states is a future privacy goal. Venue alerts and peak-time analytics are planned, not validated with partner venues.
-- **"Privacy?"** No face recognition or identity matching. The uploaded clip is shown unblurred and deleted after playback; hosted logging and retention have not been verified.
+- **"Privacy?"** No face recognition or identity matching. Clips are shown unblurred; console uploads are deleted after playback but the two demo clips are stored on the public Space repository; hosted logging and retention have not been verified.
 - **"Why is this Qatar-specific?"** Car-dependent sprawl and heat make every wasted check a drive, which is why we show drive times. Doha venues, family and women's sections, the Friday and Saturday weekend, Ramadan nights and exam season around QNL.
 - **"Where is Hugging Face in this?"** The pretrained detector is from the Hub; the app and demo pipeline run on a Space. A labelled dataset is not published, and held-out accuracy has not been measured.
 - **"Why only one vision model?"** The MVP uses one pretrained detector for people and common objects. It does not reliably identify every kind of belonging; uncertain desk evidence must remain unknown.
 - **"Why a web app and not a native app?"** You open it from a link with no install, on any phone.
 - **"How accurate is it?"** Report seat-state accuracy on our labelled frames, and be upfront about failure cases (occlusion, lighting).
-- **"Is the other venues' data real?"** Nestwork replays recorded footage through the pipeline. The others are simulated listings to show the product across the city.
+- **"Is the other venues' data real?"** Nestwork and Corniche Cup replay recorded footage through the pipeline. The others are simulated listings to show the product across the city.
 
 ---
 

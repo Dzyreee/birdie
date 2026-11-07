@@ -23,6 +23,7 @@ def replay_recording(svc: BirdieService, venue_id: str, path: str, stop: threadi
         svc.validate_recording(venue_id, path)
         svc.mark_unknown(venue_id)  # Discard persisted states/timers from an earlier recording session.
         while not stop.is_set():
+            svc.reset_alignment(venue_id)  # first frame of each pass = reference for the outlines (stabilised venues)
             start = time.monotonic()
             for timestamp, frame in iter_clip_frames(path, fps=TARGET_FPS):
                 if stop.is_set():

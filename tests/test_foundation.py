@@ -58,9 +58,23 @@ def test_demo_venues_load():
     assert set(venues) == {
         "nestwork-msheireb", "qnl", "qu-library", "qahwa-corner", "corniche-cup", "nakheel-study", "waab-study-hall"
     }
-    assert next(iter(venues)) == "nestwork-msheireb"  # camera-fed venue first
+    assert set(list(venues)[:2]) == {"nestwork-msheireb", "corniche-cup"}  # camera-fed (recorded) venues first
     for cfg in venues.values():
         assert cfg.seats, cfg.venue.venue_id
         assert all(s.zone in cfg.venue.zones for s in cfg.seats)
     assert venues["nestwork-msheireb"].venue.source == VenueSource.recorded
-    assert all(v.venue.source == VenueSource.simulated for k, v in venues.items() if k != "nestwork-msheireb")
+    recorded = {"nestwork-msheireb", "corniche-cup"}
+    assert venues["corniche-cup"].venue.source == VenueSource.recorded
+    assert all(v.venue.source == VenueSource.simulated for k, v in venues.items() if k not in recorded)
+
+
+def test_corniche_cup_is_a_recorded_venue_in_the_same_format_as_nestwork():
+    venues = load_all()
+    nest, cup = venues["nestwork-msheireb"], venues["corniche-cup"]
+    assert cup.recording_sha256 and len(cup.recording_sha256) == 64  # the clip is pinned, like Nestwork's
+    assert cup.stabilize_camera and cup.belongings_threshold == 0.15  # tuned for its hand-held clip
+    assert not nest.stabilize_camera and nest.belongings_threshold is None  # Nestwork behaves as before
+    assert len(cup.seats) == 8 and all(len(s.seat_polygon) >= 3 and s.table_id for s in cup.seats)
+    plan_tables = {t["table_id"] for t in cup.venue.floor_plan["tables"]}
+    assert {s.table_id for s in cup.seats} == plan_tables == {t.table_id for t in cup.tables}
+    assert all(s.plan_x is not None and s.plan_y is not None for s in cup.seats)

@@ -10,7 +10,8 @@ import gradio as gr
 import uvicorn
 
 from birdie.api import create_app, mount_mobile_web
-from birdie.config import DEMO_MODE, LIVE_VENUE_ID
+from birdie.config import DEMO_MODE, LIVE_VENUE_ID, ROOT_DIR
+from birdie.models import VenueSource
 from birdie.service import BirdieService
 from birdie.ui.camera import build_camera_tab
 from birdie.ui.common import CSS
@@ -33,6 +34,15 @@ def _warm_up_detector() -> None:
 
 
 threading.Thread(target=_warm_up_detector, daemon=True, name="detector-warmup").start()
+
+# Recorded venues replay demo_clips/<venue_id>.mp4 when the file is on the Space (the clips are not in git;
+# they are uploaded to the Space once and survive deploys). The venue config pins each clip by SHA-256.
+for _cfg in svc.configs.values():
+    _clip = ROOT_DIR / "demo_clips" / f"{_cfg.venue.venue_id}.mp4"
+    if _cfg.venue.source == VenueSource.recorded and _clip.is_file():
+        from birdie.vision.demo import start_recorded_demo as _start
+
+        _start(svc, _cfg.venue.venue_id, str(_clip))
 
 demo_video = os.getenv("BIRDIE_DEMO_VIDEO", "").strip()
 if demo_video:
