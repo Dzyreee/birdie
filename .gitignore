@@ -18,6 +18,7 @@ data/
 
 # Media: never commit videos or frames
 *.mp4
+!demo_clips/*.mp4
 *.mov
 *.avi
 *.mkv
@@ -49,5 +50,3 @@ jobs/results/
 eval_data/
 eval_clips/
 
-# Demo clips live on the Space (uploaded with hf upload), never in git
-demo_clips/
