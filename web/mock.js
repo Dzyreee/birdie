@@ -159,12 +159,38 @@ window.BirdieMock = (() => {
   }
   setInterval(tick, 1300);
 
-  function summary(v) {
+  // Forecast shaped like the API's: a typical-day busyness curve per venue type, blended with the live
+  // count the same way as birdie.decision (live data counts half as much at a 20-minute arrival).
+  const PEAKS = { library: [11, 17], cafe: [13, 20], cowork: [11, 15], study_room: [16, 20] };
+  const busy = (type, d) => {
+    const h = d.getHours() + d.getMinutes() / 60;
+    return Math.min(0.95, 0.2 + (PEAKS[type] || [12, 18]).reduce((s, p) => s + 0.45 * Math.exp(-((h - p) ** 2) / 6), 0));
+  };
+  const FORECAST_STEPS = [0, 30, 60, 90, 120, 150, 180];
+
+  function forecast(v, liveFree, total, withTimeline) {
+    if (!total) return null;
+    const t0 = now();
+    const freeAt = m => total * (1 - busy(v.type, new Date(t0 + m * 60000)));
+    const base = freeAt(0);
+    const at = m => {
+      const w = 0.5 ** (m / 20);
+      const expected = Math.min(total, Math.max(0, w * (liveFree + freeAt(m) - base) + (1 - w) * freeAt(m)));
+      const spread = 0.5 + total * (0.03 + 0.12 * (1 - w));
+      return { minutes: m, at: new Date(t0 + m * 60000).toISOString(), expected_free: Math.round(expected),
+        low: Math.max(0, Math.floor(expected - spread)), high: Math.min(total, Math.ceil(expected + spread)) };
+    };
+    const out = { model: 'baseline', arrival: at(v.drive_minutes) };
+    if (withTimeline) out.timeline = FORECAST_STEPS.map(at);
+    return out;
+  }
+
+  function summary(v, withTimeline = false) {
     const seats = live[v.venue_id];
     const counts = { free: 0, taken: 0, held: 0, total: seats.length };
     seats.forEach(s => { counts[s.status] += 1; });
     const { layout, pFree, pHeld, seed, ...fields } = v;
-    return { ...fields, counts };
+    return { ...fields, counts, forecast: forecast(v, counts.free, counts.total, withTimeline) };
   }
 
   const clone = x => JSON.parse(JSON.stringify(x));
@@ -176,7 +202,7 @@ window.BirdieMock = (() => {
     venue: async id => {
       const v = VENUES.find(x => x.venue_id === id);
       if (!v) throw Object.assign(new Error('Venue not found'), { status: 404 });
-      return clone({ ...summary(v), floor_plan: planFor(LAYOUTS[v.layout]), seats: live[id] });
+      return clone({ ...summary(v, true), floor_plan: planFor(LAYOUTS[v.layout]), seats: live[id] });
     },
   };
 })();

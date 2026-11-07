@@ -41,6 +41,7 @@
     query: '',
     seg: 'all',
     sel: null,        // seat_id of the chair whose sheet is open
+    fcSel: null,      // index of the tapped bar in the forecast chart
     homeScroll: 0,
     fromList: false,
     saved: loadSaved(),
@@ -85,6 +86,14 @@
     }, 0);
   }
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const clock = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Qatar' });
+
+  // "About 6 likely free when you arrive", from the API's forecast at the venue's drive time.
+  function arrivalLine(v) {
+    const a = v.forecast && v.forecast.arrival;
+    if (!a || !v.drive_minutes) return '';
+    return a.expected_free > 0 ? `About ${a.expected_free} likely free when you arrive` : 'Likely full when you arrive';
+  }
 
   function heldFor(since) {
     const ms = Date.now() - Date.parse(since);
@@ -141,6 +150,7 @@
     entrance: () => svg(10, 10, '0 0 10 10', '<path d="M5 9V1M1.5 4.5L5 1l3.5 3.5"/>', line(1.6)),
     heart: () => svg(20, 20, '0 0 24 24', '<path d="M12 20.5s-7.5-4.6-9.2-9.6C1.6 7.3 3.9 4 7.4 4c2 0 3.6 1.1 4.6 2.7C13 5.1 14.6 4 16.6 4c3.5 0 5.8 3.3 4.6 6.9-1.7 5-9.2 9.6-9.2 9.6Z"/>', line(2)),
     explore: () => svg(24, 24, '0 0 24 24', '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z"/>', line(2)),
+    trend: () => svg(16, 16, '0 0 24 24', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>', line(2.2)),
     info: () => svg(24, 24, '0 0 24 24', '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.1"/>', line(2.2)),
   };
 
@@ -363,8 +373,9 @@
         <div class="best-body">
           ${thumb(best)}
           <div class="best-text">
-            <strong>${plural(studyCount(best), 'verified study space', 'verified study spaces')}</strong>
+            <strong>${plural(studyCount(best), 'study space', 'study spaces')}</strong>
             ${distance(best, true)}
+            ${arrivalLine(best) ? `<span class="best-eta">${ICON.trend()}${esc(arrivalLine(best))}</span>` : ''}
           </div>
           <button class="btn press" data-act="open" data-v="${esc(best.venue_id)}">See seats</button>
         </div>
@@ -522,6 +533,7 @@
     const plan = v.floor_plan;
     tableNames = new Map((plan.tables || []).map(t => [t.table_id, t.name]));
     lastStatus = new Map();
+    state.fcSel = null;
 
     app.innerHTML = `
       <main class="place" id="place">
@@ -530,6 +542,7 @@
           <div class="count">
             <h2 id="headline"></h2>
             <p id="breakdown"></p>
+            <p class="eta" id="eta" hidden></p>
           </div>
           <div class="seg" id="seg" role="group" aria-label="Filter seats">
             ${SEGS.map(([k, label]) => `<button data-act="seg" data-v="${k}">${label}</button>`).join('')}
@@ -549,6 +562,11 @@
             <span><i class="sw-held"></i>Held / staff review</span>
             <span><i class="sw-checking"></i>Checking</span>
           </div>
+          <section class="fc" id="fc" hidden aria-labelledby="fcTitle">
+            <div class="fc-head"><h3 id="fcTitle">Next 3 hours</h3><span>Forecast</span></div>
+            <p class="fc-cap" id="fcCap" aria-live="polite"></p>
+            <div class="fc-chart" id="fcChart" role="group" aria-label="Likely free study spaces, every 30 minutes"></div>
+          </section>
         </div>
       </main>`;
 
@@ -637,7 +655,51 @@
       b.setAttribute('aria-pressed', String(on));
     });
 
+    updateForecast(v);
     updateSheet();
+  }
+
+  // The forecast: one line under the headline, and a bar per 30 minutes for the next 3 hours.
+  function updateForecast(v) {
+    const f = v.forecast;
+    const steps = (f && f.timeline) || [];
+    const eta = $('#eta');
+    const box = $('#fc');
+    if (!eta || !box) return;
+
+    let line = '';
+    if (f && f.arrival && v.drive_minutes) {
+      const a = f.arrival;
+      line = a.expected_free > 0
+        ? `<b>About ${a.expected_free}</b> likely free when you arrive in ${v.drive_minutes}&nbsp;min`
+        : `<b>Likely full</b> when you arrive in ${v.drive_minutes}&nbsp;min`;
+    } else if (steps.length > 2) {
+      const change = steps[2].expected_free - steps[0].expected_free;
+      const big = Math.max(2, Math.round((v.counts?.total || 0) * 0.1));
+      line = change <= -big ? '<b>Filling up</b> over the next hour'
+        : change >= big ? '<b>Freeing up</b> over the next hour' : '<b>About the same</b> for the next hour';
+    }
+    eta.hidden = !line;
+    setHTML(eta, line ? `${ICON.trend()}<span>${line}</span>` : '');
+
+    box.hidden = steps.length === 0;
+    if (!steps.length) return;
+    // Default to the bar closest to when you'd arrive.
+    const near = Math.min(steps.length - 1, Math.round((v.drive_minutes || 0) / 30));
+    const sel = state.fcSel ?? near;
+    const max = Math.max(1, ...steps.map(p => p.expected_free));
+    const label = (q, i) => (i === 0 ? 'Now' : q.minutes < 60 ? `${q.minutes}m` : `${Math.floor(q.minutes / 60)}h${q.minutes % 60 ? '30' : ''}`);
+    const p = steps[sel];
+    $('#fcCap').innerHTML = `<b>${sel === 0 ? 'Now' : clock(p.at)}</b> · ${sel === 0
+      ? plural(p.expected_free, 'verified study space', 'verified study spaces')
+      : p.expected_free > 0 ? `about ${p.expected_free} likely free (${p.low} to ${p.high})` : 'likely full'}`;
+    setHTML($('#fcChart'), steps.map((q, i) => `
+      <button class="fc-bar${i === sel ? ' is-sel' : ''}${i === 0 ? ' is-now' : ''}" data-act="fc" data-v="${i}"
+        aria-pressed="${i === sel}" aria-label="${i === 0 ? 'Now' : `At ${clock(q.at)}`}: about ${q.expected_free} free">
+        <span class="fc-val">${q.expected_free}</span>
+        <span class="fc-track"><span class="fc-col" style="height:${Math.max(3, (q.expected_free / max) * 100)}%"></span></span>
+        <span class="fc-t">${esc(label(q, i))}</span>
+      </button>`).join(''));
   }
 
   function onChair(id) {
@@ -754,6 +816,7 @@
       case 'seg': state.seg = v; state.sel = null; updatePlace(); break;
       case 'chair': onChair(v); break;
       case 'close': state.sel = null; updatePlace(); break;
+      case 'fc': state.fcSel = Number(v); if (state.venue) updateForecast(state.venue); break;
       default: break;
     }
   });

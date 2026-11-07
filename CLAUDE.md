@@ -260,6 +260,8 @@ Removed: `Booking`, `Query`, `bookable`, `bookable_fraction`, `prepaid_item`, an
 | `GET /api/venues/{venue_id}` | Venue with an optional customer `floor_plan` and per-seat status, timestamps, confidence, timer and review fields. Camera polygons are never returned. |
 | `PUT /api/venues/{venue_id}/seats/{seat_id}/unavailable` | Protected staff override; requires `BIRDIE_ADMIN_TOKEN` and a bearer token |
 
+Both also return `forecast`: `arrival` (`minutes` = the venue's drive time, `at`, `expected_free`, `low`, `high`) and, on the venue endpoint only, `timeline` (the same fields every 30 minutes from now to 3 hours ahead), or `null` if the forecast fails. It starts from the verified study spaces shown now and blends towards the forecast with the rule in `birdie.decision`. `web/mock.js` returns the same shape.
+
 Status mapping: only `FREE` is available; `OCCUPIED`, `REVIEW_REQUIRED` and `UNAVAILABLE` map to `taken`, `HELD` maps to `held`, and `UNKNOWN` remains explicitly checking. Times are ISO 8601 with a timezone. `web/mock.js` is local demo data only.
 
 ### 7.3 Demo venues
@@ -306,13 +308,14 @@ Build **screens 1 to 3** of `design/mobile/README.md`. Screens 4 to 6 (Scan to c
   - Chairs are coloured from the API status (green, red, amber), and the legend reads Free / Taken / Held.
   - **Seat sheet:** tapping a free or held chair opens the bottom sheet, **without the "Scan to check in" button**. A free chair shows "Seat A3 is free" plus its chips (table, Window, Outlet). A held chair shows "Seat A3 is held by a bag" and "Nobody here · held for N min" (from `since`). Taken chairs can't be tapped.
   - Place photos: none are supplied. Use the mist placeholder with the venue type's icon.
+  - **Forecast:** a line under the count, "About 6 likely free when you arrive in 15 min" (for Nestwork, where you already are: "Filling up / Freeing up / About the same over the next hour"), and a "Next 3 hours" bar chart below the legend, one bar per 30 minutes. The bar nearest your arrival is highlighted; tapping a bar shows its time and range. The suggestion card on Explore shows the same arrival line.
 - **Live updates:** poll the API every 2 seconds instead of the prototype's random flips.
 
 ### 8.3 Built but not used by the mobile app
 
 - **Forecast:** calendar features (Friday and Saturday weekend, quiet Friday mornings, Ramadan and exam-season flags, hour of day), four weeks of synthetic history per venue, a baseline model and optional Chronos-Bolt. `jobs/backtest.py` compares them (MAE at 15, 30 and 60 minutes) locally or as an HF Job.
 - **`availability_at(venue_id, arrival_minutes)`, `focus_score()`, `recommend()`:** they blend live data with the forecast.
-- If the must-haves are finished early, the cheapest way to surface this is one line on the place screen, for example "about 6 likely free when you arrive in 15 min". This is the strongest drive-time angle for the pitch. Otherwise leave it.
+- **Now in the app:** the `availability_at` blend is sent as `forecast` by the API (section 7.2) and shown on the place screen and the suggestion card (section 8.2). This is the strongest drive-time angle for the pitch. The focus score and `recommend()` are still not used.
 
 ### 8.4 The number for the judges
 

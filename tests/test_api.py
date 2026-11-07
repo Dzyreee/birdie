@@ -73,3 +73,26 @@ def test_staff_override_requires_token_and_changes_availability(clock, monkeypat
     assert response.status_code == 200
     assert response.json()["state"] == SeatState.UNAVAILABLE.value
     assert svc.counts("v")[SeatState.FREE] == 0
+
+
+def test_forecast_starts_from_the_live_count_and_covers_three_hours(clock):
+    venue = Venue(
+        venue_id="v", name="Venue", area="Doha", type=VenueType.library,
+        lat=0, lon=0, zones=["open"], source=VenueSource.simulated, drive_minutes=15,
+    )
+    seats = [Seat(seat_id=f"A{i}", venue_id="v", zone="open") for i in range(1, 9)]
+    svc = BirdieService(
+        repo=Repository(":memory:"), clock=clock,
+        venues={"v": VenueConfig(venue=venue, seats=seats)},
+        detector=lambda image, threshold: [], persist_venues=False,
+    )
+    client = TestClient(create_app(svc))
+
+    listed = client.get("/api/venues").json()[0]["forecast"]
+    detail = client.get("/api/venues/v").json()
+    timeline = detail["forecast"]["timeline"]
+    assert listed["arrival"]["minutes"] == 15
+    assert "timeline" not in listed
+    assert [p["minutes"] for p in timeline] == [0, 30, 60, 90, 120, 150, 180]
+    assert timeline[0]["expected_free"] == detail["counts"]["usable_study_spaces"]
+    assert all(0 <= p["low"] <= p["expected_free"] <= p["high"] <= 8 for p in timeline)

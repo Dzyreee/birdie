@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
+from datetime import timedelta
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from birdie.config import DETECTOR_MODEL_ID, ROOT_DIR
+from birdie.decision import blend_availability
 from birdie.models import SeatSnapshot, SeatState
 from birdie.service import BirdieService
 from birdie.vision import detector
 
 WEB_DIR = ROOT_DIR / "web"
+FORECAST_STEPS = (0, 30, 60, 90, 120, 150, 180)  # minutes ahead, for the chart on the place screen
+
+log = logging.getLogger(__name__)
 
 
 class AvailabilityOverride(BaseModel):
@@ -47,6 +53,38 @@ def _counts(snapshots: list[SeatSnapshot]) -> dict[str, int]:
     }
 
 
+def _forecast(svc: BirdieService, venue_id: str, live_free: int, timeline: bool = False) -> dict | None:
+    """Expected free study spaces when you arrive (after the venue's drive time) and over the next 3 hours.
+
+    Starts from the verified study spaces the app shows now and blends towards the forecast, using the same
+    rule as birdie.decision.availability_at. Returns None rather than failing the venue response.
+    """
+    try:
+        total = len(svc.snapshot_map(venue_id))
+        if not total:
+            return None
+        now = svc.now()
+
+        def free_at(minutes: int) -> float:
+            return total * (1 - svc.forecast_ratio(venue_id, now + timedelta(minutes=minutes)))
+
+        base = free_at(0)
+
+        def at(minutes: int) -> dict:
+            a = blend_availability(venue_id=venue_id, total=total, live_free=live_free, forecast_free_now=base,
+                                   forecast_free_arrival=free_at(minutes), arrival_minutes=minutes)
+            return {"minutes": minutes, "at": (now + timedelta(minutes=minutes)).isoformat(),
+                    "expected_free": a.expected_int, "low": a.low, "high": a.high}
+
+        out = {"model": svc.forecast.model_name, "arrival": at(svc.configs[venue_id].venue.drive_minutes)}
+        if timeline:
+            out["timeline"] = [at(m) for m in FORECAST_STEPS]
+        return out
+    except Exception:
+        log.exception("Forecast failed for %s", venue_id)
+        return None
+
+
 def _venue_data(svc: BirdieService, venue_id: str, details: bool = False) -> dict:
     cfg = svc.configs[venue_id]
     venue = cfg.venue.model_dump(mode="json")
@@ -59,6 +97,7 @@ def _venue_data(svc: BirdieService, venue_id: str, details: bool = False) -> dic
         "unmapped_seats": len(cfg.unmapped_seat_ids),
     }
     venue["unmapped_seat_ids"] = cfg.unmapped_seat_ids
+    venue["forecast"] = _forecast(svc, venue_id, study["usable_study_spaces"], timeline=details)
     if details:
         study_seats = {seat["seat_id"]: seat for seat in study["seats"]}
         venue["seats"] = [
